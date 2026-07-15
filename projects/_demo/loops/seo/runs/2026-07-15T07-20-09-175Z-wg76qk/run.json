@@ -1,0 +1,28 @@
+{
+  "run_id": "2026-07-15T07-20-09-175Z-wg76qk",
+  "project": "_demo",
+  "loop": "seo",
+  "start": "2026-07-15T07:20:09.175Z",
+  "end": "2026-07-15T07:20:09.181Z",
+  "status": "ok",
+  "tool_calls": [
+    {
+      "tool": "mock-metrics",
+      "args": {
+        "scenario": "normal"
+      },
+      "at": "2026-07-15T07:20:09.179Z",
+      "ok": true
+    }
+  ],
+  "credential_alias_used": "demo-gsc-readonly",
+  "decisions": [],
+  "proposals_created": [
+    "prop-2026-07-15T07-20-09-175Z-wg76qk-0",
+    "prop-2026-07-15T07-20-09-175Z-wg76qk-1"
+  ],
+  "proposals_evaluated": [],
+  "stale_proposals": [],
+  "snapshot": "runs\\2026-07-15T07-20-09-175Z-wg76qk\\snapshot.json",
+  "final_status": "ok"
+}

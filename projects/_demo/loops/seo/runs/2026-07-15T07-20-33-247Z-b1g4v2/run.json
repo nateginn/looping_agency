@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-07-15T07-20-33-247Z-b1g4v2",
+  "project": "_demo",
+  "loop": "seo",
+  "start": "2026-07-15T07:20:33.247Z",
+  "end": "2026-07-15T07:20:33.254Z",
+  "status": "ok",
+  "tool_calls": [
+    {
+      "tool": "mock-metrics",
+      "args": {
+        "scenario": "normal"
+      },
+      "at": "2026-07-15T07:20:33.251Z",
+      "ok": true
+    }
+  ],
+  "credential_alias_used": "demo-gsc-readonly",
+  "decisions": [
+    "proposal prop-2026-07-15T07-20-09-175Z-wg76qk-0: verified winner (position 6.1 -> 6.1, within guardrail)"
+  ],
+  "proposals_created": [
+    "prop-2026-07-15T07-20-33-247Z-b1g4v2-0",
+    "prop-2026-07-15T07-20-33-247Z-b1g4v2-1"
+  ],
+  "proposals_evaluated": [
+    "prop-2026-07-15T07-20-09-175Z-wg76qk-0"
+  ],
+  "stale_proposals": [],
+  "snapshot": "runs\\2026-07-15T07-20-33-247Z-b1g4v2\\snapshot.json",
+  "final_status": "ok"
+}

@@ -1,0 +1,34 @@
+{
+  "source": "mock-metrics",
+  "scenario": "normal",
+  "pulled_at": "2026-07-15T07:20:09.179Z",
+  "credential_alias": "demo-gsc-readonly",
+  "sample_size": 2640,
+  "keywords": [
+    {
+      "keyword": "best loop agency",
+      "page": "/blog/loop-agency",
+      "position": 8.2,
+      "clicks": 42,
+      "impressions": 900
+    },
+    {
+      "keyword": "seo automation tool",
+      "page": "/blog/seo-automation",
+      "position": 11.5,
+      "clicks": 18,
+      "impressions": 640
+    },
+    {
+      "keyword": "ai marketing loops",
+      "page": "/blog/ai-marketing",
+      "position": 6.1,
+      "clicks": 55,
+      "impressions": 1100
+    }
+  ],
+  "_rawAuthHeader": "Bearer [REDACTED:demo-gsc-readonly] (alias demo-gsc-readonly)",
+  "secretMap": {
+    "demo-gsc-readonly": "[REDACTED:demo-gsc-readonly]"
+  }
+}

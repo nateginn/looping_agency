@@ -1,0 +1,12 @@
+# Risk Register — Loop Agency
+
+Canonical record of review findings, their severity, and their resolution. A phase cannot be marked complete while a High finding is Open, unless the human records a written risk acceptance here.
+
+| ID | Source | Severity | Finding | Status | Resolution / Acceptance |
+|----|--------|----------|---------|--------|--------------------------|
+| R1 | Codex plan review R1 #12 | Low | Solo-desktop scheduling lacks dedicated service account | Accepted by design | Compensating controls: out-of-band watchdog + staleness surfacing. Service account documented as optional hardening. Human sign-off pending with plan approval. |
+| R2 | Codex plan review R1 #16 | Low | 2-round plan-review cap may leave findings unresolved | Mitigated | This register + high-severity block rule + human tie-break on deadlock. Cap is user-mandated. |
+| R3 | Codex plan review R2 (all 5) | Medium | Stale locks, Tier-1 apply boundary, .env storage, missing watchdog, non-canonical path checks | Resolved in plan | All five incorporated into AgentColabPlan.md Round 2; Codex has not re-verified the final edits (round cap reached). Verify during Phase 1 implementation review. |
+| R4 | Plan (Phase 4) | Medium | Meta/Google Ads API onboarding may stall; live spend controls unverified until then | Open | Ads loop stays propose-only until daily ceilings verified live; CSV-export fallback defined. Revisit at Phase 4. |
+| R5 | Plan (metrics) | Low | Qualitative guardrail rubrics (content quality, brand voice) uncalibrated until real content flows | Open | Rubrics always human-approved; expect revisions in Phase 2/3. |
+| R6 | User (2026-07-15, pre-Phase-1) | High | The user's website project (in the `Dev` directory, separate repo from this workspace) deploys to production automatically on any push — there is no staging gate. Any `git push` to that repo is therefore a live, public, irreversible-by-default action, not a Tier-1 preview. | Accepted by design | Classified as **Tier 2 (public/paid, human-only)** regardless of branch or content — never a loop's `applied` transition. Phase 1 does not touch this repo, any real credentials, or any live API; the runner's per-project namespace check (resolved canonical paths) must confirm no run can write into that repo's working directory even if a future project onboards it. Revisit scope/branch-protection options only if/when this site is ever onboarded as a project — not assumed in Phase 1. |
