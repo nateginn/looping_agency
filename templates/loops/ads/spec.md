@@ -35,7 +35,7 @@ credential_aliases:
 
 # Ads loop spec — DRAFT (Phase 1: not wired)
 
-**Status: draft only.** Per AgentColabPlan.md Sequencing Phase 4, the ads loop goes live last, read-only first, and stays **propose-only until daily ceilings are verified live**. No ads connector exists yet; `run-loop.mjs` has nothing registered for `ads-platform-readonly` and will refuse.
+**Status: draft only.** Per AgentColabPlan.md Sequencing Phase 4, the ads loop goes live last, read-only first, and stays **propose-only until daily ceilings are verified live**. No ads connector exists yet; `run_loop.py` has nothing registered for `ads-platform-readonly` and will refuse.
 
 ## What's still open before this can go live (Phase 4)
 

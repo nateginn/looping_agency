@@ -1,0 +1,11 @@
+{
+  "note": "Phase 1 simulated Tier-1 side effect \u2014 no real repo/API/credential touched.",
+  "proposal_id": "prop-2026-07-16T02-02-56-589Z-ebgkog-0",
+  "action_type": "title-tag-rewrite",
+  "target": {
+    "page": "/blog/ai-marketing",
+    "keyword": "ai marketing loops"
+  },
+  "applied_at": "2026-07-16T02:03:11.695087Z",
+  "applied_by": "human"
+}

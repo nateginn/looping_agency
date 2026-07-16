@@ -1,9 +1,9 @@
 {
-  "run_id": "2026-07-16T01-07-56-776Z-1y8353",
+  "run_id": "2026-07-16T02-02-56-589Z-ebgkog",
   "project": "_demo",
   "loop": "seo",
-  "start": "2026-07-16T01:07:56.774Z",
-  "end": "2026-07-16T01:07:56.780Z",
+  "start": "2026-07-16T02:02:56.589223Z",
+  "end": "2026-07-16T02:02:56.595569Z",
   "status": "ok",
   "tool_calls": [
     {
@@ -11,18 +11,18 @@
       "args": {
         "scenario": "normal"
       },
-      "at": "2026-07-16T01:07:56.778Z",
+      "at": "2026-07-16T02:02:56.593831Z",
       "ok": true
     }
   ],
   "credential_alias_used": "demo-gsc-readonly",
   "decisions": [],
   "proposals_created": [
-    "prop-2026-07-16T01-07-56-776Z-1y8353-0",
-    "prop-2026-07-16T01-07-56-776Z-1y8353-1"
+    "prop-2026-07-16T02-02-56-589Z-ebgkog-0",
+    "prop-2026-07-16T02-02-56-589Z-ebgkog-1"
   ],
   "proposals_evaluated": [],
   "stale_proposals": [],
-  "snapshot": "runs\\2026-07-16T01-07-56-776Z-1y8353\\snapshot.json",
+  "snapshot": "runs\\2026-07-16T02-02-56-589Z-ebgkog\\snapshot.json",
   "final_status": "ok"
 }

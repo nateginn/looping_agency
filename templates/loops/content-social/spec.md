@@ -31,7 +31,7 @@ credential_aliases:
 
 # Content/Social loop spec — DRAFT (Phase 1: not wired)
 
-**Status: draft only.** This spec exists so its shape informs the shared run-contract abstractions; `tools/social-analytics.mjs` and any posting connector are **not implemented yet**. Do not attempt to run this loop — `run-loop.mjs` has no connector registered for `social-analytics` and will refuse.
+**Status: draft only.** This spec exists so its shape informs the shared run-contract abstractions; `tools/social_analytics.py` and any posting connector are **not implemented yet**. Do not attempt to run this loop — `run_loop.py` has no connector registered for `social-analytics` and will refuse.
 
 ## What's still open before this can go live (Phase 3)
 

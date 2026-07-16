@@ -1,5 +1,5 @@
 {
-  "id": "prop-2026-07-16T01-08-49-455Z-yq3ovz-0",
+  "id": "prop-2026-07-16T02-03-34-794Z-zixyea-0",
   "loop": "seo",
   "action_type": "title-tag-rewrite",
   "tier": 1,
@@ -8,14 +8,14 @@
     "keyword": "ai marketing loops"
   },
   "baseline_position": 6.1,
-  "rationale": "keyword \"ai marketing loops\" at position 6.1 on /blog/ai-marketing with 55 clicks — candidate for title-tag-rewrite",
+  "rationale": "keyword \"ai marketing loops\" at position 6.1 on /blog/ai-marketing with 55 clicks \u2014 candidate for title-tag-rewrite",
   "rollback": "revert PR",
   "manual_approval_only": false,
   "observation_window_days": 0.0001,
   "min_sample_size": 100,
   "status": "draft",
-  "created_run_id": "2026-07-16T01-08-49-455Z-yq3ovz",
-  "created_at": "2026-07-16T01:08:49.452Z",
+  "created_run_id": "2026-07-16T02-03-34-794Z-zixyea",
+  "created_at": "2026-07-16T02:03:34.794026Z",
   "run_cycles_seen": 0,
   "decision": null,
   "applied_at": null

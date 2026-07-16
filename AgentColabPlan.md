@@ -15,7 +15,7 @@ Loop Agency is a workspace for running durable business loops (build → verify 
 
 1. **Loop definition model** — a spec per loop instance: `objective`, `primary_metric`, `guardrail_metrics`, `failure_threshold`, `inputs`, `allowed_actions` (each with declared rollback semantics), `memory`, `schedule`, `stop_condition`, `approval_mode`. Format: markdown body + **versioned YAML frontmatter validated against a machine-checked schema (required enums/ranges) before any run starts** — a spec that fails validation refuses to run.
 2. **Loop operating procedure** — the run contract (below) plus operating discipline: pre-run checklist, post-run summary, rollback path per action type, approval gates.
-3. **Runtime/tooling layer** — Claude Code as the runner (skills, scheduling), thin Node scripts wrapping external APIs. Runtime selection criteria: single-language toolchain, no compile step, first-class on the schedulers we use, credentials injectable via env; (environment note, not a design principle: Python on this workstation additionally has an AVG TLS-interception issue). Specs and instructions stay plain markdown so the runtime is swappable.
+3. **Runtime/tooling layer** — Claude Code as the runner (skills, scheduling), thin Python scripts wrapping external APIs. Runtime selection criteria: single-language toolchain, no compile step, first-class on the schedulers we use, credentials injectable via env. **Python, per explicit user instruction — not a default to be silently overridden by environment quirks.** (An earlier revision of this document picked Node instead, citing this workstation's AVG TLS-interception issue as justification; that issue has a one-line fix (`pip install truststore`), the justification didn't hold up, and the choice was never actually authorized by the user. Corrected 2026-07-16 — see RISK-REGISTER.md R8.) Specs and instructions stay plain markdown so the runtime is swappable.
 
 ## The run contract
 
@@ -79,7 +79,7 @@ Looping _agency/
 │       ├── memory.md               # Derived summary view
 │       ├── runs/<run-id>/          # Append-only: snapshot, run.json, report.md
 │       └── pending/                # Proposals + state (draft/reviewed/approved/...)
-├── tools/                          # Node: gsc.mjs, dataforseo.mjs, snapshot.mjs, spec-validate.mjs (+ ads/social connectors in later phases); each has --verify
+├── tools/                          # Python: gsc.py, dataforseo.py, snapshot.py, spec_validate.py (+ ads/social connectors in later phases); each has --verify
 ├── .claude/skills/                 # /intake-project, /run-loop, /review-pending
 └── .env.example
 ```

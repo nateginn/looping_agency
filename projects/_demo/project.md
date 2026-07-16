@@ -15,6 +15,6 @@ loops_enabled:
 
 # Project: _demo
 
-Synthetic project used only for the Milestone-1 offline dry-run (AgentColabPlan.md Sequencing Phase 1a). No real domain, repo, or credential — `demo-gsc-readonly` is a fake alias resolved entirely inside `tools/mock-metrics.mjs`, which never makes a network call.
+Synthetic project used only for the Milestone-1 offline dry-run (AgentColabPlan.md Sequencing Phase 1a). No real domain, repo, or credential — `demo-gsc-readonly` is a fake alias resolved entirely inside `tools/mock_metrics.py`, which never makes a network call.
 
 This project must never be pointed at a real repo or real credential alias.

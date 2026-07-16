@@ -46,7 +46,7 @@ credential_aliases:
 Fill in the placeholders above, then validate with:
 
 ```
-node tools/spec-validate.mjs projects/<slug>/loops/seo/spec.md
+python tools/spec_validate.py projects/<slug>/loops/seo/spec.md
 ```
 
 A spec that fails validation refuses to run — fix the reported errors and re-validate before the loop's first run.

@@ -1,5 +1,5 @@
 {
-  "id": "prop-2026-07-16T01-07-56-776Z-1y8353-1",
+  "id": "prop-2026-07-16T02-03-34-794Z-zixyea-1",
   "loop": "seo",
   "action_type": "meta-description-rewrite",
   "tier": 1,
@@ -8,15 +8,15 @@
     "keyword": "best loop agency"
   },
   "baseline_position": 8.2,
-  "rationale": "keyword \"best loop agency\" at position 8.2 on /blog/loop-agency with 42 clicks — candidate for meta-description-rewrite",
+  "rationale": "keyword \"best loop agency\" at position 8.2 on /blog/loop-agency with 42 clicks \u2014 candidate for meta-description-rewrite",
   "rollback": "revert PR",
   "manual_approval_only": false,
   "observation_window_days": 0.0001,
   "min_sample_size": 100,
   "status": "draft",
-  "created_run_id": "2026-07-16T01-07-56-776Z-1y8353",
-  "created_at": "2026-07-16T01:07:56.774Z",
-  "run_cycles_seen": 1,
+  "created_run_id": "2026-07-16T02-03-34-794Z-zixyea",
+  "created_at": "2026-07-16T02:03:34.794026Z",
+  "run_cycles_seen": 0,
   "decision": null,
   "applied_at": null
 }
