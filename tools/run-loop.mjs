@@ -16,10 +16,35 @@ import yaml from 'js-yaml';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(__dirname, '..');
 const PROJECTS_ROOT = path.join(WORKSPACE_ROOT, 'projects');
-const DEFAULT_LOCK_TTL_MINUTES = 60; // conservative default used *before* the spec is trusted
+const DEFAULT_LOCK_TTL_MINUTES = 60; // fallback when the spec doesn't parse at all
+const MIN_LOCK_TTL_MINUTES = 1;
+const MAX_LOCK_TTL_MINUTES = 24 * 60;
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+/**
+ * Read just `max_run_duration_minutes` from spec.md, clamped to a sane range.
+ * Runs *before* full schema validation (the lock must be acquired first, per
+ * the run contract), so this only trusts a single bounded number out of an
+ * otherwise-untrusted file — never the full spec — and falls back safely on
+ * any parse error.
+ */
+function readLockTtlMinutesUnsafe(specPath, fallback = DEFAULT_LOCK_TTL_MINUTES) {
+  try {
+    const source = fs.readFileSync(specPath, 'utf8');
+    const fm = extractFrontmatter(source);
+    if (!fm) return fallback;
+    const parsed = yaml.load(fm);
+    const v = parsed?.max_run_duration_minutes;
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+      return Math.min(Math.max(v, MIN_LOCK_TTL_MINUTES), MAX_LOCK_TTL_MINUTES);
+    }
+  } catch {
+    // Unreadable/malformed spec: fall through to the conservative fallback below.
+  }
+  return fallback;
 }
 
 function loadSpec(specPath) {
@@ -163,8 +188,10 @@ export async function runLoop(projectSlug, loopName, { scenario = 'normal' } = {
 
   const now = new Date();
 
-  // Step 1: acquire lock (conservative fixed TTL — spec not trusted yet).
-  const lock = acquireLock(loopDir, { maxRunDurationMinutes: DEFAULT_LOCK_TTL_MINUTES, runsDir, now });
+  // Step 1: acquire lock. TTL comes from the loop's own spec.max_run_duration_minutes
+  // (read unsafely/clamped — full schema validation happens in step 2, after the lock).
+  const lockTtlMinutes = readLockTtlMinutesUnsafe(specPath);
+  const lock = acquireLock(loopDir, { maxRunDurationMinutes: lockTtlMinutes, runsDir, now });
   if (!lock.acquired) {
     logRefusal(loopDir, lock.reason);
     return { status: 'refused', reason: lock.reason };

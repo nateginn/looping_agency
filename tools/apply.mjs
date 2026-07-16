@@ -9,7 +9,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 import { assertWithin } from './lib/paths.mjs';
+import { extractFrontmatter } from './spec-validate.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(__dirname, '..');
@@ -23,6 +25,13 @@ function loopDirFor(project, loop) {
   return loopDir;
 }
 
+function loadApprovalMode(loopDir) {
+  const specPath = path.join(loopDir, 'spec.md');
+  const source = fs.readFileSync(specPath, 'utf8');
+  const parsed = yaml.load(extractFrontmatter(source));
+  return parsed?.approval_mode;
+}
+
 export function applyProposal(project, loop, proposalId, { by = 'human' } = {}) {
   const loopDir = loopDirFor(project, loop);
   const pendingDir = path.join(loopDir, 'pending');
@@ -32,6 +41,15 @@ export function applyProposal(project, loop, proposalId, { by = 'human' } = {}) 
 
   if (proposal.tier === 2) {
     throw new Error(`REFUSED: proposal ${proposalId} is Tier 2 (public/paid) — always human-only, never automated by apply.mjs`);
+  }
+  if (proposal.tier === 1) {
+    const approvalMode = loadApprovalMode(loopDir);
+    if (approvalMode !== 'tier1-enabled') {
+      throw new Error(
+        `REFUSED: proposal ${proposalId} is Tier 1 but this loop's approval_mode is "${approvalMode}" — ` +
+          'Tier-1 applies require approval_mode: tier1-enabled (see AgentColabPlan.md Phase 2: enabled only after human review of the first two reports)'
+      );
+    }
   }
   if (proposal.status !== 'approved') {
     throw new Error(`REFUSED: proposal ${proposalId} has status "${proposal.status}", not "approved" — approval gate blocks apply`);
@@ -43,7 +61,11 @@ export function applyProposal(project, loop, proposalId, { by = 'human' } = {}) 
   proposal.applied_by = by;
   fs.writeFileSync(proposalPath, JSON.stringify(proposal, null, 2));
 
-  const markerPath = path.join(pendingDir, `${proposalId}.applied-marker.json`);
+  // Markers live outside pending/ so they're never mistaken for proposal state
+  // by listPendingProposals()/listProposals() (which glob every *.json there).
+  const appliedDir = path.join(loopDir, 'applied');
+  fs.mkdirSync(appliedDir, { recursive: true });
+  const markerPath = path.join(appliedDir, `${proposalId}.marker.json`);
   fs.writeFileSync(
     markerPath,
     JSON.stringify(

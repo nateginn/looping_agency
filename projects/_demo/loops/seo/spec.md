@@ -25,7 +25,7 @@ allowed_actions:
     rollback: revert PR
     observation_window_days: 0.0001
     min_sample_size: 100
-approval_mode: propose-only
+approval_mode: tier1-enabled
 max_run_duration_minutes: 5
 schedule: "manual (dry-run only, not scheduled)"
 stop_condition: human deletes projects/_demo
@@ -37,3 +37,5 @@ credential_aliases:
 # SEO loop spec — _demo (synthetic dry-run fixture)
 
 `observation_window_days: 0.0001` (~9 seconds) is deliberate: it lets the two-consecutive-run dry run exercise the "evaluate prior experiments" step within a single test session, without waiting 14 real days. **This value is only valid for `_demo` — every real project template defaults to realistic windows (14–21 days).**
+
+`approval_mode: tier1-enabled` is also `_demo`-only and deliberate: it exists to prove `tools/apply.mjs` actually performs the `applied` transition end-to-end (see `runs/*/report.md` + `applied/*.marker.json`). AgentColabPlan.md Phase 2 requires every *real* onboarded project to start `propose-only` and only flip to `tier1-enabled` after human review of its first two reports — `templates/loops/seo/spec.md` keeps that safe default. `_demo` is a synthetic framework-proof fixture, never a real project, so this exception doesn't relax that Phase 2 policy.

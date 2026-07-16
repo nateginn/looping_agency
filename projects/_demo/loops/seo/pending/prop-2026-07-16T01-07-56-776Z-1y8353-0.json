@@ -1,5 +1,5 @@
 {
-  "id": "prop-2026-07-15T07-20-09-175Z-wg76qk-0",
+  "id": "prop-2026-07-16T01-07-56-776Z-1y8353-0",
   "loop": "seo",
   "action_type": "title-tag-rewrite",
   "tier": 1,
@@ -14,16 +14,16 @@
   "observation_window_days": 0.0001,
   "min_sample_size": 100,
   "status": "verified",
-  "created_run_id": "2026-07-15T07-20-09-175Z-wg76qk",
-  "created_at": "2026-07-15T07:20:09.175Z",
+  "created_run_id": "2026-07-16T01-07-56-776Z-1y8353",
+  "created_at": "2026-07-16T01:07:56.774Z",
   "run_cycles_seen": 0,
   "decision": {
     "action": "approve",
     "by": "human",
-    "note": "demo dry-run cycle 2 proof",
-    "at": "2026-07-15T07:20:16.134Z"
+    "note": "",
+    "at": "2026-07-16T01:08:19.431Z"
   },
-  "applied_at": "2026-07-15T07:20:16.247Z",
+  "applied_at": "2026-07-16T01:08:27.184Z",
   "applied_by": "human",
-  "evaluated_run_id": "2026-07-15T07-20-33-247Z-b1g4v2"
+  "evaluated_run_id": "2026-07-16T01-08-49-455Z-yq3ovz"
 }

@@ -20,8 +20,9 @@ This is the human approval gate in the approval state machine (`draft -> reviewe
    ```
    Do not resolve a breach without an explicit human decision — this is exactly the gate the plan requires ("blocks all new proposals until a human resolves the failed experiment").
 3. For each proposal the human wants to act on, use `AskUserQuestion` to get an explicit approve/reject/hold decision — never assume approval from silence or from a general "looks good."
-4. Apply the decision:
+4. Apply the decision. `draft -> approved` is allowed directly (a single human review action can both review and approve, per AgentColabPlan.md's "human review moves it to reviewed/approved"), but if the human wants the fuller `draft -> reviewed -> approved` progression, offer `--review` as an intermediate step:
    ```
+   node tools/review-pending.mjs <project> <loop> --review <id> --reason "<why, if just marking as seen/under consideration>"
    node tools/review-pending.mjs <project> <loop> --approve <id> --reason "<why>"
    node tools/review-pending.mjs <project> <loop> --reject <id> --reason "<why>"
    ```

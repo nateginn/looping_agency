@@ -76,7 +76,7 @@ export function resolveBreach(project, loop, { by = 'human', note = '' } = {}) {
 function cli() {
   const [, , project, loop, ...rest] = process.argv;
   if (!project || !loop) {
-    console.error('usage: node tools/review-pending.mjs <project> <loop> --list | --approve <id> | --reject <id> [--reason r] | --resolve-breach [--reason r]');
+    console.error('usage: node tools/review-pending.mjs <project> <loop> --list | --review <id> | --approve <id> | --reject <id> [--reason r] | --resolve-breach [--reason r]');
     process.exit(2);
   }
   try {
@@ -91,7 +91,11 @@ function cli() {
     const reasonIdx = rest.indexOf('--reason');
     const reason = reasonIdx >= 0 ? rest[reasonIdx + 1] : '';
 
-    if (rest.includes('--approve')) {
+    if (rest.includes('--review')) {
+      const id = rest[rest.indexOf('--review') + 1];
+      const p = decide(project, loop, id, 'review', { note: reason });
+      console.log(`reviewed ${p.id}`);
+    } else if (rest.includes('--approve')) {
       const id = rest[rest.indexOf('--approve') + 1];
       const p = decide(project, loop, id, 'approve', { note: reason });
       console.log(`approved ${p.id}`);

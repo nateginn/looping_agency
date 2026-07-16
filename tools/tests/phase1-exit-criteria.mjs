@@ -45,7 +45,7 @@ allowed_actions:
     rollback: revert PR
     observation_window_days: 0.0001
     min_sample_size: 100
-approval_mode: propose-only
+approval_mode: tier1-enabled
 max_run_duration_minutes: 5
 schedule: "manual"
 stop_condition: test fixture teardown
@@ -211,8 +211,16 @@ async function testApprovalGatesPreventUnapprovedApply() {
 
   decide(PROJECT, LOOP, draft.id, 'approve', { by: 'test' });
   const applied = applyProposal(PROJECT, LOOP, draft.id);
-  check('apply.mjs succeeds once approved', applied.status === 'applied');
-  check('applied-marker written (simulated Tier-1 side effect only)', fs.existsSync(path.join(loopDir, 'pending', `${draft.id}.applied-marker.json`)));
+  check('apply.mjs succeeds once approved (spec is tier1-enabled)', applied.status === 'applied');
+  check(
+    'applied marker written outside pending/ (never mistaken for proposal state)',
+    fs.existsSync(path.join(loopDir, 'applied', `${draft.id}.marker.json`)) &&
+      !fs.existsSync(path.join(loopDir, 'pending', `${draft.id}.applied-marker.json`))
+  );
+  check(
+    'marker file is not picked up by listProposals (no id/status/tier pollution)',
+    !listProposals(PROJECT, LOOP).some((p) => p.id === undefined)
+  );
 
   // Tier 2 must always refuse regardless of approval status.
   const tier2 = { ...draft, id: 'prop-tier2-test', tier: 2, status: 'draft' };
@@ -227,6 +235,57 @@ async function testApprovalGatesPreventUnapprovedApply() {
   check('apply.mjs refuses an approved Tier 2 proposal (human-only, always)', refusedTier2);
 }
 
+async function testProposeOnlyRefusesTier1Apply() {
+  resetFixture();
+  const proposeOnlySpec = GOOD_SPEC.replace('approval_mode: tier1-enabled', 'approval_mode: propose-only');
+  fs.writeFileSync(path.join(loopDir, 'spec.md'), proposeOnlySpec);
+
+  const draft = {
+    id: 'prop-propose-only-test',
+    loop: LOOP,
+    action_type: 'title-tag-rewrite',
+    tier: 1,
+    target: { page: '/blog/x', keyword: 'x' },
+    rationale: 'test',
+    rollback: 'revert PR',
+    manual_approval_only: false,
+    status: 'draft',
+    created_run_id: 'seed',
+    created_at: new Date().toISOString(),
+    run_cycles_seen: 0,
+    decision: null,
+    applied_at: null,
+    observation_window_days: 0.0001,
+    min_sample_size: 100,
+  };
+  fs.writeFileSync(path.join(loopDir, 'pending', `${draft.id}.json`), JSON.stringify(draft, null, 2));
+  decide(PROJECT, LOOP, draft.id, 'approve', { by: 'test' });
+
+  let refused = false;
+  try {
+    applyProposal(PROJECT, LOOP, draft.id);
+  } catch (e) {
+    refused = /approval_mode is "propose-only"/.test(e.message);
+  }
+  check('apply.mjs refuses an approved Tier-1 proposal when spec.approval_mode is propose-only', refused);
+}
+
+async function testStaleLockTtlComesFromSpec() {
+  resetFixture();
+  // GOOD_SPEC declares max_run_duration_minutes: 5. A live (own-pid) lock aged
+  // 6 minutes should be recovered as stale using the SPEC's TTL, not a hardcoded default.
+  fs.writeFileSync(
+    path.join(loopDir, 'run.lock'),
+    JSON.stringify({ runId: 'aged-per-spec-ttl', pid: process.pid, startTime: new Date(Date.now() - 6 * 60 * 1000).toISOString() })
+  );
+  const result = await runLoop(PROJECT, LOOP, { scenario: 'normal' });
+  check('lock older than spec.max_run_duration_minutes (5) is recovered as stale, not the 60min default', result.status === 'ok');
+  check(
+    'stale lock archived under the run it belonged to',
+    fs.existsSync(path.join(loopDir, 'runs', 'aged-per-spec-ttl', 'stale-lock.json'))
+  );
+}
+
 async function main() {
   await testSpecValidationRejectsBadSpec();
   await testLockRefusalAndStaleRecovery();
@@ -234,6 +293,8 @@ async function main() {
   await testPartialFailureCleanLog();
   await testPauseOnBreachBlocksNewProposals();
   await testApprovalGatesPreventUnapprovedApply();
+  await testProposeOnlyRefusesTier1Apply();
+  await testStaleLockTtlComesFromSpec();
 
   fs.rmSync(projectDir, { recursive: true, force: true });
 

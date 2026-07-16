@@ -1,7 +1,7 @@
 {
   "source": "mock-metrics",
   "scenario": "normal",
-  "pulled_at": "2026-07-15T07:20:33.251Z",
+  "pulled_at": "2026-07-16T01:07:56.778Z",
   "credential_alias": "demo-gsc-readonly",
   "sample_size": 2640,
   "keywords": [
