@@ -14,6 +14,7 @@ try:
     from . import dataforseo, gsc
     from .lib.credentials import resolve_credential
     from .lib.errors import ConnectorError
+    from .lib.gsc_auth import bearer_for_secret
     from .lib.lock import acquire_lock, release_lock, log_refusal
     from .lib.paths import assert_within
     from .lib.redact import redact_deep
@@ -25,6 +26,7 @@ except ImportError:
     import gsc
     from lib.credentials import resolve_credential
     from lib.errors import ConnectorError
+    from lib.gsc_auth import bearer_for_secret
     from lib.lock import acquire_lock, release_lock, log_refusal
     from lib.paths import assert_within
     from lib.redact import redact_deep
@@ -188,7 +190,9 @@ def _fetch_metrics(spec, scenario, project_dir=None, resolve_credential_fn=None,
             try:
                 metrics = gsc.pull_metrics(
                     credential_alias=aliases["gsc"],
-                    resolve_credential=resolver,
+                    # A stored service-account JSON is exchanged for a short-lived
+                    # access token here; a raw token passes through unchanged.
+                    resolve_credential=lambda a: bearer_for_secret(resolver(a)),
                     dimensions=["query", "page"],
                     http_post=http_post or gsc._default_http_post,
                     **args,
@@ -511,6 +515,12 @@ def run_loop(project_slug, loop_name, scenario="normal", _resolve_credential=Non
 
 
 if __name__ == "__main__":
+    try:
+        from .lib.tls import enable_system_truststore
+    except ImportError:
+        from lib.tls import enable_system_truststore
+    enable_system_truststore()  # live HTTPS through the Windows cert store (R8)
+
     args = sys.argv[1:]
     positional = [a for a in args if not a.startswith("--")]
     project = positional[0] if len(positional) > 0 else None

@@ -1,2 +1,5 @@
 PyYAML==6.0.3
 keyring==25.7.0
+google-auth==2.56.0
+requests==2.34.2
+truststore==0.10.4

@@ -12,7 +12,7 @@ This workspace runs durable business loops (build → verify against a real KPI 
 
 ## Environment setup
 
-A project-local virtual environment lives at `.venv/` (gitignored — never commit it). Two dependencies, pinned in `requirements.txt`: PyYAML and keyring.
+A project-local virtual environment lives at `.venv/` (gitignored — never commit it). Dependencies are pinned in `requirements.txt`: PyYAML, keyring, google-auth + requests (GSC service-account token minting), and truststore (Windows cert store for live HTTPS — see RISK-REGISTER.md R8).
 
 ```
 python -m venv .venv                              # first time only

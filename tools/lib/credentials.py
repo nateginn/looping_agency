@@ -17,6 +17,13 @@ PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
 
 SERVICE_NAME = "loop-agency"
 
+# Windows Credential Manager caps a credential blob at 2560 bytes = 1280
+# UTF-16 chars. Anything longer (e.g. a ~2.3k-char service-account JSON) is
+# transparently split across "<alias>#chunk<i>" entries, with the base alias
+# holding a "@chunked:<n>" marker.
+CHUNK_SIZE = 1000
+_CHUNK_MARKER = "@chunked:"
+
 # Principals allowed on a fallback .env besides the current user. Compared
 # case-insensitively against icacls output (English principal names; this
 # workspace is single-machine - revisit if it ever runs on a localized OS).
@@ -114,6 +121,30 @@ def _load_keyring():
     return keyring
 
 
+def _keyring_store(kr, alias, value):
+    if len(value) <= CHUNK_SIZE:
+        kr.set_password(SERVICE_NAME, alias, value)
+        return 1
+    chunks = [value[i : i + CHUNK_SIZE] for i in range(0, len(value), CHUNK_SIZE)]
+    for i, chunk in enumerate(chunks):
+        kr.set_password(SERVICE_NAME, f"{alias}#chunk{i}", chunk)
+    kr.set_password(SERVICE_NAME, alias, f"{_CHUNK_MARKER}{len(chunks)}")
+    return len(chunks)
+
+
+def _keyring_retrieve(kr, alias):
+    value = kr.get_password(SERVICE_NAME, alias)
+    if value is None or not value.startswith(_CHUNK_MARKER):
+        return value
+    count = int(value[len(_CHUNK_MARKER):])
+    parts = [kr.get_password(SERVICE_NAME, f"{alias}#chunk{i}") for i in range(count)]
+    if any(p is None for p in parts):
+        raise CredentialError(
+            f'credential alias "{alias}" is stored chunked ({count} parts) but some chunks are missing - re-store it'
+        )
+    return "".join(parts)
+
+
 def resolve_with_source(alias, project_dir=None, keyring_module=None):
     """Resolve an alias to (value, source) where source is "credential-manager"
     or ".env". keyring_module is injected by tests only; the default is the
@@ -128,7 +159,9 @@ def resolve_with_source(alias, project_dir=None, keyring_module=None):
     kr = keyring_module if keyring_module is not None else _load_keyring()
     if kr is not None:
         try:
-            value = kr.get_password(SERVICE_NAME, alias)
+            value = _keyring_retrieve(kr, alias)
+        except CredentialError:
+            raise
         except Exception as e:
             raise CredentialError(f'keyring lookup failed for alias "{alias}": {e.__class__.__name__}') from None
         if value:
@@ -161,19 +194,29 @@ def resolve_credential(alias, project_dir=None, keyring_module=None):
     return resolve_with_source(alias, project_dir=project_dir, keyring_module=keyring_module)[0]
 
 
-def _cli_store(alias):
+def _cli_store(alias, from_file=None):
     kr = _load_keyring()
     if kr is None:
         print("keyring is not installed - run: ./.venv/Scripts/python.exe -m pip install -r requirements.txt", file=sys.stderr)
         return 1
-    secret = getpass.getpass(f'Secret for alias "{alias}" (input hidden, stored in Windows Credential Manager): ')
+    if from_file:
+        if not os.path.isfile(from_file):
+            print(f"file not found: {from_file}", file=sys.stderr)
+            return 1
+        with open(from_file, "r", encoding="utf-8") as f:
+            secret = f.read().strip()
+    else:
+        secret = getpass.getpass(f'Secret for alias "{alias}" (input hidden, stored in Windows Credential Manager): ')
     if not secret:
         print("empty input - nothing stored", file=sys.stderr)
         return 1
-    kr.set_password(SERVICE_NAME, alias, secret)
-    round_trip_ok = kr.get_password(SERVICE_NAME, alias) == secret
+    parts = _keyring_store(kr, alias, secret)
+    round_trip_ok = _keyring_retrieve(kr, alias) == secret
     if round_trip_ok:
-        print(f'stored alias "{alias}" (service "{SERVICE_NAME}") - round-trip read verified, value not shown')
+        chunk_note = f", {parts} chunks" if parts > 1 else ""
+        print(f'stored alias "{alias}" (service "{SERVICE_NAME}", {len(secret)} chars{chunk_note}) - round-trip read verified, value not shown')
+        if from_file:
+            print(f"the source file still exists at {from_file} - delete it (and empty the Recycle Bin) now that the secret lives in Credential Manager")
         return 0
     print(f'stored alias "{alias}" but round-trip read did not match - check the keyring backend', file=sys.stderr)
     return 1
@@ -274,6 +317,25 @@ def _self_test():
         missing_message = str(e)
     checks.append(("unresolvable alias raises an error naming the alias", '"no-such-alias"' in missing_message))
 
+    # 5b) Chunked storage round-trip (Windows Credential Manager blob limit).
+    chunk_kr = FakeKeyring()
+    long_secret = "x" * (CHUNK_SIZE * 2 + 137)  # forces 3 chunks
+    parts = _keyring_store(chunk_kr, "acme-gsc-readonly", long_secret)
+    checks.append(("over-limit secret is stored chunked", parts == 3 and chunk_kr.store[(SERVICE_NAME, "acme-gsc-readonly")].startswith(_CHUNK_MARKER)))
+    checks.append(("chunked secret round-trips intact", _keyring_retrieve(chunk_kr, "acme-gsc-readonly") == long_secret))
+    value, source = resolve_with_source("acme-gsc-readonly", keyring_module=chunk_kr)
+    checks.append(("resolver reassembles chunked secrets transparently", value == long_secret and source == "credential-manager"))
+    short_kr = FakeKeyring()
+    _keyring_store(short_kr, "acme-gsc-readonly", "short-value")
+    checks.append(("under-limit secret is stored as a single entry", short_kr.store[(SERVICE_NAME, "acme-gsc-readonly")] == "short-value"))
+    del chunk_kr.store[(SERVICE_NAME, "acme-gsc-readonly#chunk1")]
+    missing_chunk_message = ""
+    try:
+        _keyring_retrieve(chunk_kr, "acme-gsc-readonly")
+    except CredentialError as e:
+        missing_chunk_message = str(e)
+    checks.append(("missing chunk raises a clean re-store error", "chunks are missing" in missing_chunk_message))
+
     # 6) Blank alias is rejected.
     blank_rejected = False
     try:
@@ -302,10 +364,17 @@ if __name__ == "__main__":
     elif "--store" in args:
         idx = args.index("--store")
         alias = args[idx + 1] if idx + 1 < len(args) else None
+        from_file = None
+        if "--from-file" in args:
+            fidx = args.index("--from-file")
+            from_file = args[fidx + 1] if fidx + 1 < len(args) else None
+            if not from_file:
+                print("usage: python tools/lib/credentials.py --store <alias> [--from-file <path>]", file=sys.stderr)
+                sys.exit(2)
         if not alias:
-            print("usage: python tools/lib/credentials.py --store <alias>", file=sys.stderr)
+            print("usage: python tools/lib/credentials.py --store <alias> [--from-file <path>]", file=sys.stderr)
             sys.exit(2)
-        sys.exit(_cli_store(alias))
+        sys.exit(_cli_store(alias, from_file=from_file))
     elif "--check" in args:
         idx = args.index("--check")
         alias = args[idx + 1] if idx + 1 < len(args) else None
@@ -319,7 +388,7 @@ if __name__ == "__main__":
         sys.exit(_cli_check(alias, project))
     else:
         print(
-            "usage: python tools/lib/credentials.py --store <alias> | --check <alias> [--project <slug>] | --verify",
+            "usage: python tools/lib/credentials.py --store <alias> [--from-file <path>] | --check <alias> [--project <slug>] | --verify",
             file=sys.stderr,
         )
         sys.exit(2)

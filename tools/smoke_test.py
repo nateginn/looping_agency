@@ -14,16 +14,20 @@ import sys
 try:
     from . import dataforseo, gsc
     from .lib.credentials import CredentialError, resolve_with_source
+    from .lib.gsc_auth import bearer_for_secret, is_service_account_json
     from .lib.paths import assert_within
     from .lib.redact import redact_text
+    from .lib.tls import enable_system_truststore
     from .mock_metrics import pull_metrics as pull_mock_metrics
     from .spec_validate import validate_spec_file, extract_frontmatter
 except ImportError:
     import dataforseo
     import gsc
     from lib.credentials import CredentialError, resolve_with_source
+    from lib.gsc_auth import bearer_for_secret, is_service_account_json
     from lib.paths import assert_within
     from lib.redact import redact_text
+    from lib.tls import enable_system_truststore
     from mock_metrics import pull_metrics as pull_mock_metrics
     from spec_validate import validate_spec_file, extract_frontmatter
 
@@ -78,11 +82,15 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
     try:
         if input_name == "gsc":
             wrapped, record = _capture(http_post or gsc._default_http_post)
+            bearer = bearer_for_secret(value)
+            if is_service_account_json(value):
+                secret_map[f"{alias}:access-token"] = bearer
+                lines.append(f'  {input_name}: service-account JSON detected - minted a short-lived access token (webmasters.readonly)')
             window_days = spec.get("metrics_window_days") or 28
             end_date = datetime.now(timezone.utc).date()
             metrics = gsc.pull_metrics(
                 credential_alias=alias,
-                resolve_credential=lambda _a: value,
+                resolve_credential=lambda _a: bearer,
                 site_url=spec.get("site_url"),
                 # GSC date ranges are inclusive of both endpoints: a 28-day window is end - 27.
                 start_date=(end_date - timedelta(days=window_days - 1)).isoformat(),
@@ -280,6 +288,7 @@ if __name__ == "__main__":
         if not positional:
             print("usage: python tools/smoke_test.py <project> | --verify", file=sys.stderr)
             sys.exit(2)
+        enable_system_truststore()  # live HTTPS through the Windows cert store (R8)
         result = smoke_test(positional[0])
         for line in result["lines"]:
             print(line)
