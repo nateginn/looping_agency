@@ -12,13 +12,12 @@
 import sys
 from datetime import datetime, timezone
 
+try:
+    from .lib.errors import ConnectorError  # noqa: F401 - re-exported for compat
+except ImportError:
+    from lib.errors import ConnectorError  # noqa: F401
+
 FAKE_SECRET = "sk-demo-FAKE1234567890ABCDEFDONOTUSE"
-
-
-class ConnectorError(Exception):
-    def __init__(self, message, raw_secrets=None):
-        super().__init__(message)
-        self.raw_secrets = raw_secrets or {}
 
 
 def _keyword_set(scenario):
@@ -38,6 +37,7 @@ def pull_metrics(scenario="normal", credential_alias="demo-gsc-readonly"):
         raise ConnectorError(
             f"connector auth failed for alias {credential_alias}: token {FAKE_SECRET} rejected (HTTP 401, simulated)",
             raw_secrets={credential_alias: FAKE_SECRET},
+            tool_name="mock-metrics",
         )
 
     keywords = _keyword_set(scenario)

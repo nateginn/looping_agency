@@ -9,6 +9,8 @@ SCHEMA_VERSION = 1
 COMPARATORS = ["<", ">", "<=", ">=", "=="]
 APPROVAL_MODES = ["propose-only", "tier1-enabled"]
 TIERS = [0, 1, 2]
+DEVICES = ["desktop", "mobile", "tablet"]
+REAL_CONNECTORS = ["gsc", "dataforseo"]
 
 _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?", re.DOTALL)
 
@@ -63,6 +65,37 @@ def _validate_allowed_action(a, idx, errors):
         errors.append(f"{p}.min_sample_size must be a positive number")
 
 
+def _validate_connector_requirements(spec, inputs, errors):
+    """Conditional requirements for real connectors (run_loop.py dispatches on
+    spec.inputs, so each real input needs its call parameters up front)."""
+    if "gsc" in inputs:
+        if not is_non_empty_string(spec.get("site_url")):
+            errors.append('site_url is required when "gsc" is in inputs (the exact GSC property, e.g. "sc-domain:example.com")')
+        if not is_positive_number(spec.get("metrics_window_days")):
+            errors.append('metrics_window_days is required when "gsc" is in inputs (positive number of days, e.g. 28)')
+
+    if "dataforseo" in inputs:
+        targets = spec.get("targets")
+        if not isinstance(targets, list) or len(targets) < 1:
+            errors.append('targets must be a non-empty array of {keyword, page} objects when "dataforseo" is in inputs')
+        else:
+            for i, t in enumerate(targets):
+                if not isinstance(t, dict) or not is_non_empty_string(t.get("keyword")) or not is_non_empty_string(t.get("page")):
+                    errors.append(f"targets[{i}] must be an object with non-empty keyword and page strings")
+        if spec.get("location_code") is not None and not is_positive_number(spec.get("location_code")):
+            errors.append("location_code must be a positive number if present")
+        if spec.get("language_code") is not None and not is_non_empty_string(spec.get("language_code")):
+            errors.append("language_code must be a non-empty string if present")
+        if spec.get("device") is not None and spec.get("device") not in DEVICES:
+            errors.append(f"device must be one of {', '.join(DEVICES)} if present")
+
+    for connector in REAL_CONNECTORS:
+        if connector in inputs:
+            alias = (spec.get("credential_aliases") or {}).get(connector)
+            if not is_non_empty_string(alias):
+                errors.append(f'credential_aliases.{connector} is required (opaque alias string) when "{connector}" is in inputs')
+
+
 def validate_spec_object(spec):
     errors = []
     if not isinstance(spec, dict):
@@ -98,6 +131,7 @@ def validate_spec_object(spec):
     inputs = spec.get("inputs")
     if not isinstance(inputs, list) or len(inputs) < 1 or not all(is_non_empty_string(i) for i in inputs):
         errors.append("inputs must be a non-empty array of connector alias strings")
+    _validate_connector_requirements(spec, inputs if isinstance(inputs, list) else [], errors)
 
     actions = spec.get("allowed_actions")
     if not isinstance(actions, list) or len(actions) < 1:
@@ -170,6 +204,11 @@ failure_threshold:
 inputs:
   - gsc
   - dataforseo
+site_url: "sc-domain:example.com"
+metrics_window_days: 28
+targets:
+  - keyword: best loop agency
+    page: /blog/loop-agency
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1
@@ -183,6 +222,7 @@ stop_condition: "manual stop via project.md"
 memory: memory.md
 credential_aliases:
   gsc: acme-gsc-readonly
+  dataforseo: acme-dataforseo-read
 ---
 # SEO loop spec
 """
@@ -205,6 +245,18 @@ guardrail_metrics: []
     good_result = validate_spec_file(os.path.join(tmp, "good.md"))
     bad_result = validate_spec_file(os.path.join(tmp, "bad.md"))
 
+    # Conditional connector requirements (Phase 2 wiring).
+    no_site_url = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace('site_url: "sc-domain:example.com"\n', ""))))
+    no_window = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("metrics_window_days: 28\n", ""))))
+    no_targets = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("targets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n", ""))))
+    no_dfs_alias = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("  dataforseo: acme-dataforseo-read\n", ""))))
+    bad_device = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "device": "toaster"})
+    mock_only = yaml.safe_load(extract_frontmatter(good))
+    mock_only["inputs"] = ["mock"]
+    for key in ("site_url", "metrics_window_days", "targets"):
+        mock_only.pop(key, None)
+    mock_only_result = validate_spec_object(mock_only)
+
     checks = [
         ("valid spec is accepted", good_result["valid"] is True),
         ("valid spec has no errors", len(good_result["errors"]) == 0),
@@ -213,6 +265,12 @@ guardrail_metrics: []
         ("invalid spec reports empty guardrail_metrics", any("guardrail_metrics" in e for e in bad_result["errors"])),
         ("invalid spec reports missing allowed_actions", any("allowed_actions" in e for e in bad_result["errors"])),
         ("missing file is rejected", validate_spec_file(os.path.join(tmp, "missing.md"))["valid"] is False),
+        ("gsc input without site_url is rejected", any("site_url" in e for e in no_site_url["errors"])),
+        ("gsc input without metrics_window_days is rejected", any("metrics_window_days" in e for e in no_window["errors"])),
+        ("dataforseo input without targets is rejected", any("targets" in e for e in no_targets["errors"])),
+        ("dataforseo input without a credential alias is rejected", any("credential_aliases.dataforseo" in e for e in no_dfs_alias["errors"])),
+        ("invalid device enum is rejected", any("device" in e for e in bad_device["errors"])),
+        ("mock-only spec needs none of the connector fields", mock_only_result["valid"] is True),
     ]
 
     shutil.rmtree(tmp, ignore_errors=True)

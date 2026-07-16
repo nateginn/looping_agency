@@ -82,6 +82,61 @@ approval_mode: yolo-mode
 # broken
 """
 
+# Phase 2 fixture: a spec whose inputs dispatch to the real GSC connector.
+# Tests inject a fake resolver + fake http_post, so nothing touches the
+# network or the real credential stores.
+GSC_SPEC = """---
+version: 1
+loop: seo
+objective: Phase 2 real-connector dispatch fixture
+primary_metric: gsc_position
+guardrail_metrics:
+  - name: ranking_pages_position
+    comparator: ">"
+    threshold: 5
+    consecutive_runs: 1
+failure_threshold:
+  metric: ranking_pages_position
+  comparator: ">"
+  value: 5
+inputs:
+  - gsc
+site_url: "sc-domain:example.com"
+metrics_window_days: 28
+allowed_actions:
+  - type: title-tag-rewrite
+    tier: 1
+    rollback: revert PR
+    observation_window_days: 0.0001
+    min_sample_size: 100
+approval_mode: propose-only
+max_run_duration_minutes: 5
+schedule: "manual"
+stop_condition: test fixture teardown
+memory: memory.md
+credential_aliases:
+  gsc: fixture-gsc-alias
+---
+# fixture
+"""
+
+GSC_DFS_SPEC = (
+    GSC_SPEC.replace(
+        "inputs:\n  - gsc\n",
+        "inputs:\n  - gsc\n  - dataforseo\n",
+    )
+    .replace(
+        "metrics_window_days: 28\n",
+        "metrics_window_days: 28\ntargets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n",
+    )
+    .replace(
+        "credential_aliases:\n  gsc: fixture-gsc-alias\n",
+        "credential_aliases:\n  gsc: fixture-gsc-alias\n  dataforseo: fixture-dfs-alias\n",
+    )
+)
+
+FAKE_LIVE_TOKEN = "sk-test-fake-live-token-ABC123"
+
 
 def _force_rmtree(path):
     """shutil.rmtree can't delete read-only files on Windows (unlike Node's
@@ -321,6 +376,83 @@ def test_stale_lock_ttl_comes_from_spec():
     check("stale lock archived under the run it belonged to", os.path.exists(os.path.join(loop_dir, "runs", "aged-per-spec-ttl", "stale-lock.json")))
 
 
+def _write_spec(text):
+    with open(os.path.join(loop_dir, "spec.md"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
+def test_gsc_dispatch_offline():
+    reset_fixture()
+    _write_spec(GSC_SPEC)
+    calls = []
+
+    def fake_http(url, headers, body_bytes):
+        calls.append(url)
+        payload = {
+            "rows": [
+                {"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2},
+                {"keys": ["seo automation tool", "/blog/seo-automation"], "clicks": 18, "impressions": 640, "position": 11.5},
+            ]
+        }
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http)
+    check("gsc dispatch: run succeeds offline (fake resolver + fake http_post)", result["status"] == "ok")
+    check(
+        "gsc dispatch: exactly one call, to the GSC endpoint for the spec's site_url",
+        len(calls) == 1 and "webmasters/v3/sites/sc-domain%3Aexample.com" in calls[0],
+    )
+    run_json = result["run_json"]
+    check("gsc dispatch: tool_calls records the gsc connector", [t["tool"] for t in run_json["tool_calls"]] == ["gsc"])
+    check("gsc dispatch: credential_alias_used generalized per input", run_json["credential_alias_used"] == {"gsc": "fixture-gsc-alias"})
+    check("gsc dispatch: proposals generated from connector-shaped data", len(run_json["proposals_created"]) > 0)
+    run_dir = os.path.join(loop_dir, "runs", result["run_id"])
+    on_disk = ""
+    for name in ("run.json", "report.md", "snapshot.json"):
+        with open(os.path.join(run_dir, name), "r", encoding="utf-8") as f:
+            on_disk += f.read()
+    check("gsc dispatch: resolved token never reaches disk", FAKE_LIVE_TOKEN not in on_disk)
+
+
+def test_gsc_dataforseo_merge():
+    reset_fixture()
+    _write_spec(GSC_DFS_SPEC)
+
+    def fake_http(url, headers, body_bytes):
+        if "dataforseo" in url:
+            payload = {"tasks": [{"result": [{"items": [{"type": "organic", "rank_absolute": 6, "url": "https://example.com/blog/loop-agency"}]}]}]}
+        else:
+            payload = {"rows": [{"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2}]}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http)
+    check("merge: gsc+dataforseo run succeeds offline", result["status"] == "ok")
+    check("merge: both connectors recorded in tool_calls", [t["tool"] for t in result["run_json"]["tool_calls"]] == ["gsc", "dataforseo"])
+    with open(os.path.join(loop_dir, "runs", result["run_id"], "snapshot.json"), "r", encoding="utf-8") as f:
+        snapshot = json.load(f)
+    row = snapshot["keywords"][0]
+    check("merge: gsc stays the primary source (clicks/position preserved)", row["clicks"] == 42 and row["position"] == 8.2)
+    check("merge: dataforseo enriches the matching row with serp_position", row.get("serp_position") == 6)
+
+
+def test_gsc_connector_failure_clean_partial():
+    reset_fixture()
+    _write_spec(GSC_SPEC)
+
+    def fake_http_401(url, headers, body_bytes):
+        return 401, "Unauthorized", f"invalid token: {FAKE_LIVE_TOKEN}".encode("utf-8")
+
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http_401)
+    check("gsc failure: status partial-failure", result["status"] == "partial-failure")
+    with open(os.path.join(loop_dir, "runs", result["run_id"], "run.json"), "r", encoding="utf-8") as f:
+        run_json = json.load(f)
+    check("gsc failure: final_status partial-failure", run_json["final_status"] == "partial-failure")
+    check("gsc failure: failed tool_call names the gsc connector", run_json["tool_calls"][0]["tool"] == "gsc" and run_json["tool_calls"][0]["ok"] is False)
+    check("gsc failure: error surfaces the HTTP status", "401" in run_json["tool_calls"][0]["error"])
+    check("gsc failure: token echoed in the API error never reaches run.json", FAKE_LIVE_TOKEN not in json.dumps(run_json))
+    check("gsc failure: lock released", not os.path.exists(os.path.join(loop_dir, "run.lock")))
+
+
 def main():
     test_spec_validation_rejects_bad_spec()
     test_lock_refusal_and_stale_recovery()
@@ -330,6 +462,9 @@ def main():
     test_approval_gates_prevent_unapproved_apply()
     test_propose_only_refuses_tier1_apply()
     test_stale_lock_ttl_comes_from_spec()
+    test_gsc_dispatch_offline()
+    test_gsc_dataforseo_merge()
+    test_gsc_connector_failure_clean_partial()
 
     _force_rmtree(project_dir)
 

@@ -5,24 +5,31 @@
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import yaml
 
 try:
+    from . import dataforseo, gsc
+    from .lib.credentials import resolve_credential
+    from .lib.errors import ConnectorError
     from .lib.lock import acquire_lock, release_lock, log_refusal
     from .lib.paths import assert_within
     from .lib.redact import redact_deep
     from .spec_validate import validate_spec_file, extract_frontmatter
     from .snapshot import write_snapshot
-    from .mock_metrics import pull_metrics as pull_mock_metrics, ConnectorError
+    from .mock_metrics import pull_metrics as pull_mock_metrics
 except ImportError:
+    import dataforseo
+    import gsc
+    from lib.credentials import resolve_credential
+    from lib.errors import ConnectorError
     from lib.lock import acquire_lock, release_lock, log_refusal
     from lib.paths import assert_within
     from lib.redact import redact_deep
     from spec_validate import validate_spec_file, extract_frontmatter
     from snapshot import write_snapshot
-    from mock_metrics import pull_metrics as pull_mock_metrics, ConnectorError
+    from mock_metrics import pull_metrics as pull_mock_metrics
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)
@@ -108,14 +115,105 @@ def _compare(value, comparator, threshold):
     raise ValueError(f"unknown comparator {comparator}")
 
 
-def _fetch_metrics(spec, scenario):
-    alias = (spec.get("credential_aliases") or {}).get("mock", "demo-gsc-readonly")
-    if "mock" in (spec.get("inputs") or []):
-        return {"tool_name": "mock-metrics", "metrics": pull_mock_metrics(scenario=scenario, credential_alias=alias)}
-    raise RuntimeError(
-        f'run_loop.py: spec.inputs {spec.get("inputs")!r} has no mock connector wired for this dry run. '
-        "Live connectors (gsc/dataforseo) are out of scope until the Phase 1(b) smoke test."
-    )
+def _aliases_used(spec):
+    """{input -> credential alias} for every connector the spec declares."""
+    aliases = spec.get("credential_aliases") or {}
+    out = {}
+    for input_name in spec.get("inputs") or []:
+        out[input_name] = aliases.get("mock", "demo-gsc-readonly") if input_name == "mock" else aliases.get(input_name)
+    return out
+
+
+def _merge_metrics(results):
+    """Merge per-connector metrics into one metrics object. GSC is the primary
+    source (positions/clicks/impressions/sample_size drive evaluation and
+    proposal picking); DataForSEO only enriches matching (keyword, page) rows
+    with an independent serp_position - it never adds rows, since SERP data
+    has no click/impression signal to rank candidates by."""
+    by_tool = {tool: metrics for tool, _alias, metrics in results}
+    primary = by_tool.get("gsc") or by_tool.get("mock-metrics") or results[0][2]
+
+    merged = dict(primary)
+    secret_map = {}
+    for _tool, _alias, metrics in results:
+        secret_map.update(metrics.get("secretMap") or {})
+    merged["secretMap"] = secret_map
+    merged["sources"] = [tool for tool, _alias, _metrics in results]
+
+    serp = by_tool.get("dataforseo")
+    if serp is not None and serp is not primary:
+        serp_by_target = {(k.get("keyword"), k.get("page")): k.get("position") for k in serp.get("keywords") or []}
+        merged["keywords"] = [dict(k) for k in merged.get("keywords") or []]
+        for k in merged["keywords"]:
+            serp_position = serp_by_target.get((k.get("keyword"), k.get("page")))
+            if serp_position is not None:
+                k["serp_position"] = serp_position
+    return merged
+
+
+def _fetch_metrics(spec, scenario, project_dir=None, resolve_credential_fn=None, http_post=None):
+    """Dispatch every entry of spec.inputs to its connector and merge the
+    results. resolve_credential_fn / http_post are injected by tests only;
+    the defaults are the real credential resolver (Credential Manager ->
+    ACL-checked .env) and each connector's real HTTP client. Any connector
+    failure raises ConnectorError so the run lands in the uniform
+    partial-failure path - real connectors redact their own messages, so
+    those wrappers carry an empty raw_secrets map."""
+    aliases = _aliases_used(spec)
+    resolver = resolve_credential_fn or (lambda alias: resolve_credential(alias, project_dir=project_dir))
+    results = []
+    tool_calls = []
+
+    for input_name in spec.get("inputs") or []:
+        if input_name == "mock":
+            metrics = pull_mock_metrics(scenario=scenario, credential_alias=aliases["mock"])
+            results.append(("mock-metrics", aliases["mock"], metrics))
+            tool_calls.append({"tool": "mock-metrics", "args": {"scenario": scenario}, "at": _now_iso(), "ok": True})
+        elif input_name == "gsc":
+            window_days = spec.get("metrics_window_days") or 28
+            end_date = datetime.now(timezone.utc).date()
+            start_date = end_date - timedelta(days=window_days)
+            args = {"site_url": spec.get("site_url"), "start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+            try:
+                metrics = gsc.pull_metrics(
+                    credential_alias=aliases["gsc"],
+                    resolve_credential=resolver,
+                    dimensions=["query", "page"],
+                    http_post=http_post or gsc._default_http_post,
+                    **args,
+                )
+            except Exception as e:
+                raise ConnectorError(f"gsc connector failed: {e}", raw_secrets={}, tool_name="gsc") from None
+            results.append(("gsc", aliases["gsc"], metrics))
+            tool_calls.append({"tool": "gsc", "args": args, "at": _now_iso(), "ok": True})
+        elif input_name == "dataforseo":
+            args = {
+                "targets": spec.get("targets"),
+                "location_code": spec.get("location_code") or 2840,
+                "language_code": spec.get("language_code") or "en",
+                "device": spec.get("device") or "desktop",
+            }
+            try:
+                metrics = dataforseo.pull_metrics(
+                    credential_alias=aliases["dataforseo"],
+                    resolve_credential=resolver,
+                    http_post=http_post or dataforseo._default_http_post,
+                    **args,
+                )
+            except Exception as e:
+                raise ConnectorError(f"dataforseo connector failed: {e}", raw_secrets={}, tool_name="dataforseo") from None
+            results.append(("dataforseo", aliases["dataforseo"], metrics))
+            tool_calls.append({"tool": "dataforseo", "args": {"targets": args["targets"]}, "at": _now_iso(), "ok": True})
+        else:
+            raise ConnectorError(
+                f'run_loop.py: no connector wired for spec input "{input_name}" (known: mock, gsc, dataforseo)',
+                raw_secrets={},
+                tool_name=input_name,
+            )
+
+    if not results:
+        raise ConnectorError("run_loop.py: spec.inputs is empty - nothing to fetch", raw_secrets={}, tool_name="metrics-connector")
+    return {"metrics": _merge_metrics(results), "tool_calls": tool_calls}
 
 
 def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
@@ -171,8 +269,9 @@ def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
 
 def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
     candidates = [k for k in metrics["keywords"] if _target_key({"page": k["page"]}) not in cooling_down]
-    candidates = [k for k in candidates if 3 < k["position"] <= 20]
-    candidates.sort(key=lambda k: k["clicks"], reverse=True)
+    # Real connector rows can carry None fields (e.g. a SERP-only row has no clicks).
+    candidates = [k for k in candidates if k["position"] is not None and 3 < k["position"] <= 20]
+    candidates.sort(key=lambda k: k["clicks"] or 0, reverse=True)
 
     proposals = []
     allowed_actions = spec["allowed_actions"]
@@ -204,7 +303,7 @@ def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
     return proposals
 
 
-def run_loop(project_slug, loop_name, scenario="normal"):
+def run_loop(project_slug, loop_name, scenario="normal", _resolve_credential=None, _http_post=None):
     project_dir = os.path.join(PROJECTS_ROOT, project_slug)
     assert_within(PROJECTS_ROOT, project_dir, "project directory")
     loop_dir = os.path.join(project_dir, "loops", loop_name)
@@ -243,14 +342,15 @@ def run_loop(project_slug, loop_name, scenario="normal"):
 
         # Step 3+9: pull metrics, write immutable snapshot (partial-failure path handled here).
         metrics = None
-        tool_call_record = None
+        tool_calls = []
         try:
-            pulled = _fetch_metrics(spec, scenario)
+            pulled = _fetch_metrics(spec, scenario, project_dir=project_dir, resolve_credential_fn=_resolve_credential, http_post=_http_post)
             metrics = pulled["metrics"]
-            tool_call_record = {"tool": pulled["tool_name"], "args": {"scenario": scenario}, "at": _now_iso(), "ok": True}
+            tool_calls = pulled["tool_calls"]
         except ConnectorError as err:
             secret_map = err.raw_secrets or {}
             redacted_message = redact_deep(str(err), secret_map)
+            failed_tool = getattr(err, "tool_name", None) or "metrics-connector"
             os.makedirs(run_dir, exist_ok=True)
             run_json = {
                 "run_id": run_id,
@@ -259,8 +359,8 @@ def run_loop(project_slug, loop_name, scenario="normal"):
                 "start": now.isoformat().replace("+00:00", "Z"),
                 "end": _now_iso(),
                 "status": "partial-failure",
-                "tool_calls": [{"tool": "mock-metrics", "args": {"scenario": scenario}, "at": _now_iso(), "ok": False, "error": redacted_message}],
-                "credential_alias_used": (spec.get("credential_aliases") or {}).get("mock"),
+                "tool_calls": [{"tool": failed_tool, "args": {"scenario": scenario}, "at": _now_iso(), "ok": False, "error": redacted_message}],
+                "credential_alias_used": _aliases_used(spec),
                 "decisions": ["connector failed; no proposals generated this run; prior state left untouched"],
                 "proposals_created": [],
                 "proposals_evaluated": [],
@@ -357,8 +457,8 @@ def run_loop(project_slug, loop_name, scenario="normal"):
                 "start": now.isoformat().replace("+00:00", "Z"),
                 "end": _now_iso(),
                 "status": "paused-breach" if new_state["status"] == "paused-breach" else "ok",
-                "tool_calls": [tool_call_record],
-                "credential_alias_used": (spec.get("credential_aliases") or {}).get("mock"),
+                "tool_calls": tool_calls,
+                "credential_alias_used": _aliases_used(spec),
                 "decisions": list(eval_decisions),
                 "proposals_created": [p["id"] for p in new_proposals],
                 "proposals_evaluated": evaluated_ids,
