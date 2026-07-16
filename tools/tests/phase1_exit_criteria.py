@@ -7,7 +7,7 @@ import os
 import shutil
 import stat
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TOOLS_DIR = os.path.dirname(THIS_DIR)
@@ -385,9 +385,12 @@ def test_gsc_dispatch_offline():
     reset_fixture()
     _write_spec(GSC_SPEC)
     calls = []
+    windows = []
 
     def fake_http(url, headers, body_bytes):
         calls.append(url)
+        body = json.loads(body_bytes)
+        windows.append((date.fromisoformat(body["endDate"]) - date.fromisoformat(body["startDate"])).days + 1)
         payload = {
             "rows": [
                 {"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2},
@@ -402,6 +405,7 @@ def test_gsc_dispatch_offline():
         "gsc dispatch: exactly one call, to the GSC endpoint for the spec's site_url",
         len(calls) == 1 and "webmasters/v3/sites/sc-domain%3Aexample.com" in calls[0],
     )
+    check("gsc dispatch: metrics_window_days 28 queries exactly 28 inclusive days", windows == [28])
     run_json = result["run_json"]
     check("gsc dispatch: tool_calls records the gsc connector", [t["tool"] for t in run_json["tool_calls"]] == ["gsc"])
     check("gsc dispatch: credential_alias_used generalized per input", run_json["credential_alias_used"] == {"gsc": "fixture-gsc-alias"})
@@ -422,7 +426,9 @@ def test_gsc_dataforseo_merge():
         if "dataforseo" in url:
             payload = {"tasks": [{"result": [{"items": [{"type": "organic", "rank_absolute": 6, "url": "https://example.com/blog/loop-agency"}]}]}]}
         else:
-            payload = {"rows": [{"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2}]}
+            # GSC returns the page dimension as a full URL, while the spec's
+            # dataforseo targets are site paths - the merge must still attach.
+            payload = {"rows": [{"keys": ["best loop agency", "https://example.com/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2}]}
         return 200, "OK", json.dumps(payload).encode("utf-8")
 
     result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http)
@@ -432,7 +438,7 @@ def test_gsc_dataforseo_merge():
         snapshot = json.load(f)
     row = snapshot["keywords"][0]
     check("merge: gsc stays the primary source (clicks/position preserved)", row["clicks"] == 42 and row["position"] == 8.2)
-    check("merge: dataforseo enriches the matching row with serp_position", row.get("serp_position") == 6)
+    check("merge: dataforseo path target enriches the full-URL gsc row with serp_position", row.get("serp_position") == 6)
 
 
 def test_gsc_connector_failure_clean_partial():

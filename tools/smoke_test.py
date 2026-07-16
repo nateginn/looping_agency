@@ -84,7 +84,8 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
                 credential_alias=alias,
                 resolve_credential=lambda _a: value,
                 site_url=spec.get("site_url"),
-                start_date=(end_date - timedelta(days=window_days)).isoformat(),
+                # GSC date ranges are inclusive of both endpoints: a 28-day window is end - 27.
+                start_date=(end_date - timedelta(days=window_days - 1)).isoformat(),
                 end_date=end_date.isoformat(),
                 http_post=wrapped,
             )

@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -124,6 +125,15 @@ def _aliases_used(spec):
     return out
 
 
+def _page_path(page):
+    """Canonical page key for cross-connector matching: GSC returns the page
+    dimension as a full URL while spec targets are site paths - reduce both
+    to the path component so (keyword, page) merges actually attach."""
+    if isinstance(page, str) and (page.startswith("http://") or page.startswith("https://")):
+        return urlsplit(page).path or "/"
+    return page
+
+
 def _merge_metrics(results):
     """Merge per-connector metrics into one metrics object. GSC is the primary
     source (positions/clicks/impressions/sample_size drive evaluation and
@@ -142,10 +152,10 @@ def _merge_metrics(results):
 
     serp = by_tool.get("dataforseo")
     if serp is not None and serp is not primary:
-        serp_by_target = {(k.get("keyword"), k.get("page")): k.get("position") for k in serp.get("keywords") or []}
+        serp_by_target = {(k.get("keyword"), _page_path(k.get("page"))): k.get("position") for k in serp.get("keywords") or []}
         merged["keywords"] = [dict(k) for k in merged.get("keywords") or []]
         for k in merged["keywords"]:
-            serp_position = serp_by_target.get((k.get("keyword"), k.get("page")))
+            serp_position = serp_by_target.get((k.get("keyword"), _page_path(k.get("page"))))
             if serp_position is not None:
                 k["serp_position"] = serp_position
     return merged
@@ -172,7 +182,8 @@ def _fetch_metrics(spec, scenario, project_dir=None, resolve_credential_fn=None,
         elif input_name == "gsc":
             window_days = spec.get("metrics_window_days") or 28
             end_date = datetime.now(timezone.utc).date()
-            start_date = end_date - timedelta(days=window_days)
+            # GSC date ranges are inclusive of both endpoints: a 28-day window is end - 27.
+            start_date = end_date - timedelta(days=window_days - 1)
             args = {"site_url": spec.get("site_url"), "start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
             try:
                 metrics = gsc.pull_metrics(

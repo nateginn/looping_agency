@@ -11,6 +11,11 @@ APPROVAL_MODES = ["propose-only", "tier1-enabled"]
 TIERS = [0, 1, 2]
 DEVICES = ["desktop", "mobile", "tablet"]
 REAL_CONNECTORS = ["gsc", "dataforseo"]
+# Every connector name any spec may declare. mock/gsc/dataforseo are wired;
+# the last two are draft-template placeholders (ads / content-social) that
+# run_loop.py still refuses at run time until a connector exists for them.
+# A typo like "gscc" must fail here, pre-run - not as a runtime connector error.
+KNOWN_INPUTS = ["mock", "gsc", "dataforseo", "ads-platform-readonly", "social-analytics"]
 
 _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?", re.DOTALL)
 
@@ -131,6 +136,10 @@ def validate_spec_object(spec):
     inputs = spec.get("inputs")
     if not isinstance(inputs, list) or len(inputs) < 1 or not all(is_non_empty_string(i) for i in inputs):
         errors.append("inputs must be a non-empty array of connector alias strings")
+    else:
+        for i, name in enumerate(inputs):
+            if name not in KNOWN_INPUTS:
+                errors.append(f'inputs[{i}] "{name}" is not a known connector (known: {", ".join(KNOWN_INPUTS)})')
     _validate_connector_requirements(spec, inputs if isinstance(inputs, list) else [], errors)
 
     actions = spec.get("allowed_actions")
@@ -251,6 +260,7 @@ guardrail_metrics: []
     no_targets = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("targets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n", ""))))
     no_dfs_alias = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("  dataforseo: acme-dataforseo-read\n", ""))))
     bad_device = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "device": "toaster"})
+    typo_input = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "inputs": ["gscc", "dataforseo"]})
     mock_only = yaml.safe_load(extract_frontmatter(good))
     mock_only["inputs"] = ["mock"]
     for key in ("site_url", "metrics_window_days", "targets"):
@@ -270,6 +280,7 @@ guardrail_metrics: []
         ("dataforseo input without targets is rejected", any("targets" in e for e in no_targets["errors"])),
         ("dataforseo input without a credential alias is rejected", any("credential_aliases.dataforseo" in e for e in no_dfs_alias["errors"])),
         ("invalid device enum is rejected", any("device" in e for e in bad_device["errors"])),
+        ("typo'd connector name in inputs is rejected pre-run", any('"gscc" is not a known connector' in e for e in typo_input["errors"])),
         ("mock-only spec needs none of the connector fields", mock_only_result["valid"] is True),
     ]
 

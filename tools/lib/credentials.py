@@ -53,18 +53,44 @@ def _icacls_principals(path):
     return principals
 
 
-def audit_env_acl(env_path):
-    """Return the principals that should NOT have access (empty list = ACL ok)."""
-    current_user = (os.environ.get("USERNAME") or getpass.getuser()).lower()
+def _current_user_identities():
+    """Fully qualified DOMAIN\\user forms of the current account, lowercased.
+    ACL comparison must use the qualified name, never a bare-username suffix
+    match - OTHERDOMAIN\\<same username> is a different account (Codex
+    Steps-1-3 review, finding #4)."""
+    identities = set()
+    try:
+        proc = subprocess.run(["whoami"], capture_output=True, text=True)
+        if proc.returncode == 0 and proc.stdout.strip():
+            identities.add(proc.stdout.strip().lower())
+    except OSError:
+        pass
+    domain = os.environ.get("USERDOMAIN")
+    user = os.environ.get("USERNAME") or getpass.getuser()
+    if domain and user:
+        identities.add(f"{domain}\\{user}".lower())
+    return identities
+
+
+def _audit_principals(principals, allowed_users=None):
+    """Return the principals that should NOT have access (empty list = ACL ok).
+    Unknown/unmatchable principals land in the disallowed list - the failure
+    direction is always refusal, never a silent allow."""
+    allowed_users = _current_user_identities() if allowed_users is None else allowed_users
     disallowed = []
-    for principal in _icacls_principals(env_path):
+    for principal in principals:
         p = principal.lower()
         if p in ALLOWED_PRINCIPALS:
             continue
-        if p.split("\\")[-1] == current_user:
+        if p in allowed_users:
             continue
         disallowed.append(principal)
     return disallowed
+
+
+def audit_env_acl(env_path):
+    """Return the principals on the file's ACL that should NOT have access."""
+    return _audit_principals(_icacls_principals(env_path))
 
 
 def _read_env_value(env_path, key):
@@ -233,6 +259,12 @@ def _self_test():
     checks.append(("over-broad .env is refused with an ACL error", "ACL grants access beyond" in refused_message))
     checks.append(("ACL refusal names the offending principal", "everyone" in refused_message.lower()))
     checks.append(("ACL refusal never contains the secret value", "env-secret-value" not in refused_message))
+
+    # 4b) A same-username principal from a different domain/machine is NOT the
+    #     current user - qualified-name comparison, never a basename match.
+    same_basename_other_domain = _audit_principals([f"OTHERDOMAIN\\{current_user}"])
+    checks.append(("same username under a different domain is rejected", same_basename_other_domain == [f"OTHERDOMAIN\\{current_user}"]))
+    checks.append(("the current user's own qualified identity is known", len(_current_user_identities()) > 0))
 
     # 5) Not found anywhere -> error names the alias, never a value.
     missing_message = ""
