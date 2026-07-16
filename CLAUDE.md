@@ -4,7 +4,7 @@ This workspace runs durable business loops (build → verify against a real KPI 
 
 ## Phase status
 
-**Phase 1 (framework + SEO, fully) is the current phase.** Content-social and ads loops exist only as draft specs (`templates/loops/{content-social,ads}/spec.md`) — no connectors are wired for them, and `run_loop.py` will refuse to run them. Do not begin Phase 2 (a real project's live SEO loop), touch the operator's website repo, or wire real credentials/live APIs without an explicit human instruction to do so.
+**Phase 2 (first real project, propose-only SEO loop) is the current phase — kickoff explicitly user-authorized 2026-07-16; the accepted execution plan is `HANDOFF.md`.** The credential resolver (`tools/lib/credentials.py`), real gsc/dataforseo wiring in `run_loop.py`, and the connectors-only smoke test (`tools/smoke_test.py`) are built and tested; credentials are stored by the human only, in their own terminal (never ask for a raw secret in chat). Content-social and ads loops exist only as draft specs (`templates/loops/{content-social,ads}/spec.md`) — no connectors are wired for them, and `run_loop.py` will refuse to run them. Never touch the operator's website repo (auto-deploys on push; Tier 2 human-only, R6); the real project stays `propose-only` until the human has reviewed its first two reports.
 
 ## Implementation language
 
@@ -12,7 +12,7 @@ This workspace runs durable business loops (build → verify against a real KPI 
 
 ## Environment setup
 
-A project-local virtual environment lives at `.venv/` (gitignored — never commit it). One dependency: PyYAML, pinned in `requirements.txt`.
+A project-local virtual environment lives at `.venv/` (gitignored — never commit it). Two dependencies, pinned in `requirements.txt`: PyYAML and keyring.
 
 ```
 python -m venv .venv                              # first time only
@@ -42,8 +42,11 @@ Run tools through `.venv/Scripts/python.exe`, not a bare `python`, so the pinned
 - `lib/redact.py` — alias-based + pattern-based secret redaction, `--verify` self-test.
 - `lib/paths.py` — canonical (symlink-resolved) path containment checks; every project/loop path is checked with `assert_within` before use.
 - `snapshot.py` — immutable redacted metrics snapshot writer, `--verify` self-test.
+- `lib/credentials.py` — credential resolver: Windows Credential Manager (keyring, service `loop-agency`) first, then `projects/<slug>/.env` gated behind an `icacls` ACL check that refuses any principal beyond current user + SYSTEM/Administrators. CLI: `--store <alias>` (interactive, how the human hands over secrets), `--check <alias> [--project <slug>]` (never prints values), `--verify` self-test.
+- `lib/errors.py` — shared `ConnectorError` (re-exported from `mock_metrics.py` for compat).
 - `mock_metrics.py` — synthetic connector for `_demo` only; supports `normal`/`breach`/`fail` scenarios. Never calls a real API.
-- `gsc.py`, `dataforseo.py` — real connector implementations, but not wired into any run pathway in Phase 1: they refuse to run without an injected credential resolver, and `run_loop.py`'s `fetch_metrics` only calls `mock_metrics.py` (Phase 1(b) connectors-only smoke test is deferred).
+- `gsc.py`, `dataforseo.py` — real connectors, dispatched per `spec.inputs` entry by `run_loop.py`'s `_fetch_metrics` since Phase 2 Step 2. GSC is the primary metrics source; DataForSEO only enriches matching (keyword, page) rows with `serp_position`. Both redact internally and refuse to run without a credential resolver.
+- `smoke_test.py` — connectors-only smoke test (`python tools/smoke_test.py <project>`): resolves each alias (reports which store answered, never the value), calls each connector live once, prints a redacted summary, includes a bad-alias clean-failure simulation. Writes nothing under `runs/`; takes no lock. `--verify` self-test.
 - `run_loop.py` — the run contract engine described above.
 - `review_pending.py` — approve/reject/list proposals, resolve a breach.
 - `apply.py` — performs the `applied` transition; re-checks approval and tier itself regardless of caller.
