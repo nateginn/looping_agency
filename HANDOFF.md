@@ -15,7 +15,7 @@ Read this before touching anything else. It replaces needing to scroll a long pr
 ### What happened since Step 0 (newest first)
 
 - `db93fc7` — Documented AEO as a reviewer-guidance consideration for `art` (goals + priority-pages sections in `project.md`, a Notes bullet in `spec.md`). Docs only — no new metric/guardrail/connector; GSC/DataForSEO have no AI-answer-engine-citation signal to measure against.
-- `acc0279` — Fixed 3 Codex findings from an independent review of the `art` intake: added a docs-only "Priority reference pages" section to `project.md` (review aid, not an enforced filter — the loop still proposes from all GSC data ranked by clicks); replaced misleading `rollback: revert PR` text in `spec.md` with an honest description (no PR path exists for this project) and marked all three `allowed_actions` `manual_approval_only: true`; tightened `project.md`'s repo-access wording (`D:\artwebsite` is never read/written by this loop's tooling).
+- `acc0279` — Fixed 3 Codex findings from an independent review of the `art` intake: added a docs-only "Priority reference pages" section to `project.md` (review aid, not an enforced filter — the loop still proposes from all GSC data ranked by clicks); replaced misleading `rollback: revert PR` text in `spec.md` with an honest description (no PR path exists for this project) and marked all three `allowed_actions` `manual_approval_only: true`; tightened `project.md`'s repo-access wording (`D:\Dev\artwebsite` is never read/written by this loop's tooling).
 - `92d7b64` — **Step 5**: onboarded `art` — `project.md`, `loops/seo/spec.md` (inputs `[gsc]` only, `site_url: sc-domain:acceleratedrehabtherapy.com`, weekly Monday cadence, default 5-position guardrail, no seed keyword list — discovers ranking pages from live GSC data), `memory.md`, `pending/`, `runs/` scaffolded. Validated clean.
 - `0b7a54b` — **Step 4 prep**: Nate's GSC credential turned out to be a service-account JSON key (not a raw token), so added `tools/lib/gsc_auth.py` (mints short-lived access tokens from the JSON, `webmasters.readonly` scope only), transparent chunked storage in `tools/lib/credentials.py` (Windows Credential Manager caps a blob at ~1280 chars; the JSON is ~2.3k), `--store --from-file` CLI support, and `tools/lib/tls.py` (Windows-truststore HTTPS fix, R8). Pinned `google-auth`, `requests`, `truststore`.
 - `87145bc` — Fixed 4 findings from an independent Codex review of the Step 1–3 connector build: (1) GSC returns `page` as a full URL while DataForSEO targets are paths — merge now normalizes both to the URL path component; (2) `spec_validate.py` now rejects unknown connector names in `inputs` pre-run (was previously only caught at run time); (3) GSC date ranges are endpoint-inclusive — fixed an off-by-one in the `metrics_window_days` window calculation; (4) hardened the `.env` ACL check to compare fully-qualified account names instead of a bare-username suffix match.
@@ -30,7 +30,7 @@ Read this before touching anything else. It replaces needing to scroll a long pr
 
 Decisions the user already made — do not re-ask, and note how each played out:
 
-- **First real project: the user's (Nate's) own website.** → Onboarded as `art` (acceleratedrehabtherapy.com). Propose-only mode. Repo `D:\artwebsite` auto-deploys on push with no staging gate (Tier 2, human-only, R6) — this loop's tooling never reads or writes it.
+- **First real project: the user's (Nate's) own website.** → Onboarded as `art` (acceleratedrehabtherapy.com). Propose-only mode. Repo `D:\Dev\artwebsite` auto-deploys on push with no staging gate (Tier 2, human-only, R6) — this loop's tooling never reads or writes it.
 - **Credential resolver library: `keyring`.** → Built (`tools/lib/credentials.py`), pinned in `requirements.txt`.
 - **`.env` fallback is acceptable** with the mandatory restrictive-ACL check. → Built and hardened (fully-qualified-account-name comparison, not a suffix match).
 - **He already has a working GSC credential.** → Turned out to be a **service-account JSON key**, not a raw token — `google-auth` added for token minting (see `0b7a54b` above).
@@ -47,7 +47,7 @@ Framework review closeout, credential resolver, real-connector wiring, connector
 3. Update `PHASE2_READINESS_CHECKLIST.md` §5 statuses; add a `RISK-REGISTER.md` note that Phase 2 kickoff was explicitly user-authorized 2026-07-16; update this file; commit.
 
 ### Out of scope for this plan
-Content-social/ads loops; any Tier-1 apply against `art` (propose-only until Nate reviews the first two reports — and `art` has no working apply path at all regardless, per the Codex-review fix above); any push to `D:\artwebsite` (Tier 2, always); Task Scheduler registration (after first manual runs look right); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only).
+Content-social/ads loops; any Tier-1 apply against `art` (propose-only until Nate reviews the first two reports — and `art` has no working apply path at all regardless, per the Codex-review fix above); any push to `D:\Dev\artwebsite` (Tier 2, always); Task Scheduler registration (after first manual runs look right); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only).
 
 ### Verification bar
 All module `--verify` self-tests + exit-criteria suite (49/49) through `.venv/Scripts/python.exe`, no network. Live smoke test reviewed by Nate before the first real run; first run produces valid redacted `run.json`/`report.md` with zero writes outside `projects/art/`.
@@ -56,7 +56,7 @@ All module `--verify` self-tests + exit-criteria suite (49/49) through `.venv/Sc
 
 - **Never introduce a non-Python implementation language without the user's explicit prior approval** (R8 lesson; standing memory rule).
 - **Never ask the user to paste a raw secret into chat**; never write one to any repo file. Aliases only.
-- Never touch `D:\artwebsite` — auto-deploys on push, Tier 2/human-only, always (R6).
+- Never touch `D:\Dev\artwebsite` — auto-deploys on push, Tier 2/human-only, always (R6).
 - `art` stays `propose-only` until the user has reviewed its first two reports.
 - Don't attempt to work around a harness safety-classifier hard block — stop and hand it to the user.
 

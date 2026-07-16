@@ -48,7 +48,7 @@ Status terms:
 - [x] The real project's `project.md` and `loops/seo/spec.md` have been created
       (`projects/art/`), validated clean.
 - [x] The real project's repo/deploy behavior has been reviewed for Tier 1 vs Tier 2 implications
-      (`D:\artwebsite` auto-deploys, no staging gate — documented as Tier 2/human-only in
+      (`D:\Dev\artwebsite` auto-deploys, no staging gate — documented as Tier 2/human-only in
       `project.md`, per `RISK-REGISTER.md` R6).
 - [x] The human reviewer for `/review-pending` has been identified: Nate (project owner).
 

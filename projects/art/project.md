@@ -1,7 +1,7 @@
 ---
 slug: art
 domain: acceleratedrehabtherapy.com
-repo: D:\artwebsite
+repo: D:\Dev\artwebsite
 goals:
   - Grow organic leads/calls by improving rankings and click-through on lead-intent pages (services, location pages)
 caps:
@@ -18,8 +18,8 @@ loops_enabled:
 ## Domain & repo
 
 - Website: acceleratedrehabtherapy.com
-- Repo: `D:\artwebsite` (declared here only so `tools/lib/paths.py`'s boundary check has a defined path to reference — this loop's tooling does not currently read or write anything inside `D:\artwebsite`, ever; every artifact this loop produces lives under `projects/art/`)
-- **Deploy behavior: this repo auto-deploys on push with no staging gate.** Per `RISK-REGISTER.md` R6, every push to `D:\artwebsite` is **Tier 2 (public, human-only)**, regardless of branch. No loop tooling in this workspace is ever authorized to push to it — Tier 1 `applied` proposals for this project have no repo to land in until a staging gate exists, so in practice this loop stays propose-only/manual-apply indefinitely unless that changes.
+- Repo: `D:\Dev\artwebsite` (declared here only so `tools/lib/paths.py`'s boundary check has a defined path to reference — this loop's tooling does not currently read or write anything inside `D:\Dev\artwebsite`, ever; every artifact this loop produces lives under `projects/art/`)
+- **Deploy behavior: this repo auto-deploys on push with no staging gate.** Per `RISK-REGISTER.md` R6, every push to `D:\Dev\artwebsite` is **Tier 2 (public, human-only)**, regardless of branch. No loop tooling in this workspace is ever authorized to push to it — Tier 1 `applied` proposals for this project have no repo to land in until a staging gate exists, so in practice this loop stays propose-only/manual-apply indefinitely unless that changes.
 
 ## Goals
 
@@ -50,4 +50,4 @@ These same pages are the priority AEO pages too. When reviewing title-tag, meta-
 
 ## Loops enabled
 
-- `seo` — `propose-only`. Runs weekly (Monday mornings). Reviewer: Nate (project owner). Will move to `tier1-enabled` only after Nate reviews the first two reports — and even then, Tier-1 `applied` proposals have nowhere to land until `D:\artwebsite` gets a staging gate (see Deploy behavior above), so this is expected to stay a recommendations-only loop for the foreseeable future.
+- `seo` — `propose-only`. Runs weekly (Monday mornings). Reviewer: Nate (project owner). Will move to `tier1-enabled` only after Nate reviews the first two reports — and even then, Tier-1 `applied` proposals have nowhere to land until `D:\Dev\artwebsite` gets a staging gate (see Deploy behavior above), so this is expected to stay a recommendations-only loop for the foreseeable future.
