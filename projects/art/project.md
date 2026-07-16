@@ -25,6 +25,8 @@ loops_enabled:
 
 More organic leads and phone calls for the clinic, by improving Search Console position and click-through on pages with lead intent (service pages, location pages) rather than chasing position on low-value/informational pages.
 
+Alongside traditional SEO, this project also weighs Answer Engine Optimization (AEO) for these same lead-intent pages - how clearly and citably the page answers the underlying question, for AI-driven search and answer surfaces (Google AI Overviews, ChatGPT, Perplexity, voice assistants). AEO and lead-intent SEO overlap heavily on this site's service pages, so a single set of edits can usually serve both.
+
 ## Priority reference pages (first report)
 
 **Documentation only — this is a review aid for Nate, not a spec-level filter.** The SEO loop still generates proposals from *all* pages GSC returns, ranked by clicks (see `run_loop.py`'s `_pick_new_actions`); nothing in the tooling restricts candidates to this list. Its purpose is to give Nate a fast way to judge whether the first report's proposals land on pages that actually matter for lead generation, versus branded/informational/low-value pages that happen to rank.
@@ -32,6 +34,8 @@ More organic leads and phone calls for the clinic, by improving Search Console p
 - **Tier 1 (primary focus for the first report):** `/physical-therapy/`, `/auto-injury/`, `/work-comp/`, `/chiropractor/`, `/massage/`, `/acupuncture/`
 - **Tier 2 (secondary, if it comes up):** `/shockwave-therapy-denver/`, `/shockwave-therapy-greeley/`, `/shockwave-therapy-plantar-fasciitis/`, `/chronic-tendon-pain-treatment/`, `/non-surgical-pain-relief-denver/`
 - **Priority query themes:** physical therapy greeley/denver, chiropractor greeley/denver, auto injury treatment greeley/denver, work comp injury care greeley/denver, massage therapy greeley/denver, acupuncture greeley/denver, shockwave therapy denver/greeley, plantar fasciitis shockwave therapy, chronic tendon pain treatment, non-surgical pain relief denver
+
+These same pages are the priority AEO pages too. When reviewing title-tag, meta-description, or content proposals in the first report, weigh answer-clarity (a clear definitional opening sentence, scannable structure, a direct answer to the underlying question) alongside keyword/position - this is Nate's qualitative judgment call at review time, not an automated check (see `RISK-REGISTER.md` R5: qualitative rubrics are always human-approved).
 
 ## Guardrails / caps
 
