@@ -17,7 +17,10 @@ from datetime import datetime, timedelta, timezone
 
 import yaml
 
-from spec_validate import extract_frontmatter
+try:
+    from .spec_validate import extract_frontmatter
+except ImportError:
+    from spec_validate import extract_frontmatter
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)

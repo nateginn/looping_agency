@@ -14,7 +14,10 @@ import urllib.request
 from datetime import datetime, timezone
 from urllib.parse import quote
 
-from lib.redact import redact_deep, redact_text
+try:
+    from .lib.redact import redact_deep, redact_text
+except ImportError:
+    from lib.redact import redact_deep, redact_text
 
 REQUIRED_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
 

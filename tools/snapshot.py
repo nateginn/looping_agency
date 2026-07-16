@@ -6,7 +6,10 @@ import os
 import stat
 import sys
 
-from lib.redact import redact_deep
+try:
+    from .lib.redact import redact_deep
+except ImportError:
+    from lib.redact import redact_deep
 
 
 def write_snapshot(run_dir, metrics, secret_map=None):

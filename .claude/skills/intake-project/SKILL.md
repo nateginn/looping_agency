@@ -21,7 +21,7 @@ Scaffolds `projects/<slug>/` from `templates/project-intake.md` and wires whiche
 3. For each enabled loop, copy `templates/loops/<loop>/spec.md` and `instructions.md` into `projects/<slug>/loops/<loop>/`, fill in the placeholders from the interview, and create empty `memory.md`, `pending/`, `runs/`.
 4. Validate the new spec immediately:
    ```
-   python tools/spec_validate.py projects/<slug>/loops/<loop>/spec.md
+   ./.venv/Scripts/python.exe tools/spec_validate.py projects/<slug>/loops/<loop>/spec.md
    ```
    Fix and re-validate until it passes — do not leave an unvalidated spec in place.
 5. Set `approval_mode: propose-only` for every newly onboarded loop, regardless of what the human asks for — per AgentColabPlan.md Phase 2, Tier-1 proposals are enabled only after human review of the first two reports. Say this explicitly if the human expects immediate `tier1-enabled`.

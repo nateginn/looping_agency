@@ -7,7 +7,10 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from lib.paths import assert_within
+try:
+    from .lib.paths import assert_within
+except ImportError:
+    from lib.paths import assert_within
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)

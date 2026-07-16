@@ -13,8 +13,12 @@ from datetime import datetime, timezone
 
 import yaml
 
-from lib.paths import assert_within
-from spec_validate import extract_frontmatter
+try:
+    from .lib.paths import assert_within
+    from .spec_validate import extract_frontmatter
+except ImportError:
+    from lib.paths import assert_within
+    from spec_validate import extract_frontmatter
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)

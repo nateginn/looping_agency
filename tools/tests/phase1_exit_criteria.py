@@ -11,13 +11,21 @@ from datetime import datetime, timedelta, timezone
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TOOLS_DIR = os.path.dirname(THIS_DIR)
-sys.path.insert(0, TOOLS_DIR)
-
-from run_loop import run_loop  # noqa: E402
-from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
-from apply import apply_proposal  # noqa: E402
-
 WORKSPACE_ROOT = os.path.dirname(TOOLS_DIR)
+if WORKSPACE_ROOT not in sys.path:
+    sys.path.insert(0, WORKSPACE_ROOT)
+
+try:
+    from tools.run_loop import run_loop  # noqa: E402
+    from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
+    from tools.apply import apply_proposal  # noqa: E402
+except ImportError:
+    if TOOLS_DIR not in sys.path:
+        sys.path.insert(0, TOOLS_DIR)
+    from run_loop import run_loop  # noqa: E402
+    from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
+    from apply import apply_proposal  # noqa: E402
+
 PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
 PROJECT = "_phase1-test-tmp"
 LOOP = "seo"
@@ -98,7 +106,7 @@ def reset_fixture():
     with open(os.path.join(loop_dir, "spec.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write(GOOD_SPEC)
     with open(os.path.join(loop_dir, "memory.md"), "w", encoding="utf-8", newline="\n") as f:
-        f.write("# Memory — fixture\n")
+        f.write("# Memory - fixture\n")
 
 
 def test_spec_validation_rejects_bad_spec():

@@ -9,12 +9,20 @@ from datetime import datetime, timezone
 
 import yaml
 
-from lib.lock import acquire_lock, release_lock, log_refusal
-from lib.paths import assert_within
-from lib.redact import redact_deep
-from spec_validate import validate_spec_file, extract_frontmatter
-from snapshot import write_snapshot
-from mock_metrics import pull_metrics as pull_mock_metrics, ConnectorError
+try:
+    from .lib.lock import acquire_lock, release_lock, log_refusal
+    from .lib.paths import assert_within
+    from .lib.redact import redact_deep
+    from .spec_validate import validate_spec_file, extract_frontmatter
+    from .snapshot import write_snapshot
+    from .mock_metrics import pull_metrics as pull_mock_metrics, ConnectorError
+except ImportError:
+    from lib.lock import acquire_lock, release_lock, log_refusal
+    from lib.paths import assert_within
+    from lib.redact import redact_deep
+    from spec_validate import validate_spec_file, extract_frontmatter
+    from snapshot import write_snapshot
+    from mock_metrics import pull_metrics as pull_mock_metrics, ConnectorError
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)

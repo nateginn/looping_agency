@@ -10,6 +10,18 @@ This workspace runs durable business loops (build → verify against a real KPI 
 
 **Python only.** This workspace's tooling was rewritten from a Node.js prototype to Python on 2026-07-16 — see `RISK-REGISTER.md` R8. Never introduce a non-Python implementation language for this project's tooling without the user's explicit prior approval, even if there's a plausible-sounding technical reason to prefer something else (see `AgentColabPlan.md` and the memory note this incident produced).
 
+## Environment setup
+
+A project-local virtual environment lives at `.venv/` (gitignored — never commit it). One dependency: PyYAML, pinned in `requirements.txt`.
+
+```
+python -m venv .venv                              # first time only
+./.venv/Scripts/python.exe -m pip install -r requirements.txt   # first time / after requirements.txt changes
+./.venv/Scripts/python.exe tools/run_loop.py <project> <loop>   # run any tool through the venv
+```
+
+Run tools through `.venv/Scripts/python.exe`, not a bare `python`, so the pinned dependency versions are what actually execute.
+
 ## The run contract (every run, every loop)
 
 1. Acquire the per-loop run lock (`tools/lib/lock.py`). A live lock refuses the run and logs the refusal to `lock-refusals.log`. A stale lock (dead PID or age > `max_run_duration_minutes`) is auto-recovered: archived under `runs/<old-run-id>/stale-lock.json`, never manually deleted.

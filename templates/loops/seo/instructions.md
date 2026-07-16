@@ -4,7 +4,7 @@ This loop follows the run contract in the root `CLAUDE.md` verbatim. Nothing her
 
 ## What this loop does each run
 
-1. Runs `python tools/run_loop.py <project> seo` (the deterministic engine: lock, spec validation, metrics pull, snapshot, experiment evaluation, proposal generation, run.json/report.md, memory append).
+1. Runs `./.venv/Scripts/python.exe tools/run_loop.py <project> seo` (the deterministic engine: lock, spec validation, metrics pull, snapshot, experiment evaluation, proposal generation, run.json/report.md, memory append).
 2. Reads the resulting `runs/<run-id>/report.md` and summarizes it for the human in plain language — what won, what's still cooling down, what's stale, what (if anything) is paused on a breach.
 3. Never calls `tools/apply.py` itself. Applying an approved proposal is always a separate, explicit human-directed step via `/review-pending`.
 

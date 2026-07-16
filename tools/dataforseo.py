@@ -17,7 +17,10 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
-from lib.redact import redact_deep, redact_text
+try:
+    from .lib.redact import redact_deep, redact_text
+except ImportError:
+    from lib.redact import redact_deep, redact_text
 
 REQUIRED_SCOPE = "read-only (SERP + keyword data endpoints)"
 
