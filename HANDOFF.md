@@ -2,80 +2,70 @@
 
 Read this before touching anything else. It replaces needing to scroll a long prior chat transcript. Canonical docs are `AgentColabPlan.md` (design), `PLAN-REVIEW-LOG.md` (plan review history), `RISK-REGISTER.md` (findings + risk acceptances), `CLAUDE.md` (operating instructions), `PHASE2_READINESS_CHECKLIST.md` (Phase 2 go/no-go tracking) — read those next if you need depth.
 
-## Status as of 2026-07-16 (end of the Phase-1-closeout session)
+## Resume here
 
-**Phase 1 is complete: implemented in Python, tested (32/32), committed, and pushed to `origin/master`** (`github.com/nateginn/looping_agency`, branch `master`). The Node→Python language correction is fully documented in `RISK-REGISTER.md` R8. **This project is Python-only — see `CLAUDE.md` "Implementation language" and the `language-choice-approval` memory: never introduce a non-Python language without the user's explicit prior approval.**
+**Nothing is uncommitted.** Steps 0–5 of the accepted Phase 2 execution plan are done, committed, and pushed to `origin/master`. **Step 6 — live smoke test against project `art`, then its first real run — is the next and only remaining step, and it has not started.** No open question blocks it; it was paused purely because the human wanted to stop for the night and pick it up in a fresh session. Start there.
 
-Since the last push, this happened (all **uncommitted** in the working tree — committing it is Step 0 below):
+## Status as of 2026-07-16 (end of the Phase-2-onboarding session)
 
-- **Codex adversarial re-review of `AgentColabPlan.md`, scoped to the language switch (Rounds 3–4 in `PLAN-REVIEW-LOG.md`): converged with a genuine `VERDICT: APPROVED`** — not a round-cap tie-break. Two findings fixed: interpreter/venv pinning added to the scheduling contract, and the imprecise TLS-fix note replaced with a pointer to R8. Files touched: `AgentColabPlan.md` (header + two sections), `PLAN-REVIEW-LOG.md` (Rounds 3–4 transcript).
-- **Deleted `looping_agency_plan.md` and `LOOP_AGENCY_PLAN.md`** at the user's request (preliminary individual drafts, superseded by `AgentColabPlan.md`).
-- **`PHASE2_READINESS_CHECKLIST.md` exists at repo root (untracked — add it to git in Step 0).** User-authored go/no-go tracker: sections 1–2 (framework + safety controls) all `[x]`; sections 3–6 (real project, credentials, smoke test, launch mode) open.
+**Phase 1 is complete** (Python, 32/32 checks originally, since grown — see below). The Node→Python correction is documented in `RISK-REGISTER.md` R8. **This project is Python-only** — see `CLAUDE.md` "Implementation language" and the `language-choice-approval` memory: never introduce a non-Python language without the user's explicit prior approval.
+
+**Phase 2 kickoff is underway.** The first real project, **`art`** (acceleratedrehabtherapy.com, Nate's own site), is fully onboarded: `projects/art/project.md` + `projects/art/loops/seo/spec.md` exist, validate clean, and are committed. Nate has a working, verified live GSC credential stored in Windows Credential Manager. Two independent Codex review rounds ran against this session's work (the Steps 1–3 connector build, and the `art` intake) — all findings from both were fixed. An AEO (Answer Engine Optimization) documentation scope addition also landed on top of the `art` onboarding.
+
+### What happened since Step 0 (newest first)
+
+- `db93fc7` — Documented AEO as a reviewer-guidance consideration for `art` (goals + priority-pages sections in `project.md`, a Notes bullet in `spec.md`). Docs only — no new metric/guardrail/connector; GSC/DataForSEO have no AI-answer-engine-citation signal to measure against.
+- `acc0279` — Fixed 3 Codex findings from an independent review of the `art` intake: added a docs-only "Priority reference pages" section to `project.md` (review aid, not an enforced filter — the loop still proposes from all GSC data ranked by clicks); replaced misleading `rollback: revert PR` text in `spec.md` with an honest description (no PR path exists for this project) and marked all three `allowed_actions` `manual_approval_only: true`; tightened `project.md`'s repo-access wording (`D:\artwebsite` is never read/written by this loop's tooling).
+- `92d7b64` — **Step 5**: onboarded `art` — `project.md`, `loops/seo/spec.md` (inputs `[gsc]` only, `site_url: sc-domain:acceleratedrehabtherapy.com`, weekly Monday cadence, default 5-position guardrail, no seed keyword list — discovers ranking pages from live GSC data), `memory.md`, `pending/`, `runs/` scaffolded. Validated clean.
+- `0b7a54b` — **Step 4 prep**: Nate's GSC credential turned out to be a service-account JSON key (not a raw token), so added `tools/lib/gsc_auth.py` (mints short-lived access tokens from the JSON, `webmasters.readonly` scope only), transparent chunked storage in `tools/lib/credentials.py` (Windows Credential Manager caps a blob at ~1280 chars; the JSON is ~2.3k), `--store --from-file` CLI support, and `tools/lib/tls.py` (Windows-truststore HTTPS fix, R8). Pinned `google-auth`, `requests`, `truststore`.
+- `87145bc` — Fixed 4 findings from an independent Codex review of the Step 1–3 connector build: (1) GSC returns `page` as a full URL while DataForSEO targets are paths — merge now normalizes both to the URL path component; (2) `spec_validate.py` now rejects unknown connector names in `inputs` pre-run (was previously only caught at run time); (3) GSC date ranges are endpoint-inclusive — fixed an off-by-one in the `metrics_window_days` window calculation; (4) hardened the `.env` ACL check to compare fully-qualified account names instead of a bare-username suffix match.
+- `37e44e1` — **Step 3**: `tools/smoke_test.py` (connectors-only live check — resolves aliases, calls each connector once, redacted summary, bad-alias clean-failure simulation; writes nothing, takes no lock).
+- `87138ad` — **Step 2**: wired `gsc.py`/`dataforseo.py` into `run_loop.py`'s `_fetch_metrics` dispatch; `spec_validate.py` gained conditional requirements per connector; GSC is the primary metrics source, DataForSEO only enriches matching rows with `serp_position`.
+- `c768161` — **Step 1**: `tools/lib/credentials.py` — Windows Credential Manager (keyring) first, ACL-gated `.env` fallback second, `--store`/`--check`/`--verify`.
+- `f6ca0fd` — **Step 0**: committed the outstanding Codex Rounds 3–4 review edits and `PHASE2_READINESS_CHECKLIST.md`.
+
+**Current test suite: 49/49 exit-criteria checks, plus every module's `--verify` self-test, all green, no network calls.**
 
 ## THE USER HAS EXPLICITLY AUTHORIZED PHASE 2 KICKOFF (2026-07-16)
 
-Decisions the user already made — do not re-ask:
+Decisions the user already made — do not re-ask, and note how each played out:
 
-- **First real project: the user's (Nate's) own website.** Propose-only mode. The loop reads GSC/DataForSEO and writes recommendations under `projects/<slug>/` only — it never touches his website repo (auto-deploys on push; Tier 2 human-only, `RISK-REGISTER.md` R6).
-- **Credential resolver library: `keyring`** (pinned in `requirements.txt`).
-- **`.env` fallback is acceptable to the user** — but only with the mandatory restrictive-ACL startup check the plan requires (Credential Manager via keyring is still checked first).
-- **He already has a working GSC credential** (its exact form — access token vs refresh token vs service-account JSON — gets identified at the handoff step, and may require adding pinned `google-auth` for token minting).
-- **Secrets never enter the chat transcript.** He stores them himself in his own terminal (`--store` CLI or editing `.env` directly). Never ask him to paste a raw secret into the conversation.
+- **First real project: the user's (Nate's) own website.** → Onboarded as `art` (acceleratedrehabtherapy.com). Propose-only mode. Repo `D:\artwebsite` auto-deploys on push with no staging gate (Tier 2, human-only, R6) — this loop's tooling never reads or writes it.
+- **Credential resolver library: `keyring`.** → Built (`tools/lib/credentials.py`), pinned in `requirements.txt`.
+- **`.env` fallback is acceptable** with the mandatory restrictive-ACL check. → Built and hardened (fully-qualified-account-name comparison, not a suffix match).
+- **He already has a working GSC credential.** → Turned out to be a **service-account JSON key**, not a raw token — `google-auth` added for token minting (see `0b7a54b` above).
+- **Secrets never enter the chat transcript.** → Confirmed in practice: Nate stored the credential himself via `--store art-gsc-readonly --from-file <path>` in his own terminal, verified with `--check`, then deleted the source JSON file. No secret was ever pasted into the conversation.
 
 ## Exact next steps — the accepted Phase 2 execution plan
 
-### Step 0 — Commit the outstanding review work
-One commit: Rounds 3–4 review edits (`AgentColabPlan.md`, `PLAN-REVIEW-LOG.md`), this file, the two deleted preliminary plans, and newly-tracked `PHASE2_READINESS_CHECKLIST.md`. Keeps Phase 2 work clean in history. (Push per the user's standing instruction — every commit goes to the public GitHub remote; if the harness safety classifier hard-blocks the push, hand the push to the user, never work around it.)
+### Steps 0–5 — DONE (see commit list above)
+Framework review closeout, credential resolver, real-connector wiring, connectors-only smoke test, service-account JSON support, and onboarding `art` are all committed and pushed. Do not re-plan or redo any of this.
 
-### Step 1 — Credential resolver: `tools/lib/credentials.py` (new)
-- `resolve_credential(alias, project_dir=None) -> str`: (1) `keyring.get_password("loop-agency", alias)`; (2) fallback `projects/<slug>/.env`, key = alias uppercased with hyphens→underscores (e.g. `acme-gsc-readonly` → `ACME_GSC_READONLY`, matching `.env.example`) — **before reading, ACL-check the file via `icacls` (stdlib subprocess, no pywin32) and refuse with a clear error if any principal beyond current user + SYSTEM/Administrators has access** (Codex original-review R2 finding #3 requirement); (3) neither → raise naming the alias, never any value.
-- CLI: `--store <alias>` (interactive `getpass` → `keyring.set_password`; this is how Nate hands over secrets), `--check <alias> [--project <slug>]` (reports which store resolved it, never prints values), `--verify` self-test (fake keyring backend + temp `.env` good/bad ACLs).
-- Add pinned `keyring` to `requirements.txt`, install into `.venv`. Fix `.env.example`'s stale `redact.mjs` → `redact.py` reference.
-
-### Step 2 — Wire real connectors into the run path
-- Move `ConnectorError` to `tools/lib/errors.py`; re-export from `mock_metrics.py` for compat.
-- Rewrite `run_loop.py:_fetch_metrics` (currently single-branch, ~line 111) to dispatch per entry of `spec["inputs"]`: `mock` → unchanged; `gsc` → `gsc.pull_metrics(...)` with the project's alias + real resolver + `site_url`/date-window from spec; `dataforseo` → `dataforseo.pull_metrics(...)` with `targets` + market params from spec. Wrap real-connector exceptions into `ConnectorError` (empty `raw_secrets` — connectors redact internally) so the existing partial-failure path handles them uniformly.
-- Multiple inputs: GSC is the primary metrics source (clicks/impressions/sample_size); DataForSEO enriches position per (keyword, page). First live spec starts `inputs: [gsc]` only; enable `dataforseo` after the first reports are reviewed.
-- Generalize `credential_alias_used` in run.json (currently hard-coded to the `"mock"` key, ~line 263).
-- Extend `spec_validate.py` conditionally: `gsc` in inputs → require `site_url` + `metrics_window_days` (positive, default 28); `dataforseo` → require `targets` (non-empty `{keyword, page}` list) + optional `location_code`/`language_code`/`device`. Update `templates/loops/seo/spec.md` placeholders. `_demo`'s `inputs: [mock]` spec must stay valid untouched.
-- Tests: existing 32 exit-criteria checks must still pass; add dispatcher checks (gsc-input spec dispatches with fake resolver + fake `http_post`, no network) and a real-connector-failure → clean `partial-failure` run.json check.
-
-### Step 3 — Connectors-only smoke test: `tools/smoke_test.py` (new)
-`python tools/smoke_test.py <project>`: resolves each alias (reports which store answered, never the value), calls each connector in `spec.inputs` live once, prints redacted summary (auth OK/failed, HTTP status, row count), includes a deliberate bad-alias partial-failure simulation proving clean error logging. Writes nothing into `runs/`. Human reviews and accepts (checklist §5).
-
-### Step 4 — Nate-assisted credential handoff (interactive, HIS terminal)
-1. Agree alias names (suggest `<slug>-gsc-readonly`, `<slug>-dataforseo-read`).
-2. Identify the GSC credential's form: raw access token (expires ~1h, smoke-test-only) vs refresh token / service-account JSON (likely — then add pinned `google-auth` and a thin token-minting step for GSC, `webmasters.readonly` scope only, so scheduled runs work).
-3. Nate stores each secret himself: `./.venv/Scripts/python.exe tools/lib/credentials.py --store <alias>` or editing `projects/<slug>/.env` in his editor (then verify the ACL check passes; tighten with `icacls` if needed).
-4. Verify with `--check` (no values printed).
-
-### Step 5 — Onboard the project: `/intake-project <slug>`
-Follow the existing skill exactly. Collect: slug, domain + **exact GSC property string** (`sc-domain:` vs URL-prefix), goals one-liner, initial target keyword/page list, guardrail threshold (default >5 position drop), cadence cron, reviewer (Nate). Record his site repo's auto-deploy behavior in `project.md` as Tier-2/human-only per R6. `ads` caps stay `null`. Spec is forced `approval_mode: propose-only`.
-
-### Step 6 — Live smoke test, then first run
-1. `tools/smoke_test.py <slug>` → Nate reviews and accepts (checklist §5).
-2. First real run: `./.venv/Scripts/python.exe tools/run_loop.py <slug> seo` — recommendations only; summarize `report.md` for him.
-3. Update `PHASE2_READINESS_CHECKLIST.md` statuses; add a `RISK-REGISTER.md` note that Phase 2 kickoff was explicitly user-authorized 2026-07-16; update this file; commit.
+### Step 6 — Live smoke test, then first run (NEXT — not started)
+1. `./.venv/Scripts/python.exe tools/smoke_test.py art` → Nate reviews and accepts (checklist §5). This makes one real, read-only call to Search Console using the stored credential and prints a redacted summary — it writes nothing to disk and takes no lock.
+2. First real run: `./.venv/Scripts/python.exe tools/run_loop.py art seo` — recommendations only; summarize `report.md` for him.
+3. Update `PHASE2_READINESS_CHECKLIST.md` §5 statuses; add a `RISK-REGISTER.md` note that Phase 2 kickoff was explicitly user-authorized 2026-07-16; update this file; commit.
 
 ### Out of scope for this plan
-Content-social/ads loops; any Tier-1 apply against the real project (propose-only until Nate reviews the first two reports); any push to his website repo (Tier 2, always); Task Scheduler registration (after first manual runs look right).
+Content-social/ads loops; any Tier-1 apply against `art` (propose-only until Nate reviews the first two reports — and `art` has no working apply path at all regardless, per the Codex-review fix above); any push to `D:\artwebsite` (Tier 2, always); Task Scheduler registration (after first manual runs look right); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only).
 
 ### Verification bar
-All module `--verify` self-tests + exit-criteria suite (32 existing + new checks) through `.venv/Scripts/python.exe`, no network. ACL check demonstrably refuses an over-broad `.env`. Live smoke test reviewed by Nate before the first real run; first run produces valid redacted `run.json`/`report.md` with zero writes outside `projects/<slug>/`.
+All module `--verify` self-tests + exit-criteria suite (49/49) through `.venv/Scripts/python.exe`, no network. Live smoke test reviewed by Nate before the first real run; first run produces valid redacted `run.json`/`report.md` with zero writes outside `projects/art/`.
 
 ## Hard boundaries (do not cross without the user present)
 
 - **Never introduce a non-Python implementation language without the user's explicit prior approval** (R8 lesson; standing memory rule).
 - **Never ask the user to paste a raw secret into chat**; never write one to any repo file. Aliases only.
-- Never touch the user's website repo — auto-deploys on push, Tier 2/human-only, always (R6).
-- The real project stays `propose-only` until the user has reviewed its first two reports.
+- Never touch `D:\artwebsite` — auto-deploys on push, Tier 2/human-only, always (R6).
+- `art` stays `propose-only` until the user has reviewed its first two reports.
 - Don't attempt to work around a harness safety-classifier hard block — stop and hand it to the user.
 
 ## Fast sanity checks
 
 ```
-./.venv/Scripts/python.exe tools/tests/phase1_exit_criteria.py   # all PASS, 32/32 (more once Step 2 lands)
+./.venv/Scripts/python.exe tools/tests/phase1_exit_criteria.py   # all PASS, 49/49
+./.venv/Scripts/python.exe tools/smoke_test.py art                # Step 6.1 — the literal next command to run
 git log --oneline                                                  # see what's committed
-git status                                                          # dirty until Step 0's commit
+git status                                                          # should be clean
 git remote -v                                                       # origin -> github.com/nateginn/looping_agency
 ```

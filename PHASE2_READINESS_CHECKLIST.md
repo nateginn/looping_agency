@@ -41,25 +41,33 @@ Status terms:
 
 ## 3. Real-project prerequisites
 
-- [!] Human has explicitly authorized Phase 2 kickoff for a real project.
-- [ ] A real project has been chosen for onboarding.
-- [ ] The project-specific intake checklist has been completed:
+- [x] Human has explicitly authorized Phase 2 kickoff for a real project.
+- [x] A real project has been chosen for onboarding: `art` (acceleratedrehabtherapy.com).
+- [x] The project-specific intake checklist has been completed:
       `templates/loops/seo/intake-checklist.md`.
-- [ ] The real project's `project.md` and `loops/seo/spec.md` have been created.
-- [ ] The real project's repo/deploy behavior has been reviewed for Tier 1 vs Tier 2 implications.
-- [ ] The human reviewer for `/review-pending` has been identified.
+- [x] The real project's `project.md` and `loops/seo/spec.md` have been created
+      (`projects/art/`), validated clean.
+- [x] The real project's repo/deploy behavior has been reviewed for Tier 1 vs Tier 2 implications
+      (`D:\artwebsite` auto-deploys, no staging gate — documented as Tier 2/human-only in
+      `project.md`, per `RISK-REGISTER.md` R6).
+- [x] The human reviewer for `/review-pending` has been identified: Nate (project owner).
 
 ## 4. Credential and connector readiness
 
 - [x] `gsc.py` and `dataforseo.py` implement real API calls.
 - [x] Both connectors still fail closed without an injected credential resolver.
-- [ ] Real credential aliases have been chosen for the first live project.
-- [ ] The corresponding secrets have been created by a human outside the repo.
-- [ ] A real credential resolver has been wired into the run pathway.
-- [ ] `run_loop.py` has been updated so the first live project can use real connectors
+- [x] Real credential aliases have been chosen for the first live project: `art-gsc-readonly`.
+- [x] The corresponding secrets have been created by a human outside the repo
+      (stored via `--store --from-file` in Nate's own terminal; verified with `--check`;
+      source JSON file deleted afterward).
+- [x] A real credential resolver has been wired into the run pathway
+      (`tools/lib/credentials.py`, dispatched from `run_loop.py`).
+- [x] `run_loop.py` has been updated so the first live project can use real connectors
       instead of `mock_metrics.py`.
-- [ ] The first project's GSC property string, DataForSEO market defaults, and target set
-      have been confirmed.
+- [x] The first project's GSC property string has been confirmed:
+      `sc-domain:acceleratedrehabtherapy.com`.
+      DataForSEO market defaults/target set: **N/A** — `art` starts `inputs: [gsc]` only;
+      `dataforseo` is deferred until the first GSC-only reports are reviewed.
 
 ## 5. Required live verification before first real loop
 
@@ -72,10 +80,15 @@ Status terms:
 
 ## 6. Phase 2 launch mode
 
-- [ ] The first real project starts in `approval_mode: propose-only`.
-- [ ] The initial run cadence has been chosen and documented.
-- [ ] The first Phase 2 run is limited to recommendations-only behavior.
-- [ ] No Tier 1 external writes are enabled before human review of the first two reports.
+- [x] The first real project starts in `approval_mode: propose-only`
+      (`projects/art/loops/seo/spec.md`).
+- [x] The initial run cadence has been chosen and documented: weekly, Monday mornings
+      (`schedule: "0 6 * * 1"`).
+- [ ] The first Phase 2 run is limited to recommendations-only behavior — guaranteed by
+      `propose-only` mode, but not yet observed, since no run has happened (Step 6).
+- [x] No Tier 1 external writes are enabled before human review of the first two reports
+      (enforced by `approval_mode: propose-only`; `art`'s `allowed_actions` are additionally
+      `manual_approval_only: true` since there is no automated apply path for this project at all).
 
 ## 7. Go / No-Go summary
 
@@ -87,11 +100,13 @@ You are ready to start a real Phase 2 kickoff only when:
 
 ## Current objective assessment as of 2026-07-16
 
-- `Sections 1 and 2:` ready
-- `Sections 3 through 6:` not ready yet
+- `Sections 1, 2, 3, 4, and 6:` ready
+- `Section 5:` not ready yet — this is the pending Step 6 action (live smoke
+  test against `art`, not yet run)
 
 So the current answer is:
 
 - **Ready for Phase 2 planning and authorization:** yes
-- **Ready for a real live Phase 2 kickoff today:** no, not until real-project,
-  credential, and live-connector steps are completed
+- **Ready to run the live smoke test and first real run (`art`):** yes, as
+  soon as a human is present to review the smoke test output — see
+  `HANDOFF.md` "Resume here" / Step 6.
