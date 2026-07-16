@@ -64,3 +64,7 @@ Windows Credential Manager is the default secret store; per-project `.env` is an
 ## Debugging
 
 Never rely on model memory to reconstruct what a run did — `runs/<run-id>/run.json` is the observability contract. If something looks wrong, read that file (and `snapshot.json`, `report.md`) before speculating.
+
+## MMC (shared brain)
+
+Before cross-system work (anything touching another of Nate's four systems, or client facts shared across them), read `D:\Dev\MMC\MMC.md` first. `@import` auto-load was tested and does not reliably resolve in headless (`claude -p`) sessions — this is a manual-read instruction, not an automatic one.
