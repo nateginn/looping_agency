@@ -95,3 +95,35 @@ All 5 residual findings accepted and folded into AgentColabPlan.md:
 ## Outcome
 
 MAX_ROUNDS=2 reached without a formal APPROVED. Codex's trajectory: 21 findings -> 5, all 5 subsequently incorporated. No substantive disagreement remains between the models; the only unresolved item is that Codex has not re-verified the final edits. Per protocol, the human is the tie-breaker and final sign-off on AgentColabPlan.md (Round 2, final).
+
+## Round 3 negotiation — language-switch scoped review (2026-07-16)
+
+**Context:** After Round 2 (final) above, `RISK-REGISTER.md` R8 recorded that the plan's Node.js runtime choice was never actually authorized by the human — they had told an earlier session to use Python, and the switch to Node (justified by a since-debunked AVG TLS-interception workaround) was never re-confirmed with them. The entire `tools/` directory was rewritten Node→Python, tested (32/32 checks), committed, and pushed. Per the human's explicit instruction, this round runs the plan back through Codex for exactly two rounds, **scoped only to what needs to change in `AgentColabPlan.md` as a direct result of the language switch** — not a re-litigation of the whole plan. `looping_agency_plan.md` and `LOOP_AGENCY_PLAN.md` (the two preliminary individual plans referenced in Round 0 above, superseded by this document) were deleted from the repo at the human's request as part of this same instruction.
+
+Reviewer: Codex CLI 0.144.1, model gpt-5.4 (medium reasoning), read-only sandbox, thread `019f68ee-0633-7322-9615-07c14e56d52f`.
+
+### Round 3 — Codex (VERDICT: REVISE)
+
+1. [AgentColabPlan.md:18](/D:/Dev/Looping%20_agency/AgentColabPlan.md) and [AgentColabPlan.md:99](/D:/Dev/Looping%20_agency/AgentColabPlan.md) switch the tool layer to Python, but the scheduling contract still pins only `claude` and never pins the Python interpreter/dependency environment, so a Task Scheduler run can succeed in launching Claude while silently using the wrong `python` or no repo deps at all. Fix: add one sentence requiring scheduled runs and skill/tool invocations to use a pinned workspace interpreter (e.g. `.venv/Scripts/python.exe`) or a checked wrapper that activates that venv before `claude -p`.
+2. [AgentColabPlan.md:18](/D:/Dev/Looping%20_agency/AgentColabPlan.md) cites the old AVG/TLS issue as having a one-line Python fix of `pip install truststore`, but [RISK-REGISTER.md:14](/D:/Dev/Looping%20_agency/RISK-REGISTER.md) records the verified workaround as install *plus* `truststore.inject_into_ssl()`, so the historical note is technically imprecise. Fix: replace the parenthetical with the full verified workaround, or simply point to `RISK-REGISTER.md` R8.
+
+VERDICT: REVISE
+
+### Claude's response (Round 3)
+
+Both findings accepted — both are concrete, in-scope (directly caused by the language switch, not a re-litigation of settled plan sections), and correct on inspection:
+
+1. **Interpreter pinning.** Added a sentence to "Runtime/tooling layer" (dependencies pinned in `requirements.txt`, installed into `.venv/`, every invocation — scheduled or interactive — goes through `.venv/Scripts/python.exe`, never a bare `python`) and a matching sentence in "Scheduling & operations" making the same requirement explicit for the Task Scheduler action/wrapper, framing a silent interpreter fallback as a scheduling failure in its own right.
+2. **TLS fix precision.** Verified against `RISK-REGISTER.md` R8's exact wording (`pip install truststore` + `truststore.inject_into_ssl()`) — the plan's parenthetical had dropped the `inject_into_ssl()` call, making it inaccurate. Replaced with a pointer to `RISK-REGISTER.md` R8 for the full note rather than restating (and risking re-drifting) the workaround inline.
+
+### Round 4 — Codex (VERDICT: APPROVED)
+
+Same session resumed (`019f68ee-0633-7322-9615-07c14e56d52f`), given the Round 3 revisions.
+
+> No further material problems tied to the Node-to-Python switch. The Python runtime language is now internally consistent across runtime selection, dependency management, workspace structure, and scheduled execution, and the old TLS rationale has been demoted correctly to a risk-register reference instead of remaining as an architectural argument.
+
+VERDICT: APPROVED
+
+## Round 3–4 outcome
+
+**Converged in 2 rounds, as scoped.** Both Codex findings (interpreter/venv pinning missing from the scheduling contract; imprecise TLS-fix parenthetical) were accepted and fixed; Codex re-reviewed the same session and returned a clean `APPROVED` with no further findings tied to the language switch. Unlike the original Round 1–2 negotiation (which hit the round cap without a formal approval and required the human as tie-breaker), this scoped negotiation reached a genuine mutual sign-off between Claude and Codex within the 2-round budget. `AgentColabPlan.md` now correctly and completely reflects Python as the implementation language throughout — runtime selection, dependency management (`.venv/` + `requirements.txt`), workspace structure, and scheduled execution are all internally consistent. Human final sign-off on this round is still the closing step, per the plan's own review protocol ("Human (you): approves the converged plan").
