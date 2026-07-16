@@ -18,12 +18,20 @@ loops_enabled:
 ## Domain & repo
 
 - Website: acceleratedrehabtherapy.com
-- Repo: `D:\artwebsite` (declared here; the runner may only read/write inside this repo and `projects/art/` — boundary checked via resolved canonical paths, symlinks/junctions included)
+- Repo: `D:\artwebsite` (declared here only so `tools/lib/paths.py`'s boundary check has a defined path to reference — this loop's tooling does not currently read or write anything inside `D:\artwebsite`, ever; every artifact this loop produces lives under `projects/art/`)
 - **Deploy behavior: this repo auto-deploys on push with no staging gate.** Per `RISK-REGISTER.md` R6, every push to `D:\artwebsite` is **Tier 2 (public, human-only)**, regardless of branch. No loop tooling in this workspace is ever authorized to push to it — Tier 1 `applied` proposals for this project have no repo to land in until a staging gate exists, so in practice this loop stays propose-only/manual-apply indefinitely unless that changes.
 
 ## Goals
 
 More organic leads and phone calls for the clinic, by improving Search Console position and click-through on pages with lead intent (service pages, location pages) rather than chasing position on low-value/informational pages.
+
+## Priority reference pages (first report)
+
+**Documentation only — this is a review aid for Nate, not a spec-level filter.** The SEO loop still generates proposals from *all* pages GSC returns, ranked by clicks (see `run_loop.py`'s `_pick_new_actions`); nothing in the tooling restricts candidates to this list. Its purpose is to give Nate a fast way to judge whether the first report's proposals land on pages that actually matter for lead generation, versus branded/informational/low-value pages that happen to rank.
+
+- **Tier 1 (primary focus for the first report):** `/physical-therapy/`, `/auto-injury/`, `/work-comp/`, `/chiropractor/`, `/massage/`, `/acupuncture/`
+- **Tier 2 (secondary, if it comes up):** `/shockwave-therapy-denver/`, `/shockwave-therapy-greeley/`, `/shockwave-therapy-plantar-fasciitis/`, `/chronic-tendon-pain-treatment/`, `/non-surgical-pain-relief-denver/`
+- **Priority query themes:** physical therapy greeley/denver, chiropractor greeley/denver, auto injury treatment greeley/denver, work comp injury care greeley/denver, massage therapy greeley/denver, acupuncture greeley/denver, shockwave therapy denver/greeley, plantar fasciitis shockwave therapy, chronic tendon pain treatment, non-surgical pain relief denver
 
 ## Guardrails / caps
 

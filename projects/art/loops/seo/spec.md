@@ -20,17 +20,20 @@ metrics_window_days: 28
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1
-    rollback: revert PR
+    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    manual_approval_only: true
     observation_window_days: 14
     min_sample_size: 100
   - type: meta-description-rewrite
     tier: 1
-    rollback: revert PR
+    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    manual_approval_only: true
     observation_window_days: 14
     min_sample_size: 100
   - type: internal-link-addition
     tier: 1
-    rollback: revert PR
+    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    manual_approval_only: true
     observation_window_days: 21
     min_sample_size: 150
 approval_mode: propose-only
@@ -53,6 +56,6 @@ Validated with:
 
 ## Notes
 
-- Starts `inputs: [gsc]` only. GSC is the primary metrics source (clicks/impressions/sample size). No seed keyword/page list — the loop discovers ranking pages from live GSC data on its first run and proposes changes on the ones with the most traffic. `dataforseo` may be enabled later for independent `serp_position` verification, once the first GSC-only reports look right.
+- Starts `inputs: [gsc]` only. GSC is the primary metrics source (clicks/impressions/sample size). No seed keyword/page list constrains what the loop proposes — it discovers ranking pages from live GSC data on its first run and proposes changes on the ones with the most traffic. `project.md`'s "Priority reference pages" section lists the lead-intent pages/queries Nate should judge the first report's proposals against; it's a review aid only, not a spec-level filter. `dataforseo` may be enabled later for independent `serp_position` verification, once the first GSC-only reports look right.
 - Repo `D:\artwebsite` auto-deploys on push with no staging gate — every push is Tier 2, human-only (see `project.md` and `RISK-REGISTER.md` R6). This loop's tooling never reads or writes that repo.
-- `approval_mode: propose-only` — the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports.
+- `approval_mode: propose-only` — the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports. Even then, these `allowed_actions` are `manual_approval_only: true` with no automated rollback path, since `D:\artwebsite` has no staging gate — any real apply/rollback for this project is a manual, human action, not a `tools/apply.py` transition.
