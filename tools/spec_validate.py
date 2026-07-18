@@ -169,6 +169,11 @@ def validate_spec_object(spec):
                 if not is_non_empty_string(v):
                     errors.append(f"credential_aliases.{k} must be a non-empty opaque alias string")
 
+    if spec.get("keyword_exclusions") is not None:
+        exclusions = spec["keyword_exclusions"]
+        if not isinstance(exclusions, list) or not all(is_non_empty_string(t) for t in exclusions):
+            errors.append("keyword_exclusions must be an array of non-empty strings if present")
+
     return {"valid": len(errors) == 0, "errors": errors}
 
 
@@ -261,6 +266,8 @@ guardrail_metrics: []
     no_dfs_alias = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("  dataforseo: acme-dataforseo-read\n", ""))))
     bad_device = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "device": "toaster"})
     typo_input = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "inputs": ["gscc", "dataforseo"]})
+    good_exclusions = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "keyword_exclusions": ["accelerate health"]})
+    bad_exclusions = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "keyword_exclusions": ["ok", ""]})
     mock_only = yaml.safe_load(extract_frontmatter(good))
     mock_only["inputs"] = ["mock"]
     for key in ("site_url", "metrics_window_days", "targets"):
@@ -282,6 +289,8 @@ guardrail_metrics: []
         ("invalid device enum is rejected", any("device" in e for e in bad_device["errors"])),
         ("typo'd connector name in inputs is rejected pre-run", any('"gscc" is not a known connector' in e for e in typo_input["errors"])),
         ("mock-only spec needs none of the connector fields", mock_only_result["valid"] is True),
+        ("valid keyword_exclusions list is accepted", good_exclusions["valid"] is True),
+        ("keyword_exclusions with an empty string is rejected", any("keyword_exclusions" in e for e in bad_exclusions["errors"])),
     ]
 
     shutil.rmtree(tmp, ignore_errors=True)

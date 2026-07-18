@@ -459,6 +459,24 @@ def test_gsc_connector_failure_clean_partial():
     check("gsc failure: lock released", not os.path.exists(os.path.join(loop_dir, "run.lock")))
 
 
+def test_keyword_exclusions_filters_candidates():
+    reset_fixture()
+    excluded_spec = GOOD_SPEC.replace(
+        "inputs:\n  - mock\n",
+        'inputs:\n  - mock\nkeyword_exclusions:\n  - "ai marketing"\n',
+    )
+    _write_spec(excluded_spec)
+    result = run_loop(PROJECT, LOOP, scenario="normal")
+    check("keyword_exclusions: run still succeeds", result["status"] == "ok")
+    created = result["run_json"]["proposals_created"]
+    check("keyword_exclusions: still creates a proposal", len(created) == 1)
+    with open(os.path.join(loop_dir, "pending", f"{created[0]}.json"), "r", encoding="utf-8") as f:
+        prop = json.load(f)
+    check("keyword_exclusions: excluded keyword not picked", "ai marketing" not in prop["target"]["keyword"])
+    check("keyword_exclusions: next-best candidate picked instead", prop["target"]["keyword"] == "best loop agency")
+    check("keyword_exclusions: exclusion count surfaced in decisions", any("keyword_exclusions filtered" in d for d in result["run_json"]["decisions"]))
+
+
 def main():
     test_spec_validation_rejects_bad_spec()
     test_lock_refusal_and_stale_recovery()
@@ -471,6 +489,7 @@ def main():
     test_gsc_dispatch_offline()
     test_gsc_dataforseo_merge()
     test_gsc_connector_failure_clean_partial()
+    test_keyword_exclusions_filters_candidates()
 
     _force_rmtree(project_dir)
 

@@ -17,6 +17,8 @@ inputs:
   # - dataforseo   # enable only after the first GSC-only reports are reviewed
 site_url: "sc-domain:acceleratedrehabtherapy.com"
 metrics_window_days: 28
+keyword_exclusions:
+  - "accelerate health"
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1
@@ -60,3 +62,4 @@ Validated with:
 - Repo `D:\Dev\artwebsite` auto-deploys on push with no staging gate - every push is Tier 2, human-only (see `project.md` and `RISK-REGISTER.md` R6). This loop's tooling never reads or writes that repo.
 - `approval_mode: propose-only` - the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports. Even then, these `allowed_actions` are `manual_approval_only: true` with no automated rollback path, since `D:\Dev\artwebsite` has no staging gate - any real apply/rollback for this project is a manual, human action, not a `tools/apply.py` transition.
 - `project.md`'s Goals and "Priority reference pages" sections also note Answer Engine Optimization (AEO) as a review consideration for these lead-intent pages. No new guardrail, metric, or connector exists for AEO - GSC and DataForSEO don't report AI-answer-engine citations - so this is documentation/reviewer guidance only, not something `run_loop.py` measures, filters, or acts on differently.
+- `keyword_exclusions: ["accelerate health"]` - the first real run (2026-07-18) surfaced GSC query rows for "Accelerate Health," an unrelated Denver business, alongside this domain's own data (GSC's domain-property report has no relevance filter; it includes every query with even one impression, however tangential). All 3 draft proposals from that run were built on this branded noise and were rejected. This filter drops any keyword candidate containing the term (case-insensitive substring) before proposal picking - see `tools/run_loop.py`'s `_pick_new_actions`.

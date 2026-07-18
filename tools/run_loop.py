@@ -286,6 +286,17 @@ def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
     candidates = [k for k in metrics["keywords"] if _target_key({"page": k["page"]}) not in cooling_down]
     # Real connector rows can carry None fields (e.g. a SERP-only row has no clicks).
     candidates = [k for k in candidates if k["position"] is not None and 3 < k["position"] <= 20]
+
+    # Project-configured relevance filter: drop candidates whose keyword text
+    # matches a known irrelevant/noise term (e.g. an unrelated business's brand
+    # name that shows up in this domain's GSC query data) before ranking.
+    exclusions = [t.lower() for t in (spec.get("keyword_exclusions") or [])]
+    excluded_count = 0
+    if exclusions:
+        before = len(candidates)
+        candidates = [k for k in candidates if not any(term in (k.get("keyword") or "").lower() for term in exclusions)]
+        excluded_count = before - len(candidates)
+
     candidates.sort(key=lambda k: k["clicks"] or 0, reverse=True)
 
     proposals = []
@@ -315,7 +326,7 @@ def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
                 "applied_at": None,
             }
         )
-    return proposals
+    return proposals, excluded_count
 
 
 def run_loop(project_slug, loop_name, scenario="normal", _resolve_credential=None, _http_post=None):
@@ -449,7 +460,9 @@ def run_loop(project_slug, loop_name, scenario="normal", _resolve_credential=Non
         if new_state["status"] == "paused-breach":
             eval_decisions.append("BLOCKED: loop is paused-breach — no new proposals until a human resolves the failed experiment via /review-pending")
         else:
-            new_proposals = _pick_new_actions(spec, metrics, still_cooling_down, run_id, now)
+            new_proposals, excluded_count = _pick_new_actions(spec, metrics, still_cooling_down, run_id, now)
+            if excluded_count:
+                eval_decisions.append(f"keyword_exclusions filtered {excluded_count} candidate(s)")
             for p in new_proposals:
                 _write_proposal(pending_dir, p)
 
