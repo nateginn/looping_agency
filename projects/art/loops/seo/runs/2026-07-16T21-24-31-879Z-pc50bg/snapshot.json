@@ -1,0 +1,14 @@
+{
+  "source": "gsc",
+  "site_url": "sc-domain:acceleratedrehabtherapy.com",
+  "pulled_at": "2026-07-16T21:24:32.680890Z",
+  "credential_alias": "art-gsc-readonly",
+  "sample_size": 0,
+  "keywords": [],
+  "secretMap": {
+    "art-gsc-readonly": "[REDACTED:art-gsc-readonly]"
+  },
+  "sources": [
+    "gsc"
+  ]
+}

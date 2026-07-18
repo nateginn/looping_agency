@@ -1,0 +1,33 @@
+{
+  "run_id": "2026-07-18T22-12-26-323Z-b8xtu9",
+  "project": "art",
+  "loop": "seo",
+  "start": "2026-07-18T22:12:26.323688Z",
+  "end": "2026-07-18T22:12:27.028877Z",
+  "status": "ok",
+  "tool_calls": [
+    {
+      "tool": "gsc",
+      "args": {
+        "site_url": "sc-domain:acceleratedrehabtherapy.com",
+        "start_date": "2026-06-21",
+        "end_date": "2026-07-18"
+      },
+      "at": "2026-07-18T22:12:27.024936Z",
+      "ok": true
+    }
+  ],
+  "credential_alias_used": {
+    "gsc": "art-gsc-readonly"
+  },
+  "decisions": [],
+  "proposals_created": [
+    "prop-2026-07-18T22-12-26-323Z-b8xtu9-0",
+    "prop-2026-07-18T22-12-26-323Z-b8xtu9-1",
+    "prop-2026-07-18T22-12-26-323Z-b8xtu9-2"
+  ],
+  "proposals_evaluated": [],
+  "stale_proposals": [],
+  "snapshot": "runs\\2026-07-18T22-12-26-323Z-b8xtu9\\snapshot.json",
+  "final_status": "ok"
+}

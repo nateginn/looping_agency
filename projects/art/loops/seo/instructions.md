@@ -16,4 +16,4 @@ This loop follows the run contract in the root `CLAUDE.md` verbatim. Nothing her
 
 ## Rollback
 
-Every SEO action type in `spec.md` reverts via "revert PR" — i.e. the Tier-1 `applied` transition for this loop is a PR branch, and reverting means closing/reverting that PR. No SEO action type in this template lacks a clean rollback; if you add one that doesn't, mark it `manual_approval_only: true` in the spec.
+No automated apply/PR path exists for this project — `D:\Dev\artwebsite` has no staging gate and no loop tooling may push to it. Every `allowed_action` in `spec.md` is `manual_approval_only: true`; any live change and its reversal are made by Nate directly, by hand.

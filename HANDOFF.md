@@ -4,7 +4,7 @@ Read this before touching anything else. It replaces needing to scroll a long pr
 
 ## Resume here
 
-**Nothing is uncommitted.** Steps 0–5 of the accepted Phase 2 execution plan are done, committed, and pushed to `origin/master`. **Step 6 — live smoke test against project `art`, then its first real run — is the next and only remaining step, and it has not started.** No open question blocks it; it was paused purely because the human wanted to stop for the night and pick it up in a fresh session. Start there.
+**Step 6 is done.** Steps 0–5 of the accepted Phase 2 execution plan were done, committed, and pushed to `origin/master` on 2026-07-16. Step 6 (live smoke test against `art`, then its first real run) completed 2026-07-18 — see "Step 6 — completed" below. `art`'s SEO loop now has one real report with 3 draft proposals awaiting Nate's `/review-pending` decision; that review is the next action, not part of this plan's automated scope.
 
 ## Status as of 2026-07-16 (end of the Phase-2-onboarding session)
 
@@ -41,10 +41,15 @@ Decisions the user already made — do not re-ask, and note how each played out:
 ### Steps 0–5 — DONE (see commit list above)
 Framework review closeout, credential resolver, real-connector wiring, connectors-only smoke test, service-account JSON support, and onboarding `art` are all committed and pushed. Do not re-plan or redo any of this.
 
-### Step 6 — Live smoke test, then first run (NEXT — not started)
-1. `./.venv/Scripts/python.exe tools/smoke_test.py art` → Nate reviews and accepts (checklist §5). This makes one real, read-only call to Search Console using the stored credential and prints a redacted summary — it writes nothing to disk and takes no lock.
-2. First real run: `./.venv/Scripts/python.exe tools/run_loop.py art seo` — recommendations only; summarize `report.md` for him.
-3. Update `PHASE2_READINESS_CHECKLIST.md` §5 statuses; add a `RISK-REGISTER.md` note that Phase 2 kickoff was explicitly user-authorized 2026-07-16; update this file; commit.
+### Step 6 — Live smoke test, then first run (COMPLETE — 2026-07-18)
+1. `./.venv/Scripts/python.exe tools/smoke_test.py art` — first attempt 2026-07-16 returned HTTP 200 OK but 0 rows (Search Console still processing data for the newly-verified property); retried 2026-07-18 and returned 177 real rows, auth OK. Reviewed and accepted.
+2. First real run: `./.venv/Scripts/python.exe tools/run_loop.py art seo` — also has two data points:
+   - 2026-07-16T21:24:31.879Z (`run 2026-07-16T21-24-31-879Z-pc50bg`): `status: ok`, but `sample_size: 0`/0 keyword rows (GSC hadn't indexed data yet, same cause as the smoke test's 0-row result that day) → 0 proposals, a legitimate empty outcome, not a failure.
+   - 2026-07-18T22:12:26.323Z (`run 2026-07-18T22-12-26-323Z-b8xtu9`): `status: ok`, `sample_size: 451`, ~187 keyword rows → **3 draft proposals created**: `title-tag-rewrite` and `meta-description-rewrite` on `http://acceleratedrehabtherapy.com/` (home page, two different low-traffic keywords), and `internal-link-addition` on `/auto-injury/`. All Tier 1, `manual_approval_only: true`, `pending/` review awaiting Nate.
+   - Note for review: the first two proposals target the same page (home) via different action types — not a tooling conflict, but worth Nate's attention since GSC's http/https variants of the home page show up as separate rows and most candidate keywords in this window have 0 clicks (very early/sparse data), so the "top-clicks" ordering was effectively a tie-break among near-equal candidates this first cycle.
+3. `PHASE2_READINESS_CHECKLIST.md` §5 flipped to `[x]`; `RISK-REGISTER.md` note added (Phase 2 kickoff explicitly user-authorized 2026-07-16; Step 6 completed 2026-07-18); this file updated; committed and pushed.
+
+**Next action for Nate:** `/review-pending art seo` to approve/reject/hold the 3 draft proposals. No apply path exists for this project regardless of decision — any real change is made by hand in `D:\Dev\artwebsite`.
 
 ### Out of scope for this plan
 Content-social/ads loops; any Tier-1 apply against `art` (propose-only until Nate reviews the first two reports — and `art` has no working apply path at all regardless, per the Codex-review fix above); any push to `D:\Dev\artwebsite` (Tier 2, always); Task Scheduler registration (after first manual runs look right); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only).

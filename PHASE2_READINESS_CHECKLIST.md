@@ -71,12 +71,14 @@ Status terms:
 
 ## 5. Required live verification before first real loop
 
-- [ ] A connectors-only live smoke test has been run against the first project's
-      lowest-risk credentials.
-- [ ] The smoke test has verified authentication works.
-- [ ] The smoke test has verified expected quota/headroom behavior.
-- [ ] The smoke test has verified partial-failure handling and clean logging.
-- [ ] The smoke test results have been reviewed by a human and accepted.
+- [x] A connectors-only live smoke test has been run against the first project's
+      lowest-risk credentials. (2026-07-16: HTTP 200 OK, 0 rows — property still processing.
+      Retried 2026-07-18: 177 rows.)
+- [x] The smoke test has verified authentication works.
+- [x] The smoke test has verified expected quota/headroom behavior.
+- [x] The smoke test has verified partial-failure handling and clean logging
+      (bad-alias simulation returns a clean, redacted refusal).
+- [x] The smoke test results have been reviewed by a human and accepted.
 
 ## 6. Phase 2 launch mode
 
@@ -84,8 +86,9 @@ Status terms:
       (`projects/art/loops/seo/spec.md`).
 - [x] The initial run cadence has been chosen and documented: weekly, Monday mornings
       (`schedule: "0 6 * * 1"`).
-- [ ] The first Phase 2 run is limited to recommendations-only behavior — guaranteed by
-      `propose-only` mode, but not yet observed, since no run has happened (Step 6).
+- [x] The first Phase 2 run is limited to recommendations-only behavior — observed directly:
+      the 2026-07-18 run produced 3 `draft` proposals in `pending/`, all `manual_approval_only: true`,
+      no `apply.py` invocation, no write outside `projects/art/`.
 - [x] No Tier 1 external writes are enabled before human review of the first two reports
       (enforced by `approval_mode: propose-only`; `art`'s `allowed_actions` are additionally
       `manual_approval_only: true` since there is no automated apply path for this project at all).
@@ -98,15 +101,13 @@ You are ready to start a real Phase 2 kickoff only when:
 - every item in sections 3, 4, 5, and 6 is either `[x]` or explicitly waived by the human
 - no new High-severity blocker has been added to `RISK-REGISTER.md`
 
-## Current objective assessment as of 2026-07-16
+## Current objective assessment as of 2026-07-18
 
-- `Sections 1, 2, 3, 4, and 6:` ready
-- `Section 5:` not ready yet — this is the pending Step 6 action (live smoke
-  test against `art`, not yet run)
+- `Sections 1-6:` all ready — Step 6 (live smoke test + first real run) completed 2026-07-18.
 
 So the current answer is:
 
 - **Ready for Phase 2 planning and authorization:** yes
-- **Ready to run the live smoke test and first real run (`art`):** yes, as
-  soon as a human is present to review the smoke test output — see
-  `HANDOFF.md` "Resume here" / Step 6.
+- **Live smoke test and first real run (`art`):** done — see `HANDOFF.md`
+  "Resume here" / Step 6 for both run dates and outcomes.
+- **Next action:** Nate reviews the 3 draft proposals via `/review-pending art seo`.
