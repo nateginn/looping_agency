@@ -4,7 +4,9 @@ Read this before touching anything else. It replaces needing to scroll a long pr
 
 ## Resume here
 
-**Step 6 is done.** Steps 0–5 of the accepted Phase 2 execution plan were done, committed, and pushed to `origin/master` on 2026-07-16. Step 6 (live smoke test against `art`, then its first real run) completed 2026-07-18 — see "Step 6 — completed" below. `art`'s SEO loop now has one real report with 3 draft proposals awaiting Nate's `/review-pending` decision; that review is the next action, not part of this plan's automated scope.
+**Phase 3 shipped 2026-07-21 (see "Phase 3" section below) — read that before anything else if you're picking this up fresh.** The auto-implement + verify-loop capability is built, tested (73/73), and pushed (`59f40f8`), but **not yet activated for `art`** — `art` is still `propose-only` with `manual_approval_only: true` on every action, unchanged. `art` also has **6 undecided draft proposals** sitting in `pending/` right now (two extra `run_loop.py art seo` runs on 2026-07-21, on top of the 3 from 2026-07-18 that were already reviewed and rejected — see R9/keyword_exclusions history below). Nate has not yet run `/review-pending art seo` on these 6. No Task Scheduler job exists yet either — `art seo` only runs when someone types the command by hand (`PHASE3-SCHEDULING.md` has the ready-to-run `schtasks` commands, deliberately never executed by tooling).
+
+**Step 6 is done.** Steps 0–5 of the accepted Phase 2 execution plan were done, committed, and pushed to `origin/master` on 2026-07-16. Step 6 (live smoke test against `art`, then its first real run) completed 2026-07-18 — see "Step 6 — completed" below.
 
 ## Status as of 2026-07-16 (end of the Phase-2-onboarding session)
 
@@ -49,10 +51,21 @@ Framework review closeout, credential resolver, real-connector wiring, connector
    - Note for review: the first two proposals target the same page (home) via different action types — not a tooling conflict, but worth Nate's attention since GSC's http/https variants of the home page show up as separate rows and most candidate keywords in this window have 0 clicks (very early/sparse data), so the "top-clicks" ordering was effectively a tie-break among near-equal candidates this first cycle.
 3. `PHASE2_READINESS_CHECKLIST.md` §5 flipped to `[x]`; `RISK-REGISTER.md` note added (Phase 2 kickoff explicitly user-authorized 2026-07-16; Step 6 completed 2026-07-18); this file updated; committed and pushed.
 
-**Next action for Nate:** `/review-pending art seo` to approve/reject/hold the 3 draft proposals. No apply path exists for this project regardless of decision — any real change is made by hand in `D:\Dev\artwebsite`.
+**Superseded — see "Phase 3" section below for current next-action.** (Historical note: the 3 proposals from the 2026-07-18 run were reviewed and rejected 2026-07-18 — see R9/keyword_exclusions in `RISK-REGISTER.md` and the `30cc05f` commit. They were built on "Accelerate Health" branded noise; a `keyword_exclusions` filter was added and set for `art` as a result.)
 
 ### Out of scope for this plan
-Content-social/ads loops; any Tier-1 apply against `art` (propose-only until Nate reviews the first two reports — and `art` has no working apply path at all regardless, per the Codex-review fix above); any push to `D:\Dev\artwebsite` (Tier 2, always); Task Scheduler registration (after first manual runs look right); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only).
+Content-social/ads loops; Task Scheduler registration (commands documented in `PHASE3-SCHEDULING.md`, deliberately never executed by tooling); enabling `dataforseo` for `art` (deferred until the first GSC-only reports are reviewed); any AEO-specific connector/guardrail (deferred until a real AEO data source exists — today's AEO addition is reviewer guidance only). Auto-implement + push-to-live for `art` specifically is now a **capability** (Phase 3, see below) but not yet an **activated** one — that's a separate human decision, not implied by shipping the code.
+
+## Phase 3 — auto-implement approved proposals, close the verify loop (COMPLETE, shipped 2026-07-21)
+
+**What shipped:** once a human approves a Tier-1 title-tag-rewrite or meta-description-rewrite proposal (internal-link-addition stays manual — no safe automated edit strategy), `apply.py` now writes the change as a commit on an isolated local git branch inside `D:\Dev\artwebsite` (never pushes — `git worktree`, so Nate's own checkout is never touched). A new read-only GitHub compare-API check detects when Nate has pushed it live and promotes the proposal to `applied`, which unblocks `run_loop.py`'s previously-dead verification logic (`_evaluate_prior_experiments`) to actually measure before/after Google position. Full design history in `PLAN.md` + `PLAN-REVIEW-LOG.md` (4 rounds of adversarial Codex plan review, then a Codex build with 2 fix rounds, all independently re-verified — 73/73 tests, up from 54, plus 4 module `--verify` self-tests). Pushed as `59f40f8`.
+
+**What did NOT change:** `art` is still `propose-only`, still `manual_approval_only: true` on every action. Nothing auto-implements for `art` today — the capability exists but two separate spec edits (flip `approval_mode: tier1-enabled`, remove `manual_approval_only` per action) are required to actually activate it, and that's explicitly a human decision, not bundled into this ship.
+
+**Next action for Nate:**
+1. `/review-pending art seo` — 6 undecided draft proposals are sitting in `pending/` (from the two 2026-07-21 runs), all still `draft`, none reviewed.
+2. Separately: decide whether/when to activate Phase 3 auto-implement for `art` (the two spec edits above) — no rush, the capability isn't going anywhere.
+3. Separately: decide whether to register the Task Scheduler jobs in `PHASE3-SCHEDULING.md` (weekly `art seo` run + daily watchdog) — currently nothing runs `art seo` except by hand.
 
 ### Verification bar
 All module `--verify` self-tests + exit-criteria suite (49/49) through `.venv/Scripts/python.exe`, no network. Live smoke test reviewed by Nate before the first real run; first run produces valid redacted `run.json`/`report.md` with zero writes outside `projects/art/`.
@@ -61,15 +74,15 @@ All module `--verify` self-tests + exit-criteria suite (49/49) through `.venv/Sc
 
 - **Never introduce a non-Python implementation language without the user's explicit prior approval** (R8 lesson; standing memory rule).
 - **Never ask the user to paste a raw secret into chat**; never write one to any repo file. Aliases only.
-- Never touch `D:\Dev\artwebsite` — auto-deploys on push, Tier 2/human-only, always (R6).
-- `art` stays `propose-only` until the user has reviewed its first two reports.
+- `D:\Dev\artwebsite`: pushing/merging/updating a remote-tracking branch is Tier 2/human-only, always (R6) — no exceptions. Since Phase 3 (2026-07-21), tooling *may* write a local, unpushed commit/branch there via an isolated `git worktree` for an approved, non-`manual_approval_only` proposal — but only once a spec has explicitly opted in. Never assume this is active for a project without checking its `spec.md`.
+- `art` stays `propose-only` (every action `manual_approval_only: true`) until Nate explicitly changes that in `spec.md` — not implied by anything shipping in `tools/`.
 - Don't attempt to work around a harness safety-classifier hard block — stop and hand it to the user.
 
 ## Fast sanity checks
 
 ```
-./.venv/Scripts/python.exe tools/tests/phase1_exit_criteria.py   # all PASS, 49/49
-./.venv/Scripts/python.exe tools/smoke_test.py art                # Step 6.1 — the literal next command to run
+./.venv/Scripts/python.exe tools/tests/phase1_exit_criteria.py   # all PASS, 73/73
+./.venv/Scripts/python.exe tools/review_pending.py art seo --list  # 6 undecided draft proposals as of 2026-07-21
 git log --oneline                                                  # see what's committed
 git status                                                          # should be clean
 git remote -v                                                       # origin -> github.com/nateginn/looping_agency
