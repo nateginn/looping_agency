@@ -18,8 +18,8 @@ loops_enabled:
 ## Domain & repo
 
 - Website: acceleratedrehabtherapy.com
-- Repo: `D:\Dev\artwebsite` (declared here only so `tools/lib/paths.py`'s boundary check has a defined path to reference — this loop's tooling does not currently read or write anything inside `D:\Dev\artwebsite`, ever; every artifact this loop produces lives under `projects/art/`)
-- **Deploy behavior: this repo auto-deploys on push with no staging gate.** Per `RISK-REGISTER.md` R6, every push to `D:\Dev\artwebsite` is **Tier 2 (public, human-only)**, regardless of branch. No loop tooling in this workspace is ever authorized to push to it — Tier 1 `applied` proposals for this project have no repo to land in until a staging gate exists, so in practice this loop stays propose-only/manual-apply indefinitely unless that changes.
+- Repo: `D:\Dev\artwebsite` (declared here so `tools/lib/paths.py`'s boundary check has a defined path to reference — this loop's tooling may create a local branch/worktree and commit there for approved Tier 1 proposals, but it never pushes, merges, fetches, or updates remote-tracking branches in that repo; every artifact this loop produces lives under `projects/art/`)
+- **Deploy behavior: this repo auto-deploys on push with no staging gate.** Per `RISK-REGISTER.md` R6, every push to `D:\Dev\artwebsite` is **Tier 2 (public, human-only)**, regardless of branch. No loop tooling in this workspace is ever authorized to push to it — the automated boundary for this project is local commit/branch creation only, with any live push/merge performed by Nate by hand.
 
 ## Goals
 
@@ -50,4 +50,4 @@ These same pages are the priority AEO pages too. When reviewing title-tag, meta-
 
 ## Loops enabled
 
-- `seo` — `propose-only`. Runs weekly (Monday mornings). Reviewer: Nate (project owner). Will move to `tier1-enabled` only after Nate reviews the first two reports — and even then, Tier-1 `applied` proposals have nowhere to land until `D:\Dev\artwebsite` gets a staging gate (see Deploy behavior above), so this is expected to stay a recommendations-only loop for the foreseeable future.
+- `seo` — `propose-only`. Runs weekly (Monday mornings). Reviewer: Nate (project owner). Will move to `tier1-enabled` only after Nate reviews the first two reports — and even then, `manual_approval_only` remains the per-action switch that decides whether an approved proposal may be auto-implemented as a local commit/branch. Shipping the capability does not enable it for `art` by itself.

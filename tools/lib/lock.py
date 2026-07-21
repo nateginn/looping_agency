@@ -33,8 +33,8 @@ def _is_alive(pid):
     return True
 
 
-def lock_path_for(loop_dir):
-    return os.path.join(loop_dir, "run.lock")
+def lock_path_for(loop_dir, lock_name="run.lock"):
+    return os.path.join(loop_dir, lock_name)
 
 
 def make_run_id(now=None):
@@ -44,11 +44,11 @@ def make_run_id(now=None):
     return f"{iso}-{rand}"
 
 
-def acquire_lock(loop_dir, max_run_duration_minutes=None, runs_dir=None, now=None):
+def acquire_named_lock(loop_dir, lock_name, max_run_duration_minutes=None, runs_dir=None, now=None):
     """Returns {"acquired": True, "run_id": ..., "stale_recovered": {...}|None}
     or {"acquired": False, "reason": ..., "held_by": {...}}."""
     now = now or datetime.now(timezone.utc)
-    lock_path = lock_path_for(loop_dir)
+    lock_path = lock_path_for(loop_dir, lock_name=lock_name)
     stale_recovered = None
 
     if os.path.exists(lock_path):
@@ -97,14 +97,22 @@ def acquire_lock(loop_dir, max_run_duration_minutes=None, runs_dir=None, now=Non
     return {"acquired": True, "run_id": run_id, "stale_recovered": stale_recovered}
 
 
-def release_lock(loop_dir, run_id):
-    lock_path = lock_path_for(loop_dir)
+def acquire_lock(loop_dir, max_run_duration_minutes=None, runs_dir=None, now=None):
+    return acquire_named_lock(loop_dir, "run.lock", max_run_duration_minutes=max_run_duration_minutes, runs_dir=runs_dir, now=now)
+
+
+def release_named_lock(loop_dir, run_id, lock_name):
+    lock_path = lock_path_for(loop_dir, lock_name=lock_name)
     if not os.path.exists(lock_path):
         return
     with open(lock_path, "r", encoding="utf-8") as f:
         held = json.load(f)
     if held.get("runId") == run_id:
         os.remove(lock_path)
+
+
+def release_lock(loop_dir, run_id):
+    release_named_lock(loop_dir, run_id, "run.lock")
 
 
 def log_refusal(loop_dir, reason):
@@ -148,6 +156,11 @@ def _self_test():
     d = acquire_lock(tmp, max_run_duration_minutes=30, runs_dir=os.path.join(tmp, "runs"))
     results.append(("aged-out lock recovered as stale", d["acquired"] is True and d["stale_recovered"] is not None))
     release_lock(tmp, d["run_id"])
+
+    e = acquire_named_lock(tmp, "apply.lock", max_run_duration_minutes=240, runs_dir=os.path.join(tmp, "runs"))
+    results.append(("named lock acquires independently", e["acquired"] is True and os.path.exists(lock_path_for(tmp, "apply.lock"))))
+    release_named_lock(tmp, e["run_id"], "apply.lock")
+    results.append(("named lock release removes custom lockfile", not os.path.exists(lock_path_for(tmp, "apply.lock"))))
 
     shutil.rmtree(tmp, ignore_errors=True)
 

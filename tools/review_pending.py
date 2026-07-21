@@ -8,9 +8,9 @@ import sys
 from datetime import datetime, timezone
 
 try:
-    from .lib.paths import assert_within
+    from .lib.proposals import atomic_write_json, load_json, pending_dir_for, proposal_path
 except ImportError:
-    from lib.paths import assert_within
+    from lib.proposals import atomic_write_json, load_json, pending_dir_for, proposal_path
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)
@@ -20,15 +20,12 @@ TRANSITIONS = {
     "approve": {"from": ["draft", "reviewed"], "to": "approved"},
     "reject": {"from": ["draft", "reviewed", "approved"], "to": "rejected"},
     "review": {"from": ["draft"], "to": "reviewed"},
+    "retry": {"from": ["implement-failed"], "to": "approved"},
 }
 
 
 def _pending_dir_for(project, loop):
-    project_dir = os.path.join(PROJECTS_ROOT, project)
-    assert_within(PROJECTS_ROOT, project_dir, "project directory")
-    loop_dir = os.path.join(project_dir, "loops", loop)
-    assert_within(project_dir, loop_dir, "loop directory")
-    return os.path.join(loop_dir, "pending")
+    return pending_dir_for(project, loop)
 
 
 def list_proposals(project, loop):
@@ -39,15 +36,13 @@ def list_proposals(project, loop):
     for f in sorted(os.listdir(d)):
         if not f.endswith(".json"):
             continue
-        with open(os.path.join(d, f), "r", encoding="utf-8") as fh:
-            out.append(json.load(fh))
+        out.append(load_json(os.path.join(d, f)))
     return out
 
 
 def _write_proposal(project, loop, proposal):
     d = _pending_dir_for(project, loop)
-    with open(os.path.join(d, f'{proposal["id"]}.json'), "w", encoding="utf-8", newline="\n") as f:
-        json.dump(proposal, f, indent=2)
+    atomic_write_json(proposal_path(d, proposal["id"]), proposal)
 
 
 def decide(project, loop, proposal_id, action, by="human", note=""):
@@ -70,8 +65,7 @@ def resolve_breach(project, loop, by="human", note=""):
     project_dir = os.path.join(PROJECTS_ROOT, project)
     loop_dir = os.path.join(project_dir, "loops", loop)
     state_path = os.path.join(loop_dir, "state.json")
-    with open(state_path, "r", encoding="utf-8") as f:
-        state = json.load(f)
+    state = load_json(state_path)
     if state.get("status") != "paused-breach":
         raise ValueError(f'loop {loop} is not paused-breach (current status: {state.get("status")})')
     resolved = {
@@ -81,8 +75,7 @@ def resolve_breach(project, loop, by="human", note=""):
         "resolved_by": by,
         "resolution_note": note,
     }
-    with open(state_path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(resolved, f, indent=2)
+    atomic_write_json(state_path, resolved)
     return resolved
 
 
@@ -102,7 +95,7 @@ def _cli():
 
     if not project or not loop:
         print(
-            "usage: python tools/review_pending.py <project> <loop> --list | --review <id> | --approve <id> | --reject <id> [--reason r] | --resolve-breach [--reason r]",
+            "usage: python tools/review_pending.py <project> <loop> --list | --review <id> | --approve <id> | --reject <id> | --retry <id> [--reason r] | --resolve-breach [--reason r]",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -135,6 +128,11 @@ def _cli():
             pid = rest[idx + 1]
             p = decide(project, loop, pid, "reject", note=reason)
             print(f'rejected {p["id"]}')
+        elif "--retry" in rest:
+            idx = rest.index("--retry")
+            pid = rest[idx + 1]
+            p = decide(project, loop, pid, "retry", note=reason)
+            print(f'retried {p["id"]}')
         elif "--resolve-breach" in rest:
             state = resolve_breach(project, loop, note=reason)
             print(f'resolved breach, loop status now: {state["status"]}')

@@ -22,19 +22,19 @@ keyword_exclusions:
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1
-    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    rollback: 'local branch/commit only — Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand'
     manual_approval_only: true
     observation_window_days: 14
     min_sample_size: 100
   - type: meta-description-rewrite
     tier: 1
-    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    rollback: 'local branch/commit only — Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand'
     manual_approval_only: true
     observation_window_days: 14
     min_sample_size: 100
   - type: internal-link-addition
     tier: 1
-    rollback: 'no automated apply/PR path exists for this project — the artwebsite repo has no staging gate and no loop tooling may push to it; any live change and its reversal are made by Nate directly, by hand'
+    rollback: 'local branch/commit only — Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand'
     manual_approval_only: true
     observation_window_days: 21
     min_sample_size: 150
@@ -59,7 +59,7 @@ Validated with:
 ## Notes
 
 - Starts `inputs: [gsc]` only. GSC is the primary metrics source (clicks/impressions/sample size). No seed keyword/page list constrains what the loop proposes - it discovers ranking pages from live GSC data on its first run and proposes changes on the ones with the most traffic. `project.md`'s "Priority reference pages" section lists the lead-intent pages/queries Nate should judge the first report's proposals against; it's a review aid only, not a spec-level filter. `dataforseo` may be enabled later for independent `serp_position` verification, once the first GSC-only reports look right.
-- Repo `D:\Dev\artwebsite` auto-deploys on push with no staging gate - every push is Tier 2, human-only (see `project.md` and `RISK-REGISTER.md` R6). This loop's tooling never reads or writes that repo.
-- `approval_mode: propose-only` - the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports. Even then, these `allowed_actions` are `manual_approval_only: true` with no automated rollback path, since `D:\Dev\artwebsite` has no staging gate - any real apply/rollback for this project is a manual, human action, not a `tools/apply.py` transition.
+- Repo `D:\Dev\artwebsite` auto-deploys on push with no staging gate - every push is Tier 2, human-only (see `project.md` and `RISK-REGISTER.md` R6). This loop's tooling may create a local branch/worktree and commit there for approved Tier 1 proposals, but it never pushes, merges, fetches, or updates remote-tracking branches in that repo.
+- `approval_mode: propose-only` - the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports. Even then, each action's `manual_approval_only` flag is the real apply-time gate. For `art` today, all three actions remain `manual_approval_only: true`, so any real apply/rollback is still a manual, human action even though the codebase now supports local commit/branch creation for opted-in actions.
 - `project.md`'s Goals and "Priority reference pages" sections also note Answer Engine Optimization (AEO) as a review consideration for these lead-intent pages. No new guardrail, metric, or connector exists for AEO - GSC and DataForSEO don't report AI-answer-engine citations - so this is documentation/reviewer guidance only, not something `run_loop.py` measures, filters, or acts on differently.
 - `keyword_exclusions: ["accelerate health"]` - the first real run (2026-07-18) surfaced GSC query rows for "Accelerate Health," an unrelated Denver business, alongside this domain's own data (GSC's domain-property report has no relevance filter; it includes every query with even one impression, however tangential). All 3 draft proposals from that run were built on this branded noise and were rejected. This filter drops any keyword candidate containing the term (case-insensitive substring) before proposal picking - see `tools/run_loop.py`'s `_pick_new_actions`.
