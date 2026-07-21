@@ -148,3 +148,78 @@ Full suite after fixes: 49/49 exit-criteria checks + all module `--verify` self-
 3. **Low — ambiguous repo-access wording.** `project.md`'s repo line still carried generic template language ("the runner may only read/write inside this repo and `projects/art/`") immediately next to a line saying tooling is never authorized to touch that repo. Reworded to state plainly that this loop's tooling does not currently read or write anything inside `D:\artwebsite` — it's declared only so the path-boundary check has a defined reference, and every artifact this loop produces lives under `projects/art/`.
 
 Re-validated after the edits: `./.venv/Scripts/python.exe tools/spec_validate.py projects/art/loops/seo/spec.md` → `VALID`. No changes to `tools/*.py` or the exit-criteria suite — all three fixes are `art`-specific spec/doc edits.
+
+## Phase 3 plan — auto-implement on approval + verification loop (codex-review skill, MAX_ROUNDS=3)
+
+Started 2026-07-21 (session). Codex CLI 0.144.1, model gpt-5.4 (config default), reasoning effort medium. Plan under review: `PLAN.md` ("Phase 3 — auto-implement approved SEO proposals, close the verification loop").
+
+## Round 1 — Codex
+
+1. `applied_at` from GitHub commit timestamp treated as "went live" — wrong, commit time != push/deploy time; observation window starts too early, corrupting verified/breached results. Fix: use a true publish signal, not commit metadata.
+2. `GET /commits/main` cannot prove ancestry of a specific commit, and explicitly fails on the squash/rebase flows the plan itself admits are likely. Fix: pick one concrete detection contract (exact-commit fast-forward via compare API, or content-diff matching) and reject unsupported merge styles explicitly.
+3. New `implemented` status isn't threaded through the existing state machine (`review_pending.py` TRANSITIONS, `run_loop.py` cooldown/reporting) — will be invisible or mishandled by every consumer unless each is updated deliberately.
+4. Cooldown only tracks `status == "applied"` targets — will keep generating new drafts against pages already `approved`/`implemented`, causing branch conflicts and contradictory recommendations. Fix: extend in-flight exclusion to `approved` and `implemented`.
+5. No shared lock/atomic-write protocol between `apply.py`, `review_pending.py`, and `run_loop.py` on the same proposal JSON files — real race condition once a new concurrent writer (auto-implement) is added. Fix: require `tools/lib/lock.py`'s per-loop lock + atomic temp-file replace for every mutation path.
+6. `manual_approval_only` semantics left unresolved despite being meaningful policy already (`spec_validate.py`, `art`'s spec uses it on every action) — a policy footgun if shipped ambiguous. Fix: make it a hard, unconditional apply-time refusal in `apply.py`.
+7. Only title/meta have a concrete implementer design; `internal-link-addition` has no deterministic edit strategy or rollback story. Fix: scope Phase 3 auto-implement to title/meta only, keep internal-link-addition manual.
+8. Repo-recon-based page→location mapping is unverified from Codex's sandbox (artwebsite is outside this workspace) and brittle by construction if wrong. Fix: implementer must validate the target file/block at runtime and fail closed if the page structure doesn't match expectations.
+
+VERDICT: REVISE
+
+### Claude's response
+
+Accepted all 8 findings, no rejections. Revised `PLAN.md`:
+- Approach step 2: added a hard, unconditional `manual_approval_only` refusal in `apply.py` (#6); narrowed auto-implement scope to `title-tag-rewrite`/`meta-description-rewrite` only, `internal-link-addition` stays permanently manual (#7); implementer now resolves page→edit-location at runtime with a fail-closed `implement-failed` status instead of trusting a static map (#8); added the shared-lock + atomic-write requirement across `apply.py`/`review_pending.py`/`run_loop.py` (#5).
+- Approach step 3: replaced the vague "ancestor per the GitHub API" with a concrete contract — GitHub compare API (`compare/{sha}...main`, status `identical`/`ahead`), read-only (#2). `applied_at` now set from live-check detection time, never commit timestamp (#1). Documented the squash-merge/rebase blind spot explicitly as an accepted operational constraint (merge normally, don't squash) with a 3-cycle `stuck-implemented` surfacing fallback, rather than a silent gap.
+- New Approach step 4 (new-status integration, #3): explicit per-consumer breakdown — `review_pending.py` TRANSITIONS unchanged (implemented not human-reachable), `run_loop.py` cooldown extended to `approved`+`implemented` targets (#4), verification gate stays `applied`-only, unchanged.
+- Key decisions #2-#4, #6 firmed up from "leaning toward"/open to definite, matching the above.
+- Risks trimmed to what's genuinely still open: the squash-merge blind spot (now an accepted, documented constraint, not unsolved), stale/conflicting branch reuse on implementer retry, and MMC collector readiness.
+
+## Round 2 — Codex
+
+1. `implement-failed` has no defined recovery path — `apply.py`'s gate only accepts `status == "approved"`, so a failed implementation becomes terminal without hand-editing JSON. Fix: explicit retry transition.
+2. Git working-tree hygiene underspecified — writing commits directly into Nate's own `artwebsite` checkout risks capturing unrelated local changes or failing unpredictably if that tree is dirty/mid-merge/on another branch. Fix: clean-tree requirement or isolated worktree per branch.
+3. The per-loop lock (`tools/lib/lock.py`) is tuned for scheduled-run mutexing, not for a longer apply operation touching a second repo — no defined recovery contract if apply crashes mid-implementation. Fix: record branch/base/partial-progress before editing, with a deterministic cleanup/resume rule.
+4. `stuck-implemented` surfacing only at 3 run cycles means ~3 weeks of silence (weekly cadence) before a real detection failure becomes visible — too slow for an execution-state failure. Fix: immediate visibility on first missed detection, keep the 3-cycle threshold only for severity escalation.
+
+VERDICT: REVISE
+
+### Claude's response
+
+Accepted all 4 findings, no rejections. Revised `PLAN.md`:
+- Approach step 2: switched from "commit directly in D:\Dev\artwebsite" to an isolated `git worktree add ... -b seo/<id> main` per proposal (#2) — makes the working-tree-hygiene problem structurally impossible rather than just checked-for, never touches or requires anything of Nate's own checkout. Added `implement_attempt: {started_at, worktree_path, base_commit}` written via the locked atomic write *before* any git operation (#3), so a crash leaves a diagnosable trail and a deterministic stale-worktree cleanup + reset-to-`approved` rule. Added the missing recovery path (#1): `review_pending.py` gains `"retry": {"from": ["implement-failed"], "to": "approved"}`, human-gated re-queue after reading `implement_error`, not automatic.
+- Approach step 3: `stuck-implemented` visibility split into two tiers per Round 2 (#4) — "Awaiting live confirmation" shown in `report.md` from cycle 1, distinctly-flagged `stuck-implemented` escalation still at cycle 3+ (severity, not first-visibility).
+- Key decisions #7-10 added documenting the worktree choice, the write-before-git-op ordering, the human-gated retry, and the two-tier visibility timing.
+- Risks trimmed: the stale-branch-reuse risk is resolved by the worktree approach + implement_attempt record, no longer open.
+
+## Round 3 — Codex (final round, MAX_ROUNDS=3)
+
+1. Crash window can destroy real work: if `apply.py` crashes after creating the commit but before writing `implemented_commit_sha`, the Round 2 recovery rule would treat it as stale and delete a valid implementation. Fix: inspect the branch for an actual commit before cleanup; promote to `implemented` if found instead of blindly resetting.
+2. Reusing the run-cadence lock (`tools/lib/lock.py`, age-expiring against `max_run_duration_minutes`) for apply operations risks a scheduled `run_loop.py` "recovering" it as stale mid-implementation and mutating the same proposal set concurrently — reintroducing the race the lock was meant to prevent. Fix: dedicated apply-scoped lock, separate from the run lock.
+
+VERDICT: REVISE
+
+### Claude's response
+
+Accepted both findings, no rejections. Revised `PLAN.md`:
+- Approach step 2: crash recovery now inspects branch HEAD vs. `base_commit` before any cleanup — no advancement means safe to delete and reset to `approved`; any advancement means promote the existing commit to `implemented` instead of discarding it (#1).
+- Concurrency/locking split into a dedicated apply-scoped lock (separate name/TTL from the run-cadence lock), acquired by `apply.py` for the full implement attempt and briefly by `run_loop.py`'s live-detection status writes — never the run lock itself (#2).
+- Key decisions #11-12 added documenting both corrections.
+
+## Round 1-3 outcome — MAX_ROUNDS reached, no formal APPROVED
+
+**Not a deadlock in the disagreement sense** — every finding across all 3 rounds (8 + 4 + 2 = 14 total) was accepted by Claude, none disputed or rejected. The round cap was reached while Codex was still surfacing legitimate, decreasing-severity issues (broad architectural gaps in Round 1, narrower operational-recovery gaps in Round 2, subtle crash-ordering/lock-domain correctness in Round 3) — a trend toward convergence, not away from it, but not yet a clean `APPROVED`.
+
+Per the skill's deadlock protocol: surfacing this state explicitly to the human rather than presenting it as converged. `PLAN.md` (Round 3) reflects all 14 accepted fixes. No code has been written — per the skill, code only follows human sign-off at this gate.
+
+## Round 4 — Codex (extra round, human-approved extension past MAX_ROUNDS=3)
+
+> No material flaws found in this revision. The two remaining accepted limitations are explicit rather than hidden: squash/rebase detection blindness is documented as an operational constraint, and MMC collector readiness is correctly treated as an external dependency rather than an implementation assumption. The state-machine recovery path, worktree isolation, crash promotion rule, and separate apply-scoped lock are now specified concretely enough to implement without inventing policy in code.
+>
+> Residual implementation risk is mostly test coverage, not plan soundness: the implementation should prove the new apply lock cannot race with the live-detection status write, and should include recovery tests for the "commit exists but JSON was not updated" path.
+
+VERDICT: APPROVED
+
+## Final outcome
+
+**Converged in 4 rounds** (1 over the original MAX_ROUNDS=3 cap; human explicitly approved spending a 4th round rather than stopping at the Round 3 near-miss). 16 total findings across the argument, all accepted by Claude, zero disputed. `PLAN.md` is the final, mutually-approved Phase 3 plan. Codex flagged two items as test-coverage guidance for the build phase, not plan gaps: (1) a test proving the apply-scoped lock and the live-detection status write cannot race, (2) a recovery test for the "commit exists, JSON not yet updated" crash path. Human final sign-off on implementation approach (who builds it) is the next and last gate before any code is written.
