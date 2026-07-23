@@ -1,3 +1,78 @@
+# Plan Review Log: SEO monitoring & reporting expansion for `art`
+
+Act 1 (grill) complete — plan locked with the user 2026-07-23 (local). MAX_ROUNDS=5, raised to 6 by Nate after Round 5 to allow one confirmatory pass on the Local Pack vs. organic rank fix. PLAN_FILE=PLAN.md.
+
+Scope: geo/local rank tracking, backlink monitoring, and free technical/on-page health checks for the `art`/`seo` loop, reported through the loop's existing artifacts so MMC's briefing picks it up with no MMC-side changes. Full plan in `PLAN.md` (current top section).
+
+## Round 1 — Codex (VERDICT: REVISE)
+
+Reviewer: codex-cli 0.144.1, model gpt-5.4 (medium reasoning), read-only sandbox. Thread `019f8da1-cb09-79d3-8a3b-e696c7302cf6`.
+
+1. **Blocker** — hyperlocal (zip/radius) rank tracking may be unsupported by the wired DataForSEO SERP endpoint; the plan treated this as an implementation detail rather than a gating unknown. Fix: capability spike first, city/state fallback if unsupported.
+2. **Blocker** — "technical-only" runs weren't specified to skip `_evaluate_prior_experiments`/`_pick_new_actions`, which assume a GSC-shaped metrics payload; would break on a technical-only payload rather than just no-op. Fix: technical-only mode explicitly observe-only, skips both functions.
+3. **High** — `spec_validate.py`'s `KNOWN_INPUTS` and `run_loop.py`'s `_fetch_metrics` dispatch are two separate hardcoded lists that can drift; adding to one without the other lets a spec validate and then fail at run time. Fix: single connector registry driving both.
+4. **High** — `project.md`'s "Priority reference pages" is explicitly documentation-only prose today, not machine-readable; CWV/URL-inspection checks need real structured input. Fix: `priority_pages` moves into validated `spec.md` frontmatter.
+5. **High** — monthly footer scrape auto-rewriting `project.md` directly introduces scrape-driven config drift, dirty-git side effects, and races with human edits to a file otherwise treated as source-of-truth. Fix: scrape writes a generated file + flags the diff in `report.md`; human confirms before `project.md` changes.
+6. **Medium** — `run.json`'s `tool_calls` bloating with full connector payloads breaks the existing lightweight-metadata/detailed-`snapshot.json` split, risking oversized artifacts and noisier MMC summarization. Fix: `run.json` stays call-metadata-only; full data stays in `snapshot.json` only.
+7. **Medium** — folding sitemaps/URL-inspection into `gsc.py`'s existing `pull_metrics` undersells it as a small additive change when it's really a different endpoint family/auth/quota regime. Fix: separate functions, separate tests.
+8. **Medium** — "zero changes inside MMC" assumed MMC's summarizer reasons correctly about new sections/mixed freshness, unverified. Fix: explicit post-implementation check against a real artifact, still without modifying MMC.
+
+### Claude's response
+
+All 8 accepted, none rejected — every finding pointed at a real gap or an accurate technical claim about this codebase (verified `_fetch_metrics`'s hardcoded dispatch, `project.md`'s documentation-only priority-pages section, and `run.json`/`snapshot.json`'s existing lightweight/detailed split independently before agreeing). Revised `PLAN.md`: added Approach step 0 (capability spike + city/state fallback, gates the rest of the plan), step 2 now specifies a shared connector registry plus step 2a moving priority pages into `spec.md`, step 3 rewritten so the footer scrape writes a generated file and flags a diff rather than auto-editing `project.md`, step 4 now explicitly bypasses `_evaluate_prior_experiments`/`_pick_new_actions` in technical-only mode, step 6 corrected to keep `run.json` lightweight, step 1 splits new GSC functions out from `pull_metrics`, and a new step 8 verifies the MMC-delivery assumption post-implementation. Key decisions and Risks sections updated to match.
+
+## Round 2 — Codex (VERDICT: REVISE)
+
+Reviewer: same session (thread `019f8da1-cb09-79d3-8a3b-e696c7302cf6`), resumed read-only. Confirmed all 8 Round 1 findings addressed; 4 new findings:
+
+1. **Blocker** — Round 1's fix for priority-pages prose wasn't applied consistently: `locations` was still specified as a `## Locations` markdown section in `project.md`, the exact same brittle-authoritative-prose problem just rejected for priority pages, and this repo has no parser for structured markdown-body sections. Fix: `locations` into validated `spec.md` frontmatter, same as `priority_pages`.
+2. **High** — `additional_schedules[*].inputs` subsets weren't specified as individually schema-validated against the connector registry/required aliases; today's validator only checks top-level `spec.inputs` globally. Fix: validate each schedule entry as its own fully resolvable runnable mode.
+3. **Medium** — `attention_thresholds` as specified (`>5` position drop, "any decrease" in referring domains) fires on routine single-run noise in inherently noisy data (backlink counts, local SERPs). Fix: require sustained/material deltas, reusing `guardrail_metrics`'s existing `consecutive_runs` field.
+4. **Medium** — no versioned/sectioned schema for `snapshot.json`'s merged connector output; risk of ad hoc connector-specific branches growing over time. Fix: define `search_analytics`/`local_rank`/`backlinks`/`technical_health` top-level sections up front, each with its own `as_of`.
+
+### Claude's response
+
+All 4 accepted, none rejected. Revised `PLAN.md`: step 3 now puts `locations` in `spec.md` frontmatter (matching 2a's `priority_pages` treatment) with the monthly scrape writing to a generated file and flagging a diff, never auto-editing `spec.md` directly; step 4 adds explicit per-`additional_schedules`-entry validation against the connector registry; step 5's `attention_thresholds` now specify `consecutive_runs`-gated sustained deltas (CWV status-crossing kept as a same-run flag since it's a discrete state change, not a noisy metric); step 6 defines the sectioned `snapshot.json` schema (`search_analytics`/`local_rank`/`backlinks`/`technical_health`, each with its own `as_of`). Key decisions updated to match.
+
+## Round 3 — Codex (VERDICT: REVISE)
+
+Reviewer: same session, resumed read-only. Confirmed Round 2's 4 findings addressed; 1 new finding:
+
+1. **Medium** — `attention_thresholds` claimed to "reuse the existing `guardrail_metrics` shape" while also defining a CWV rule that's categorical (not threshold-like) and a referring-domain rule with an unresolved `>= N` placeholder — a real schema mismatch, since `spec_validate.py`'s guardrail shape is strictly numeric comparator/threshold/consecutive-runs. Fix: either a separate schema with explicit rule types and concrete defaults, or fully specify the encoding into the existing structure.
+
+### Claude's response
+
+Accepted. Verified `_validate_guardrail_metric` directly (`tools/spec_validate.py:39-51`) — confirmed it's numeric-only, no room for a categorical transition. Revised `PLAN.md` step 5: `attention_thresholds` is now its own explicit schema (distinct from `guardrail_metrics`), each entry typed by `kind` — `numeric_delta` (rank position, referring domains, both with concrete defaults and `consecutive_runs`) and `enum_transition` (CWV status, no `consecutive_runs`). Named the exact per-`kind` validation rules `spec_validate.py` would need to enforce.
+
+## Round 4 — Codex (VERDICT: APPROVED)
+
+Reviewer: same session, resumed read-only. Confirmed Round 3's finding addressed (typed `attention_thresholds` schema, concrete referring-domain default). No new material blocker found — remaining unknowns (DataForSEO capability, MMC delivery) are explicitly scoped as implementation-time verification steps, not hidden assumptions. Converged after 4 rounds (MAX_ROUNDS=5).
+
+## Post-approval update — new information, not a new review round's finding
+
+Nate supplied DataForSEO's actual API catalog after Round 4 approval. This resolved the plan's single biggest named risk (step 0's hyperlocal-tracking unknown) with a concrete product name rather than changing the plan's structure: **Business Data API → Google My Business** is the named candidate for zip/radius rank tracking (vs. the already-wired SERP API's city/state-only `location_code`). Also surfaced: `OnPage API → Lighthouse` as a noted-but-not-adopted CWV alternative to free Google PSI, and `AI Optimization API → LLM Mentions` as a separate, out-of-scope discovery that contradicts a standing "no AEO data source exists" note elsewhere in the repo (`art/spec.md`, `HANDOFF.md`) — flagged in Out of Scope for a future conversation, not pulled into this plan. Revised `PLAN.md` step 0, step 1, the DataForSEO Risks bullet, and Out of Scope accordingly. Sending Round 5 to Codex as a confirmatory check since step 0 and step 1 both changed wording (though not structure).
+
+## Round 5 — Codex (VERDICT: REVISE)
+
+Reviewer: same session, resumed read-only. New finding on the post-approval update:
+
+1. **Blocker** — the plan named Business Data API → Google My Business as the hyperlocal rank product without confirming it measures the same thing as the existing organic-page rank tracking. Google My Business rank is very likely Local Pack/Maps position (business-listing rank among nearby competitors, not tied to a URL) — a different metric family from organic 1-100 page rank. If step 0 confirms this, the plan needs to model it as a distinct schema/threshold, not silently reuse `rank_position`/`baseline_position`, or thresholds and reporting will compare unlike signals. Everything else in the update (capability-spike framing, PSI-vs-Lighthouse scoping, AEO correctly pushed out of scope) was confirmed sound.
+
+### Claude's response
+
+Accepted, no pushback — the distinction (Local Pack listing rank vs. organic page rank) is real and I hadn't considered it when first naming the product. Revised `PLAN.md`: step 0 gained an explicit (c) — step 0 must determine which metric Google My Business actually measures, not just whether it's on-plan; step 5's `numeric_delta` rank rule now names its metric as "resolved by step 0(c)," not a generic `rank_position`; step 6's `local_rank` snapshot section is now explicitly not assumed to share `search_analytics`'s shape (no `page` field if it's Local Pack rank) and gets its own `report.md` presentation, kept structurally distinct from organic position data.
+
+**MAX_ROUNDS=5 reached.** Per the skill's hard rule, the loop would otherwise terminate here rather than sending a 6th round — this was not a disagreement-driven deadlock (Claude fully agreed with and incorporated Round 5's finding), just the round budget running out before a fresh Codex pass could re-confirm this specific fix. Flagged honestly to Nate rather than presenting it as freshly re-approved. Nate raised the cap to 6 for one confirmatory round.
+
+## Round 6 — Codex (VERDICT: APPROVED)
+
+Reviewer: same session, resumed read-only, cap raised to 6 by Nate. Confirmed the Local Pack vs. organic rank fix resolves the Round 5 finding: step 0's (c) properly gates implementation on determining which metric it is and requires separate modeling if it's Local Pack rank; step 5's threshold defers the concrete metric name to that outcome instead of hardcoding a shared `rank_position`; step 6's `local_rank` snapshot section is explicitly decoupled from `search_analytics`'s schema. No new material blocker. **Converged after 6 rounds.**
+
+---
+
+# Archived — prior review logs (Phase 1 combined plan, Phase 3 auto-implement plan)
+_Kept below for reference. The Round 0-N content that follows predates this plan and reviewed different, now-shipped work._
+
 # Plan Review Log: Loop Agency combined plan
 
 Started 2026-07-15 (local). MAX_ROUNDS=2. PLAN_FILE=AgentColabPlan.md. Reviewer: Codex CLI 0.144.1, model gpt-5.4 (medium reasoning), read-only sandbox.

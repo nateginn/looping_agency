@@ -1,0 +1,3 @@
+# Loop Agency
+
+Loop Agency runs durable, human-supervised business loops — pull real metrics for a client, propose specific improvements, wait for a human to approve, apply the approved ones, then measure whether they actually worked — repeating on a schedule. The only loop live today is SEO: it reads a client's Google Search Console data (optionally enriched with DataForSEO), proposes tiered changes like title-tag rewrites and internal links, and takes each one through an approval state machine (`draft → reviewed → approved → applied → verified`) so nothing publishes without explicit sign-off. Everything is Python, run through a project-local virtualenv; see `HANDOFF.md` for current status and `CLAUDE.md` for full operating instructions.
