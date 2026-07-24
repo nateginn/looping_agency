@@ -5,19 +5,20 @@ import sys
 
 import yaml
 
+try:
+    from .connector_registry import CONNECTOR_REGISTRY, connector_names, get_connector
+except ImportError:
+    from connector_registry import CONNECTOR_REGISTRY, connector_names, get_connector
+
 SCHEMA_VERSION = 1
 COMPARATORS = ["<", ">", "<=", ">=", "=="]
 APPROVAL_MODES = ["propose-only", "tier1-enabled"]
 TIERS = [0, 1, 2]
 DEVICES = ["desktop", "mobile", "tablet"]
-REAL_CONNECTORS = ["gsc", "dataforseo"]
-# Every connector name any spec may declare. mock/gsc/dataforseo are wired;
-# the last two are draft-template placeholders (ads / content-social) that
-# run_loop.py still refuses at run time until a connector exists for them.
-# A typo like "gscc" must fail here, pre-run - not as a runtime connector error.
-KNOWN_INPUTS = ["mock", "gsc", "dataforseo", "ads-platform-readonly", "social-analytics"]
+RUN_MODES = ["full", "technical-only"]
 
 _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?", re.DOTALL)
+_ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
 
 
 def is_non_empty_string(v):
@@ -28,8 +29,12 @@ def is_positive_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0
 
 
+def is_absolute_url(v):
+    return is_non_empty_string(v) and v.startswith(("http://", "https://"))
+
+
 def extract_frontmatter(source):
-    """Extract the `---\\n...\\n---` YAML frontmatter block from a spec.md body."""
+    """Extract the `---\n...\n---` YAML frontmatter block from a spec.md body."""
     match = _FRONTMATTER_RE.match(source)
     if not match:
         return None
@@ -70,35 +75,137 @@ def _validate_allowed_action(a, idx, errors):
         errors.append(f"{p}.min_sample_size must be a positive number")
 
 
-def _validate_connector_requirements(spec, inputs, errors):
-    """Conditional requirements for real connectors (run_loop.py dispatches on
-    spec.inputs, so each real input needs its call parameters up front)."""
-    if "gsc" in inputs:
-        if not is_non_empty_string(spec.get("site_url")):
-            errors.append('site_url is required when "gsc" is in inputs (the exact GSC property, e.g. "sc-domain:example.com")')
-        if not is_positive_number(spec.get("metrics_window_days")):
-            errors.append('metrics_window_days is required when "gsc" is in inputs (positive number of days, e.g. 28)')
+def _validate_priority_pages(priority_pages, errors, path="priority_pages"):
+    if priority_pages is None:
+        return
+    if not isinstance(priority_pages, list) or not priority_pages:
+        errors.append(f"{path} must be a non-empty array of absolute URLs if present")
+        return
+    for i, page in enumerate(priority_pages):
+        if not is_absolute_url(page):
+            errors.append(f"{path}[{i}] must be an absolute URL")
 
-    if "dataforseo" in inputs:
-        targets = spec.get("targets")
-        if not isinstance(targets, list) or len(targets) < 1:
-            errors.append('targets must be a non-empty array of {keyword, page} objects when "dataforseo" is in inputs')
+
+def _validate_locations(locations, errors, path="locations"):
+    if locations is None:
+        return
+    if not isinstance(locations, list) or not locations:
+        errors.append(f"{path} must be a non-empty array of {{name, address, zip}} objects if present")
+        return
+    for i, location in enumerate(locations):
+        p = f"{path}[{i}]"
+        if not isinstance(location, dict):
+            errors.append(f"{p} must be an object")
+            continue
+        if not is_non_empty_string(location.get("name")):
+            errors.append(f"{p}.name is required (string)")
+        if not is_non_empty_string(location.get("address")):
+            errors.append(f"{p}.address is required (string)")
+        if not is_non_empty_string(location.get("zip")) or not _ZIP_RE.match(location.get("zip")):
+            errors.append(f"{p}.zip is required (5-digit ZIP string)")
+
+
+def _validate_attention_thresholds(thresholds, errors):
+    if thresholds is None:
+        return
+    if not isinstance(thresholds, list) or not thresholds:
+        errors.append("attention_thresholds must be a non-empty array if present")
+        return
+    for i, threshold in enumerate(thresholds):
+        p = f"attention_thresholds[{i}]"
+        if not isinstance(threshold, dict):
+            errors.append(f"{p} must be an object")
+            continue
+        kind = threshold.get("kind")
+        if kind not in ("numeric_delta", "enum_transition"):
+            errors.append(f'{p}.kind must be "numeric_delta" or "enum_transition"')
+            continue
+        if not is_non_empty_string(threshold.get("metric")):
+            errors.append(f"{p}.metric is required (string)")
+        if kind == "numeric_delta":
+            if threshold.get("comparator") not in COMPARATORS:
+                errors.append(f"{p}.comparator must be one of {', '.join(COMPARATORS)}")
+            if not isinstance(threshold.get("threshold"), (int, float)) or isinstance(threshold.get("threshold"), bool):
+                errors.append(f"{p}.threshold must be a number")
+            if not is_positive_number(threshold.get("consecutive_runs")):
+                errors.append(f"{p}.consecutive_runs must be a positive number")
+            if "to" in threshold:
+                errors.append(f"{p}.to is not allowed for numeric_delta")
         else:
-            for i, t in enumerate(targets):
-                if not isinstance(t, dict) or not is_non_empty_string(t.get("keyword")) or not is_non_empty_string(t.get("page")):
-                    errors.append(f"targets[{i}] must be an object with non-empty keyword and page strings")
-        if spec.get("location_code") is not None and not is_positive_number(spec.get("location_code")):
-            errors.append("location_code must be a positive number if present")
-        if spec.get("language_code") is not None and not is_non_empty_string(spec.get("language_code")):
-            errors.append("language_code must be a non-empty string if present")
-        if spec.get("device") is not None and spec.get("device") not in DEVICES:
-            errors.append(f"device must be one of {', '.join(DEVICES)} if present")
+            if not is_non_empty_string(threshold.get("to")):
+                errors.append(f"{p}.to is required (string)")
+            if "consecutive_runs" in threshold:
+                errors.append(f"{p}.consecutive_runs is not allowed for enum_transition")
+            for field in ("comparator", "threshold"):
+                if field in threshold:
+                    errors.append(f"{p}.{field} is not allowed for enum_transition")
 
-    for connector in REAL_CONNECTORS:
-        if connector in inputs:
-            alias = (spec.get("credential_aliases") or {}).get(connector)
+
+def _validate_connector_requirements(spec, inputs, errors, path_prefix=""):
+    aliases = spec.get("credential_aliases") or {}
+    for i, connector_name in enumerate(inputs):
+        entry = get_connector(connector_name)
+        p = f"{path_prefix}inputs[{i}]"
+        if entry is None:
+            errors.append(f'{p} "{connector_name}" is not a known connector (known: {", ".join(connector_names())})')
+            continue
+
+        alias_key = entry.get("credential_alias")
+        if alias_key and entry.get("credential_required", True):
+            alias = aliases.get(alias_key)
             if not is_non_empty_string(alias):
-                errors.append(f'credential_aliases.{connector} is required (opaque alias string) when "{connector}" is in inputs')
+                errors.append(f'{path_prefix}credential_aliases.{alias_key} is required (opaque alias string) when "{connector_name}" is in inputs')
+
+        for requirement in entry.get("requires") or []:
+            if requirement == "site_url" and not is_non_empty_string(spec.get("site_url")):
+                errors.append(f'{path_prefix}site_url is required when "{connector_name}" is in inputs (the exact GSC property)')
+            elif requirement == "metrics_window_days" and not is_positive_number(spec.get("metrics_window_days")):
+                errors.append(f'{path_prefix}metrics_window_days is required when "{connector_name}" is in inputs (positive number of days)')
+            elif requirement == "targets":
+                targets = spec.get("targets")
+                if not isinstance(targets, list) or len(targets) < 1:
+                    errors.append(f'{path_prefix}targets must be a non-empty array of {{keyword, page}} objects when "{connector_name}" is in inputs')
+                else:
+                    for t_idx, t in enumerate(targets):
+                        if not isinstance(t, dict) or not is_non_empty_string(t.get("keyword")) or not is_non_empty_string(t.get("page")):
+                            errors.append(f"{path_prefix}targets[{t_idx}] must be an object with non-empty keyword and page strings")
+            elif requirement == "locations":
+                locations = spec.get("locations")
+                if not isinstance(locations, list) or len(locations) < 1:
+                    errors.append(f'{path_prefix}locations must be a non-empty array when "{connector_name}" is in inputs')
+            elif requirement == "domain" and not is_non_empty_string(spec.get("domain")):
+                errors.append(f'{path_prefix}domain is required when "{connector_name}" is in inputs')
+            elif requirement == "priority_pages":
+                priority_pages = spec.get("priority_pages")
+                if not isinstance(priority_pages, list) or len(priority_pages) < 1:
+                    errors.append(f'{path_prefix}priority_pages must be a non-empty array when "{connector_name}" is in inputs')
+
+    if "dataforseo" in inputs or "dataforseo-local-rank" in inputs:
+        if spec.get("language_code") is not None and not is_non_empty_string(spec.get("language_code")):
+            errors.append(f"{path_prefix}language_code must be a non-empty string if present")
+        if spec.get("device") is not None and spec.get("device") not in DEVICES:
+            errors.append(f"{path_prefix}device must be one of {', '.join(DEVICES)} if present")
+
+
+def _validate_schedule_entry(schedule, idx, spec_inputs, spec, errors):
+    p = f"additional_schedules[{idx}]"
+    if not isinstance(schedule, dict):
+        errors.append(f"{p} must be an object")
+        return
+    if not is_non_empty_string(schedule.get("name")):
+        errors.append(f"{p}.name is required (string)")
+    if not is_non_empty_string(schedule.get("cron")):
+        errors.append(f"{p}.cron is required (string)")
+    if schedule.get("mode") is not None and schedule.get("mode") not in RUN_MODES:
+        errors.append(f"{p}.mode must be one of {', '.join(RUN_MODES)} if present")
+    inputs = schedule.get("inputs")
+    if not isinstance(inputs, list) or not inputs or not all(is_non_empty_string(i) for i in inputs):
+        errors.append(f"{p}.inputs must be a non-empty array of connector alias strings")
+        return
+    for name in inputs:
+        if name not in spec_inputs:
+            errors.append(f'{p}.inputs contains "{name}" which is not present in top-level inputs')
+    _validate_connector_requirements(spec, inputs, errors, path_prefix=f"{p}.")
 
 
 def validate_spec_object(spec):
@@ -138,8 +245,8 @@ def validate_spec_object(spec):
         errors.append("inputs must be a non-empty array of connector alias strings")
     else:
         for i, name in enumerate(inputs):
-            if name not in KNOWN_INPUTS:
-                errors.append(f'inputs[{i}] "{name}" is not a known connector (known: {", ".join(KNOWN_INPUTS)})')
+            if name not in CONNECTOR_REGISTRY:
+                errors.append(f'inputs[{i}] "{name}" is not a known connector (known: {", ".join(connector_names())})')
     _validate_connector_requirements(spec, inputs if isinstance(inputs, list) else [], errors)
 
     actions = spec.get("allowed_actions")
@@ -173,6 +280,24 @@ def validate_spec_object(spec):
         exclusions = spec["keyword_exclusions"]
         if not isinstance(exclusions, list) or not all(is_non_empty_string(t) for t in exclusions):
             errors.append("keyword_exclusions must be an array of non-empty strings if present")
+
+    _validate_priority_pages(spec.get("priority_pages"), errors)
+    _validate_locations(spec.get("locations"), errors)
+    _validate_attention_thresholds(spec.get("attention_thresholds"), errors)
+
+    additional_schedules = spec.get("additional_schedules")
+    if additional_schedules is not None:
+        if not isinstance(additional_schedules, list):
+            errors.append("additional_schedules must be an array if present")
+        else:
+            seen_names = set()
+            for i, schedule in enumerate(additional_schedules):
+                _validate_schedule_entry(schedule, i, inputs if isinstance(inputs, list) else [], spec, errors)
+                name = schedule.get("name") if isinstance(schedule, dict) else None
+                if is_non_empty_string(name):
+                    if name in seen_names:
+                        errors.append(f'additional_schedules[{i}].name "{name}" is duplicated')
+                    seen_names.add(name)
 
     return {"valid": len(errors) == 0, "errors": errors}
 
@@ -218,11 +343,22 @@ failure_threshold:
 inputs:
   - gsc
   - dataforseo
+  - dataforseo-local-rank
+  - dataforseo-backlinks
+  - pagespeed
+  - gsc-indexation
 site_url: "sc-domain:example.com"
+domain: "example.com"
 metrics_window_days: 28
 targets:
   - keyword: best loop agency
     page: /blog/loop-agency
+priority_pages:
+  - https://example.com/blog/loop-agency
+locations:
+  - name: Denver
+    address: "2480 W 26th Ave #90B, Denver, CO 80211"
+    zip: "80211"
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1
@@ -232,11 +368,27 @@ allowed_actions:
 approval_mode: propose-only
 max_run_duration_minutes: 30
 schedule: "0 6 * * 1"
+additional_schedules:
+  - name: technical-thursday
+    cron: "0 6 * * 4"
+    mode: technical-only
+    inputs:
+      - pagespeed
+      - gsc-indexation
 stop_condition: "manual stop via project.md"
 memory: memory.md
 credential_aliases:
   gsc: acme-gsc-readonly
   dataforseo: acme-dataforseo-read
+attention_thresholds:
+  - kind: numeric_delta
+    metric: organic_rank_position
+    comparator: ">"
+    threshold: 5
+    consecutive_runs: 2
+  - kind: enum_transition
+    metric: cwv_status
+    to: poor
 ---
 # SEO loop spec
 """
@@ -259,10 +411,14 @@ guardrail_metrics: []
     good_result = validate_spec_file(os.path.join(tmp, "good.md"))
     bad_result = validate_spec_file(os.path.join(tmp, "bad.md"))
 
-    # Conditional connector requirements (Phase 2 wiring).
     no_site_url = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace('site_url: "sc-domain:example.com"\n', ""))))
     no_window = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("metrics_window_days: 28\n", ""))))
     no_targets = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("targets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n", ""))))
+    no_locations = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace('locations:\n  - name: Denver\n    address: "2480 W 26th Ave #90B, Denver, CO 80211"\n    zip: "80211"\n', ""))))
+    no_priority_pages = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("priority_pages:\n  - https://example.com/blog/loop-agency\n", ""))))
+    bad_schedule = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "additional_schedules": [{"name": "bad", "cron": "0 6 * * 4", "inputs": ["mock"]}]})
+    bad_attention = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "attention_thresholds": [{"kind": "enum_transition", "metric": "cwv_status", "consecutive_runs": 2}]})
+    bad_zip = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "locations": [{"name": "Denver", "address": "x", "zip": "zip"}]})
     no_dfs_alias = validate_spec_object(yaml.safe_load(extract_frontmatter(good.replace("  dataforseo: acme-dataforseo-read\n", ""))))
     bad_device = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "device": "toaster"})
     typo_input = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "inputs": ["gscc", "dataforseo"]})
@@ -270,7 +426,7 @@ guardrail_metrics: []
     bad_exclusions = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "keyword_exclusions": ["ok", ""]})
     mock_only = yaml.safe_load(extract_frontmatter(good))
     mock_only["inputs"] = ["mock"]
-    for key in ("site_url", "metrics_window_days", "targets"):
+    for key in ("site_url", "metrics_window_days", "targets", "locations", "priority_pages", "domain", "additional_schedules"):
         mock_only.pop(key, None)
     mock_only_result = validate_spec_object(mock_only)
 
@@ -285,6 +441,11 @@ guardrail_metrics: []
         ("gsc input without site_url is rejected", any("site_url" in e for e in no_site_url["errors"])),
         ("gsc input without metrics_window_days is rejected", any("metrics_window_days" in e for e in no_window["errors"])),
         ("dataforseo input without targets is rejected", any("targets" in e for e in no_targets["errors"])),
+        ("dataforseo input without locations is rejected", any("locations" in e for e in no_locations["errors"])),
+        ("pagespeed input without priority_pages is rejected", any("priority_pages" in e for e in no_priority_pages["errors"])),
+        ("additional schedule inputs must be a top-level subset", any("not present in top-level inputs" in e for e in bad_schedule["errors"])),
+        ("enum_transition rejects consecutive_runs", any("consecutive_runs is not allowed" in e for e in bad_attention["errors"])),
+        ("location ZIPs are validated", any(".zip is required" in e for e in bad_zip["errors"])),
         ("dataforseo input without a credential alias is rejected", any("credential_aliases.dataforseo" in e for e in no_dfs_alias["errors"])),
         ("invalid device enum is rejected", any("device" in e for e in bad_device["errors"])),
         ("typo'd connector name in inputs is rejected pre-run", any('"gscc" is not a known connector' in e for e in typo_input["errors"])),

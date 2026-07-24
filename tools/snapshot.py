@@ -16,6 +16,14 @@ def write_snapshot(run_dir, metrics, secret_map=None):
     secret_map = secret_map or {}
     os.makedirs(run_dir, exist_ok=True)
     snapshot_path = os.path.join(run_dir, "snapshot.json")
+    if "schema_version" not in metrics:
+        metrics = {
+            "schema_version": 2,
+            "search_analytics": metrics,
+            "local_rank": None,
+            "backlinks": None,
+            "technical_health": None,
+        }
     redacted = redact_deep(metrics, secret_map)
     with open(snapshot_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(redacted, f, indent=2)
@@ -29,7 +37,13 @@ def _self_test():
 
     tmp = tempfile.mkdtemp(prefix="snapshot-test-")
     secret_map = {"alias1": "super-secret-value"}
-    metrics = {"note": "token super-secret-value here", "nested": {"again": "super-secret-value"}}
+    metrics = {
+        "schema_version": 2,
+        "search_analytics": {"note": "token super-secret-value here", "nested": {"again": "super-secret-value"}},
+        "local_rank": None,
+        "backlinks": None,
+        "technical_health": None,
+    }
 
     p = write_snapshot(os.path.join(tmp, "runs", "run-1"), metrics, secret_map)
     with open(p, "r", encoding="utf-8") as f:
@@ -39,6 +53,7 @@ def _self_test():
     checks = [
         ("snapshot file created", os.path.exists(p)),
         ("snapshot redacted secret before write", "super-secret-value" not in written),
+        ("snapshot preserves schema version", '"schema_version": 2' in written),
         ("snapshot is read-only (immutable)", not (mode & stat.S_IWRITE)),
     ]
 

@@ -642,7 +642,7 @@ def test_gsc_dataforseo_merge():
     check("merge: gsc+dataforseo run succeeds offline", result["status"] == "ok")
     check("merge: both connectors recorded in tool_calls", [t["tool"] for t in result["run_json"]["tool_calls"]] == ["gsc", "dataforseo"])
     snapshot = _read_json(os.path.join(loop_dir, "runs", result["run_id"], "snapshot.json"))
-    row = snapshot["keywords"][0]
+    row = snapshot["search_analytics"]["keywords"][0]
     check("merge: gsc stays the primary source (clicks/position preserved)", row["clicks"] == 42 and row["position"] == 8.2)
     check("merge: dataforseo path target enriches the full-URL gsc row with serp_position", row.get("serp_position") == 6)
 

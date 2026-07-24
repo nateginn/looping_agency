@@ -68,6 +68,56 @@ Accepted, no pushback — the distinction (Local Pack listing rank vs. organic p
 
 Reviewer: same session, resumed read-only, cap raised to 6 by Nate. Confirmed the Local Pack vs. organic rank fix resolves the Round 5 finding: step 0's (c) properly gates implementation on determining which metric it is and requires separate modeling if it's Local Pack rank; step 5's threshold defers the concrete metric name to that outcome instead of hardcoding a shared `rank_position`; step 6's `local_rank` snapshot section is explicitly decoupled from `search_analytics`'s schema. No new material blocker. **Converged after 6 rounds.**
 
+## Act 3 — Build (codex-build skill, Codex as builder, Claude as reviewer)
+
+Nate approved Codex as builder, with an explicit non-negotiable constraint given a prior build in this workspace had strayed beyond its task: implement exactly `PLAN.md`'s 9 Approach steps, nothing else — no incidental refactors, no touching files outside scope, no expanding a step's literal intent, and anything noticed outside scope must be flagged, not fixed unilaterally. Full contract in the build prompt (`codex exec --yolo`, fresh session, thread `019f8dd5-5591-7241-a574-552eeff7db2d`). Working tree was committed clean first (`9be71a4`) per the skill's clean-tree gate.
+
+### Round 1 — Codex build
+
+Files changed: new `tools/connector_registry.py` (step 2's shared registry), new `tools/pagespeed.py` (step 1's CWV connector), `tools/dataforseo.py` (+ `pull_local_rank`/`pull_backlinks`), `tools/gsc.py` (+ `pull_sitemaps`/`inspect_urls`), `tools/spec_validate.py` (registry-driven validation + `priority_pages`/`locations`/`attention_thresholds`/`additional_schedules` schemas), `tools/run_loop.py` (run-mode resolution, new dispatch, sectioned snapshots, attention flags, footer-diff generation, richer `report.md`), `tools/snapshot.py` (versioned schema), `projects/art/loops/seo/spec.md` (new frontmatter + live-enabled all four new connectors), `PHASE3-SCHEDULING.md` (Thursday job documented, not registered), `tools/tests/phase1_exit_criteria.py` (one assertion updated for the new snapshot shape). No files touched under `D:\Dev\artwebsite` or `D:\Dev\MMC`, confirmed both by the report and independently by `git status` scope.
+
+Declared deviations (all expected, all within the fix constraint given no live DataForSEO credential existed in this workspace): step 0's capability spike implemented against the documented city/state fallback only, not Business Data API; step 8's MMC delivery check not completed live (no real run + briefing cycle available to observe).
+
+Proof pasted by Codex: 73/73 exit-criteria checks, `spec_validate.py` on `art`'s spec VALID, all `--verify` self-tests passing for `gsc.py`/`dataforseo.py`/`pagespeed.py`/`spec_validate.py`.
+
+### Claude's verification (Step 3 — never delegated)
+
+Re-ran every proof command independently rather than trusting the pasted output — all confirmed green. Then read the full diff file-by-file (not just the report) looking specifically for scope creep per Nate's standing concern, and found three real issues Codex's own report didn't flag:
+
+1. **Test-coverage regression in `spec_validate.py`'s `_self_test`**: six previously-passing checks (credential-alias-required, device-enum-invalid, typo'd-connector-name, mock-only-spec-valid, both `keyword_exclusions` checks) were silently dropped rather than kept alongside the new ones — confirmed the underlying validation logic for all six was still intact, only the assertions were lost.
+2. **`art/spec.md`'s Notes section lost real content, not just reworded**: the original historical notes (the AEO reviewer-guidance context, and the full `keyword_exclusions`/"Accelerate Health" incident history referencing the 2026-07-18 rejected proposals) were deleted rather than preserved alongside new notes. Also cosmetic but unrequested: em-dashes reverted to plain hyphens throughout the file's prose (title, three `rollback` strings, code-fence language tag) — a formatting drift from this repo's established style.
+3. **`art/spec.md` live-enabled all four new connectors as active `inputs`**, including `dataforseo-local-rank`/`dataforseo-backlinks`, whose only credential (`art-dataforseo-readonly`) was named in the file but never actually stored in Windows Credential Manager — meaning the next real `tools/run_loop.py art seo` invocation would immediately fail against a live client project. This contradicts the codebase's own established convention (this same file previously kept `dataforseo` commented out with an explicit "enable only after..." gate; `HANDOFF.md`'s Phase 3 section repeatedly treats "capability built" and "activated for a real project" as separate, explicit human decisions) and PLAN.md step 0's own requirement that the capability spike resolve before this goes live.
+
+Also independently verified something Codex's report didn't call out either way: the three specific clinic addresses written into `locations` (including a third "UNC Campus" location not mentioned anywhere else in this repo) were not invented — fetched the live `acceleratedrehabtherapy.com` site directly (working around a local TLS-interception quirk) and confirmed all three match the real footer content exactly. Codex did genuine verification work here, not fabrication.
+
+### Claude's fixes (taken directly rather than spending a Codex round, per the skill's "Claude takes over" allowance)
+
+- Restored all six dropped `spec_validate.py` self-test checks alongside the new ones; found and fixed a real side-effect bug while doing so — the unified connector registry had given `mock` a non-null `credential_alias`, silently making `credential_aliases.mock` a new requirement that didn't exist before (harmless for `_demo`'s spec, which already sets it, but a real, untested behavior tightening). Fixed by setting `mock`'s `credential_alias` to `None` in `connector_registry.py`, matching the `pagespeed` precedent for keyless-capable connectors — restores the original tested contract exactly.
+- Restored `art/spec.md`'s deleted historical notes (AEO context, `keyword_exclusions` incident history) alongside the new ones, added a dated note on the AEO-note's now-stale premise per the DataForSEO catalog finding, and reverted the em-dash formatting drift.
+- Re-gated `art/spec.md`'s `inputs`: kept `pagespeed` and `gsc-indexation` live (both work today — keyless and reusing the already-stored `art-gsc-readonly` credential respectively, so no operational risk), commented out `dataforseo-local-rank`/`dataforseo-backlinks` with an explicit note on what's needed to enable them (stored credential + PLAN.md step 0 confirmation), and commented out the matching `credential_aliases.dataforseo` line — mirroring this file's own pre-existing convention exactly. `additional_schedules` needed no change since it only references the still-live `pagespeed`/`gsc-indexation`.
+- Added a minimal `--verify` self-test to `connector_registry.py`, which had none — every other module in this codebase carries one.
+
+Re-ran the full proof suite after all fixes: 73/73 exit-criteria checks, both `art` and `_demo` specs VALID, all five module `--verify` suites green (21 checks in `spec_validate.py` alone, up from Codex's 15 after restoring the six).
+
+### Outcome
+
+Diff reviewed, scope creep found and corrected, all proof green. **Not yet committed** — holds for Nate's explicit sign-off per the skill's human gate, and because Nate is unavailable overnight and Claude does not commit without that gate regardless of other authority to fix issues directly.
+
+## Post-build credential activation & live verification (2026-07-23, same day)
+
+Nate created accounts and stored credentials for DataForSEO and PageSpeed Insights, following the same never-in-chat storage flow used for the original GSC credential. Two more real bugs surfaced and were fixed during live activation, beyond what static review/tests could catch:
+
+1. **`pagespeed` had no working credential path at all.** `connector_registry.py` hardcoded its `credential_alias` to `None`, so even after Nate stored a real API key and added it to `spec.md`, `run_loop.py`'s dispatch would have silently ignored it and kept calling PSI keyless. Confirmed live: the free keyless tier returned `429 Too Many Requests` with `quota_limit_value: "0"` - not a low-volume risk as PLAN.md's Risks section framed it, but already fully exhausted. Fixed by giving `pagespeed` a real alias key plus a new `credential_required: False` field on registry entries (validation doesn't demand it, dispatch uses it if configured) - `spec_validate.py` and `smoke_test.py` both updated to respect the new field, `connector_registry.py`'s own self-test updated to match. Re-verified live after the fix: `pagespeed` resolved the real key and returned `HTTP 200 OK`, 11 rows.
+2. **`dataforseo-local-rank`'s address-parsing regex failed on real addresses.** Confirmed via live smoke test: `_CITY_STATE_RE` required a comma before the city name, but none of `art`'s three real addresses have one (`"...Ave Suite 3 Greeley, CO 80634"`). On the one address that happened to have an earlier comma elsewhere, the regex silently mis-parsed "Cassidy Hall Greeley" as the city instead of "Greeley" rather than failing loudly. Fixed with a narrower pattern anchored to the single word immediately before ", ST ZIP" - verified against all three real addresses directly in Python before applying, then re-verified via `dataforseo.py --verify` and a live call.
+
+Also encountered and resolved without a code change: both DataForSEO connectors initially returned `401 Unauthorized` (`status_code: 40100`) live. Isolated to a credential-storage typo, not an account/plan issue, by having Nate re-run `credentials.py --store` (64 chars -> 43 chars) - resolved immediately on retry.
+
+**Final live verification, every connector individually confirmed working against real accounts:** `gsc` (397 rows), `pagespeed` (11 rows, real key, after confirming the keyless tier was exhausted), `gsc-indexation` (1 sitemap + 11 inspection rows), `dataforseo-local-rank` (correctly resolved Greeley to DataForSEO location code 1014529), `dataforseo-backlinks` (86 referring domains, 130 backlinks). Full proof suite re-run clean after every fix (73/73 exit criteria, both real specs VALID, all six module `--verify` suites green).
+
+One diagnostic-only mistake worth recording since it could mislead a future session: an early direct test of the re-stored DataForSEO credential failed with a TLS `CERTIFICATE_VERIFY_FAILED` error that looked like a real problem but wasn't - the throwaway test script skipped `enable_system_truststore()` (required on this machine per `RISK-REGISTER.md` R8's TLS-interception note), unlike every real entry point in this codebase which calls it first. Re-ran with truststore enabled and got the real (successful) result.
+
+Still **not committed** - `art`'s `spec.md` now has all five connectors live-enabled with real, individually-verified credentials, plus the `pagespeed` credential-wiring fix and the address-regex fix on top of the Act 3 build. Holding for Nate's sign-off on the full accumulated diff.
+
 ---
 
 # Archived — prior review logs (Phase 1 combined plan, Phase 3 auto-implement plan)

@@ -8,6 +8,12 @@ Do not run these automatically from the repo. They are the ready-to-run human co
 schtasks /Create /TN "LoopAgency-Art-SEO" /SC WEEKLY /D MON /ST 06:00 /TR "\"D:\Dev\Looping _agency\.venv\Scripts\python.exe\" \"D:\Dev\Looping _agency\tools\run_loop.py\" art seo >> \"D:\Dev\Looping _agency\projects\art\loops\seo\runs\scheduler.log\" 2>&1" /F
 ```
 
+`tools/run_loop.py art seo --run-name technical-thursday` weekly Thursday 06:00 local:
+
+```powershell
+schtasks /Create /TN "LoopAgency-Art-SEO-Technical" /SC WEEKLY /D THU /ST 06:00 /TR "\"D:\Dev\Looping _agency\.venv\Scripts\python.exe\" \"D:\Dev\Looping _agency\tools\run_loop.py\" art seo --run-name technical-thursday >> \"D:\Dev\Looping _agency\projects\art\loops\seo\runs\scheduler-technical.log\" 2>&1" /F
+```
+
 `tools/watchdog.py` daily 06:15 local:
 
 ```powershell

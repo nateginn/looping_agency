@@ -12,23 +12,28 @@ import os
 import sys
 
 try:
-    from . import dataforseo, gsc
+    from . import dataforseo, gsc, pagespeed
+    from .connector_registry import get_connector
     from .lib.credentials import CredentialError, resolve_with_source
     from .lib.gsc_auth import bearer_for_secret, is_service_account_json
     from .lib.paths import assert_within
     from .lib.redact import redact_text
     from .lib.tls import enable_system_truststore
     from .mock_metrics import pull_metrics as pull_mock_metrics
+    from .run_loop import _absolute_pages
     from .spec_validate import validate_spec_file, extract_frontmatter
 except ImportError:
     import dataforseo
     import gsc
+    import pagespeed
+    from connector_registry import get_connector
     from lib.credentials import CredentialError, resolve_with_source
     from lib.gsc_auth import bearer_for_secret, is_service_account_json
     from lib.paths import assert_within
     from lib.redact import redact_text
     from lib.tls import enable_system_truststore
     from mock_metrics import pull_metrics as pull_mock_metrics
+    from run_loop import _absolute_pages
     from spec_validate import validate_spec_file, extract_frontmatter
 
 from datetime import datetime, timedelta, timezone
@@ -56,6 +61,19 @@ def _capture(http_post):
     return wrapped, record
 
 
+def _capture_get(http_get):
+    """Same as _capture, for the 2-arg (url, headers) GET connector shape."""
+    record = {}
+
+    def wrapped(url, headers):
+        status, reason, raw = http_get(url, headers)
+        record["status"] = status
+        record["reason"] = reason
+        return status, reason, raw
+
+    return wrapped, record
+
+
 def _status_note(record):
     if "status" not in record:
         return ""
@@ -70,17 +88,72 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
         lines.append(f"  mock: OK (local synthetic connector, no API), {len(metrics['keywords'])} row(s)")
         return True
 
-    alias = (spec.get("credential_aliases") or {}).get(input_name)
-    try:
-        value, source = resolve_fn(alias, project_dir)
-    except CredentialError as e:
-        lines.append(f'  {input_name}: FAIL - credential not resolved: {e}')
-        return False
-    secret_map = {alias: value}
-    lines.append(f'  {input_name}: alias "{alias}" resolved via {source} (value not shown)')
+    # Alias KEY (e.g. "gsc", "dataforseo") comes from the connector registry, not the
+    # connector's own name - e.g. dataforseo-local-rank and dataforseo-backlinks both
+    # share the "dataforseo" credential. mock has no alias concept at all (alias_key
+    # None). pagespeed has a real alias_key but credential_required=False - use one
+    # if this spec configured it, otherwise run keyless without treating that as a
+    # smoke-test failure.
+    connector_entry = get_connector(input_name) or {}
+    alias_key = connector_entry.get("credential_alias")
+    configured_alias = (spec.get("credential_aliases") or {}).get(alias_key) if alias_key else None
+    if alias_key is None or (not connector_entry.get("credential_required", True) and not configured_alias):
+        alias = None
+        value, source, secret_map = None, "no credential required" if alias_key is None else "no credential configured (optional)", {}
+    else:
+        alias = configured_alias
+        try:
+            value, source = resolve_fn(alias, project_dir)
+        except CredentialError as e:
+            lines.append(f'  {input_name}: FAIL - credential not resolved: {e}')
+            return False
+        secret_map = {alias: value}
+        lines.append(f'  {input_name}: alias "{alias}" resolved via {source} (value not shown)')
 
+    record = {}  # safe default so a failure in a branch that never wraps http_post/http_get can't crash on _status_note
     try:
-        if input_name == "gsc":
+        if input_name == "dataforseo-local-rank":
+            wrapped_post, record = _capture(http_post or dataforseo._default_http_post)
+            result = dataforseo.pull_local_rank(
+                credential_alias=alias,
+                resolve_credential=lambda _a: value,
+                targets=spec.get("targets"),
+                locations=spec.get("locations"),
+                language_code=spec.get("language_code") or "en",
+                device=spec.get("device") or "desktop",
+                http_post=wrapped_post,
+                http_get=dataforseo._default_http_get,
+            )
+            lines.append(f"  {input_name}: auth OK{_status_note(record)}, {len(result.get('rows') or [])} row(s)")
+            return True
+        elif input_name == "dataforseo-backlinks":
+            wrapped_post, record = _capture(http_post or dataforseo._default_http_post)
+            result = dataforseo.pull_backlinks(
+                credential_alias=alias,
+                resolve_credential=lambda _a: value,
+                target=spec.get("domain"),
+                http_post=wrapped_post,
+            )
+            summary = result.get("summary") or {}
+            lines.append(f"  {input_name}: auth OK{_status_note(record)}, referring_domains={summary.get('referring_domains')}, backlinks={summary.get('backlinks')}")
+            return True
+        elif input_name == "pagespeed":
+            wrapped_get, record = _capture_get(pagespeed._default_http_get)
+            result = pagespeed.pull_pagespeed(
+                credential_alias=alias,
+                resolve_credential=(lambda _a: value) if alias else None,
+                pages=_absolute_pages(spec),
+                http_get=wrapped_get,
+            )
+            lines.append(f"  {input_name}: auth OK{_status_note(record)}, {len(result.get('rows') or [])} row(s)")
+            return True
+        elif input_name == "gsc-indexation":
+            bearer = bearer_for_secret(value)
+            sitemaps = gsc.pull_sitemaps(credential_alias=alias, resolve_credential=lambda _a: bearer, site_url=spec.get("site_url"))
+            inspections = gsc.inspect_urls(credential_alias=alias, resolve_credential=lambda _a: bearer, site_url=spec.get("site_url"), urls=_absolute_pages(spec))
+            lines.append(f"  {input_name}: auth OK, {len(sitemaps.get('rows') or [])} sitemap row(s), {len(inspections.get('rows') or [])} inspection row(s)")
+            return True
+        elif input_name == "gsc":
             wrapped, record = _capture(http_post or gsc._default_http_post)
             bearer = bearer_for_secret(value)
             if is_service_account_json(value):
@@ -109,7 +182,7 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
                 http_post=wrapped,
             )
         else:
-            lines.append(f'  {input_name}: FAIL - no connector wired for this input (known: mock, gsc, dataforseo)')
+            lines.append(f'  {input_name}: FAIL - no connector wired for this input (known: mock, gsc, dataforseo, dataforseo-local-rank, dataforseo-backlinks, pagespeed, gsc-indexation)')
             return False
     except Exception as e:
         # Connectors redact their own messages; redact again here as belt-and-braces.
