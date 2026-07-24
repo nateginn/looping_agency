@@ -48,6 +48,11 @@ targets:
     page: /acupuncture/
 language_code: en
 device: desktop
+# Organic-intent pages only. The 5 shockwave/chronic-tendon/non-surgical pages were
+# removed 2026-07-24: verified they are deliberate Meta ad landing pages (noindex,nofollow
+# + FB pixel + lead forms + no nav), so pagespeed/gsc-indexation monitoring them here just
+# produced permanent "unknown to Google" false alarms. They are paid-ad assets (see
+# D:\Dev\ART Marketing Agency), not organic-SEO pages. Do not re-add without checking noindex.
 priority_pages:
   - https://acceleratedrehabtherapy.com/physical-therapy/
   - https://acceleratedrehabtherapy.com/auto-injury/
@@ -55,11 +60,6 @@ priority_pages:
   - https://acceleratedrehabtherapy.com/chiropractor/
   - https://acceleratedrehabtherapy.com/massage/
   - https://acceleratedrehabtherapy.com/acupuncture/
-  - https://acceleratedrehabtherapy.com/shockwave-therapy-denver/
-  - https://acceleratedrehabtherapy.com/shockwave-therapy-greeley/
-  - https://acceleratedrehabtherapy.com/shockwave-therapy-plantar-fasciitis/
-  - https://acceleratedrehabtherapy.com/chronic-tendon-pain-treatment/
-  - https://acceleratedrehabtherapy.com/non-surgical-pain-relief-denver/
 locations:
   - name: Greeley
     address: "1823 65th Ave Suite 3 Greeley, CO 80634"
@@ -71,7 +71,17 @@ locations:
     address: "1901 10th Ave, Cassidy Hall Greeley, CO 80639"
     zip: "80639"
 keyword_exclusions:
-  - "accelerate health"
+  # Case-insensitive substring match (see run_loop.py _pick_new_actions). These drop
+  # "accelerated X" near-brand-noise queries that are actually other businesses or generic
+  # terms (0 clicks, wrong intent) - the loop kept proposing homepage rewrites to chase them.
+  # DO NOT add "accelerated rehab" or "accelerated rehab therapy" here - those are THIS
+  # clinic's real brand terms (rank pos 1-2, high value). Each entry below was verified not
+  # to collide with the real brand. Added 2026-07-24 after clearing the pending queue.
+  - "accelerate health"          # "Accelerate Health Denver" - unrelated business
+  - "accelerated health"         # same unrelated business, alt spelling
+  - "accelerated healing"        # "accelerated healing center" - different business
+  - "accelerated recovery"       # generic/ambiguous (addiction recovery, etc.), 0 clicks
+  - "accelerated performance"    # "accelerated performance rehabilitation" - different business
 attention_thresholds:
   - kind: numeric_delta
     metric: organic_rank_position

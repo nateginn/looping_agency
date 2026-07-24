@@ -1,0 +1,3522 @@
+{
+  "schema_version": 2,
+  "search_analytics": {
+    "source": "gsc",
+    "site_url": "sc-domain:acceleratedrehabtherapy.com",
+    "pulled_at": "2026-07-24T03:05:55.475445Z",
+    "credential_alias": "art-gsc-readonly",
+    "sample_size": 2652,
+    "keywords": [
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.0588235294117647,
+        "clicks": 5,
+        "impressions": 17
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 3,
+        "impressions": 8
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.3333333333333333,
+        "clicks": 2,
+        "impressions": 3
+      },
+      {
+        "keyword": "\"care chiropractic\" \"denver\"",
+        "page": "https://acceleratedrehabtherapy.com/resources/",
+        "position": 27,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "ac physical therapy wheat ridge co",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 68,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "ac physical therapy wheat ridge co",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 81,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerate health",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 14.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerate health denver",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerate health denver reviews from patients treated for auto accident injuries",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 5.125,
+        "clicks": 0,
+        "impressions": 16
+      },
+      {
+        "keyword": "accelerate health denver reviews from patients treated for auto accident injuries",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 5.6,
+        "clicks": 0,
+        "impressions": 20
+      },
+      {
+        "keyword": "accelerate health denver reviews from patients treated for auto accident injuries",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 4.725806451612903,
+        "clicks": 0,
+        "impressions": 62
+      },
+      {
+        "keyword": "accelerate health denver reviews from patients treated for auto accident injuries",
+        "page": "https://acceleratedrehabtherapy.com/resources/",
+        "position": 7.285714285714286,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "accelerate health denver vs atlas physical therapy for sports injury treatment",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerate health denver vs atlas physical therapy for sports injury treatment",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 10.38888888888889,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "accelerate health lakewood",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 18,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerate health lakewood",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 60,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerate health lakewood",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 66,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerate health lakewood",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 71,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2.2,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "accelerated healing center",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 7,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated health",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerated health",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerated performance",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 78.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerated performance",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 49.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerated performance rehabilitation",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 55,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated performance rehabilitation",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 29,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated physical therapy",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 37.666666666666664,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accelerated physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 25.166666666666668,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "accelerated physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 35.75,
+        "clicks": 0,
+        "impressions": 8
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 14,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 13,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 27.5,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 92,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 71,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 32.6,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "accelerated recovery",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 26.833333333333332,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "accelerated recovery center",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 80,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery colorado springs",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 40,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery colorado springs co",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 31,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery colorado springs co",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 76,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated recovery specialists colorado springs co",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 42,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 3,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 3,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 6.666666666666667,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/massage/",
+        "position": 3,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 4.333333333333334,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accelerated rehab center",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 5.333333333333333,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accelerated rehab center",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7.2,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "accelerated rehab centers",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 17,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "accelerated rehab centers",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 35,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 1.75,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 1.8333333333333335,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 14
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 2.375,
+        "clicks": 0,
+        "impressions": 8
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 1.8235294117647058,
+        "clicks": 0,
+        "impressions": 17
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 1.8333333333333335,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 1.8333333333333335,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "accelerated rehab therapy",
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "position": 1.3333333333333333,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accelerated rehabilitation center",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehabilitation centers",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 17,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated rehabilitation centers",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accelerated therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 3,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acceleration therapy",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 68,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acceleration therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 73.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "acceleration therapy",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 49,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "accessible therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "accident chiropractic near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 74.5,
+        "clicks": 0,
+        "impressions": 16
+      },
+      {
+        "keyword": "accident recovery center",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 59,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "active body therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 40,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acupuncture and massage near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 77.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "acupuncture and physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 82,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acupuncture clinic",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 41,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acupuncture for anxiety near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 78.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "acupuncture for back pain near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 84.85714285714286,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "acupuncture for chronic pain denver",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 39.5,
+        "clicks": 0,
+        "impressions": 8
+      },
+      {
+        "keyword": "acupuncture for chronic pain near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 53.25,
+        "clicks": 0,
+        "impressions": 12
+      },
+      {
+        "keyword": "acupuncture for depression near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 79.5,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "acupuncture for fibromyalgia near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 69.66666666666667,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "acupuncture for headaches near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 85.16666666666667,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "acupuncture for knee pain near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 85.58333333333333,
+        "clicks": 0,
+        "impressions": 12
+      },
+      {
+        "keyword": "acupuncture for mental health near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 93.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "acupuncture for migraines near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 88.25,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "acupuncture for nerve pain near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 82.9,
+        "clicks": 0,
+        "impressions": 10
+      },
+      {
+        "keyword": "acupuncture for neuropathy near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 81.85714285714286,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "acupuncture for pain near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 73.4,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "acupuncture for sciatica near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 88.11111111111111,
+        "clicks": 0,
+        "impressions": 9
+      },
+      {
+        "keyword": "acupuncture for sports injuries denver",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 75.5,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "acupuncture for stress near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 79.2,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "acupuncture greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2.3,
+        "clicks": 0,
+        "impressions": 30
+      },
+      {
+        "keyword": "acupuncture greeley",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 20,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acupuncture near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.9444444444444444,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "acupuncture physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 88.75,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "acupuncturist",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 41,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "acute injury massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 83,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "advanced injury treatment center",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 19,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "ai physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "applied pressure",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 87,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "art chiro",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "art chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "art chiropractor near me",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 73.33333333333333,
+        "clicks": 0,
+        "impressions": 9
+      },
+      {
+        "keyword": "art chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 92,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "art muscle therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2.7142857142857144,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "art practitioner",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "art technique chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "athletic massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 43,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "auto accident chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 42,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "auto accident chiropractic treatment",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 53.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "auto accident chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 43.5,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "auto accident chiropractor denver",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 58.1,
+        "clicks": 0,
+        "impressions": 10
+      },
+      {
+        "keyword": "auto accident injury chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 52.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "auto accident injury rehab",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 29,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto accident injury therapy",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 76.27272727272727,
+        "clicks": 0,
+        "impressions": 11
+      },
+      {
+        "keyword": "auto injury care",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 27,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 52,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "auto injury chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 14,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "auto injury chiropractic care",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 14,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "auto injury chiropractic fort collins",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 31,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "auto injury chiropractic near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 16.285714285714285,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "auto injury chiropractic treatment",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 24,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 244
+      },
+      {
+        "keyword": "auto injury chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 47,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 79,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 74,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 56.43333333333333,
+        "clicks": 0,
+        "impressions": 30
+      },
+      {
+        "keyword": "auto injury massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 23,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury rehab",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 20.954545454545453,
+        "clicks": 0,
+        "impressions": 44
+      },
+      {
+        "keyword": "auto injury rehab",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 26,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury rehab near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury treatment",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 32.5,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "auto injury treatment centers",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 28,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto injury treatment in leesburg",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 83,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "auto injury treatment near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 51,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "auto-injury pain relief",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 59,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "back pain relief",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 14
+      },
+      {
+        "keyword": "back pain relief greeley",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 16.75,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "back pain relief greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "back pain relief greeley",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 42,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "best chiropractor greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "best chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "best sports massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 36.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "best walk in chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 38,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "body art therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car accident chiropractic care",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 55.25,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "car accident chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 46.27777777777778,
+        "clicks": 0,
+        "impressions": 18
+      },
+      {
+        "keyword": "car accident chiropractor denver",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 52.166666666666664,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "car accident chiropractor fort collins",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 31,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "car accident chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 43.25,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "car accident chiropractors near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 45.333333333333336,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "car accident injury chiropractor denver",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 50.714285714285715,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "car accident injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 96,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car accident injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 51,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car accident injury chiropractor southwest denver co",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 46,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "car accident injury clinic boulder co",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 50,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car accident physical therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 34,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car accident therapy in shirley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 65,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "car crash chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 44,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 21,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractic adjustment",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "chiropractic arts",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractic care",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 47
+      },
+      {
+        "keyword": "chiropractic greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.1574803149606299,
+        "clicks": 0,
+        "impressions": 127
+      },
+      {
+        "keyword": "chiropractor car accident treatment near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 85,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for auto accidents broomfield",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 84.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor for auto accidents near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 54,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for auto injury rehab near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 100,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for car accident injury denver co",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 51.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor for car accident injury near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 55,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for car accident injury southwest denver co",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 78,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for knee pain near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 56,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for pain relief",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 5,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for sports injury near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 72,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for whiplash near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 49,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor for work injury near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 42.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor for work injury southwest denver co",
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "position": 30,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 12.363636363636363,
+        "clicks": 0,
+        "impressions": 11
+      },
+      {
+        "keyword": "chiropractor greeley co",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 21,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.1324503311258278,
+        "clicks": 0,
+        "impressions": 151
+      },
+      {
+        "keyword": "chiropractor near me accepts walk ins",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 63.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor near me walk ins welcome",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 60,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor with massage near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 41,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "chiropractor with massage therapist near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 49.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractor with massage therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 45.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "chiropractors in greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 22,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "clinic accelerator",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 73,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "compression therapy denver",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 79.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "dapt therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 6,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue massage greeley",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 14,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue massage greeley co",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 14.571428571428571,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "deep tissue massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 8,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue sports massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 5,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 73,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "deep tissue trigger point massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 81,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "denver car accident chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 55,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "detox near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 30,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "dr jordan chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 8,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "drop in chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 45,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "dry needling",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "dry needling near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "ease the pain massage clinic",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 56,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "functional massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 95,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "good sports massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 43,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "greeley acupuncture",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "greeley chiropractic",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "greeley chiropractor",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 3.4237288135593222,
+        "clicks": 0,
+        "impressions": 59
+      },
+      {
+        "keyword": "greeley massage",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 79,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "greeley physical therapy",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 28,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "greeley physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7.5,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "greeley rehab",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 22,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "greeley rehab resources",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 29,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "health at last",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 6,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "health therapy massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 85.57142857142857,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "hip replacement rehab",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 6,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "how to treat workplace injury without surgery in denver colorado",
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "position": 7.9411764705882355,
+        "clicks": 0,
+        "impressions": 17
+      },
+      {
+        "keyword": "injury care",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 5,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury care associates denver co",
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "position": 45,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury massage therapist",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 75,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury massage therapist near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 16,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 25.333333333333332,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "injury physical therapy",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 99,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury rehab",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 85.25,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "injury rehab",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 49,
+        "clicks": 0,
+        "impressions": 21
+      },
+      {
+        "keyword": "injury rehab program",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 77,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury rehabilitation massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 19,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "injury therapy",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 43.142857142857146,
+        "clicks": 0,
+        "impressions": 7
+      },
+      {
+        "keyword": "injury therapy massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 87,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "kinetic therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 56.25,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "knee therapy without surgery",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 106,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage and pain management",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 93,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage and physio near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 87,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "massage and physiotherapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 95,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage and physiotherapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 30.833333333333332,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "massage and sports therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 84,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage greeley",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 40,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "massage greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 86.4,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "massage muscle therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 96,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage physical therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 84,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage physical therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage physio",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 18,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage rehab",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 13.333333333333334,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "massage rehabilitation",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 21,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage sports near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 54,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "massage sports therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 66.8,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "massage therapist greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 86,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 8,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage therapy physical therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 88,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "massage therapy rehabilitation",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 95.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "medical sports massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 83.2,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "muscle energy technique denver",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 71,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "muscle release therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "muscle therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 14,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "muscular therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 93.16666666666667,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "neck pain care",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "neuromuscular massage denver",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 30,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "neuromuscular massage locally",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 26.333333333333332,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "neuromuscular massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 42.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "neuromuscular massage therapists near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 80,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "neuromuscular massage therapy locally",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 75,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "neuromuscular therapist near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 29.666666666666668,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "neuromuscular therapy massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 64,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "neuromuscular therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 45,
+        "clicks": 0,
+        "impressions": 13
+      },
+      {
+        "keyword": "neuromuscular therapy timnath co",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 61.666666666666664,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "neuromuscular therapy timnath co",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 99,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "occupational therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 24,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "orthopedic massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 25.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "ov therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pain and massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 98,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pain management massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 81.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "pain pro massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 31,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pain relief massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 88.33333333333333,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "pain relief massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 20,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pain relief massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 57,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "pain relief therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 8,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pediatric physical therapist greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pelvic floor therapy male near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "performance massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 72,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "performance therapy massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 62,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "personal injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 53,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical and massage therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 43.36363636363637,
+        "clicks": 0,
+        "impressions": 22
+      },
+      {
+        "keyword": "physical therapist greeley",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 24.5,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "physical therapist greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapist greeley",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 39,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapist massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 91,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapist massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 12,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physical therapist massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 86,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapist near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy acupuncture",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 86.33333333333333,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "physical therapy acupuncture near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 53.285714285714285,
+        "clicks": 0,
+        "impressions": 14
+      },
+      {
+        "keyword": "physical therapy and acupuncture",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 80,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy and massage therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 59,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy car accident near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 13,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy deep tissue massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 51.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physical therapy doctors",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy for prosthetic leg",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy for vestibular vertigo",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 3,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy greeley",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 29.666666666666668,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "physical therapy greeley",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 85,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7.1,
+        "clicks": 0,
+        "impressions": 10
+      },
+      {
+        "keyword": "physical therapy greeley",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 75.66666666666667,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "physical therapy greeley",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 42.333333333333336,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "physical therapy greeley co",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 27,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy greeley co",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 81,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy greeley co",
+        "page": "https://acceleratedrehabtherapy.com/about/",
+        "position": 73,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy greeley co",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 48,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "physical therapy massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 54.470588235294116,
+        "clicks": 0,
+        "impressions": 17
+      },
+      {
+        "keyword": "physical therapy massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 37.09090909090909,
+        "clicks": 0,
+        "impressions": 22
+      },
+      {
+        "keyword": "physical therapy massage therapist",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 49.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physical therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 12.384615384615385,
+        "clicks": 0,
+        "impressions": 13
+      },
+      {
+        "keyword": "physio massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 15,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physiotherapist massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 51.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physiotherapist massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "physiotherapy and massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 71,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "physiotherapy+art",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 12,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "pressure massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 93,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "prolotherapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "pt near me",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 13.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "quiropr\u00e1ctico por accidente de auto denver",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 59.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "radco rehab denver",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 22,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "recovery massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 83,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehab for jumpers knee",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 13,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehab greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 10,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehab greeley co",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 19.5,
+        "clicks": 0,
+        "impressions": 8
+      },
+      {
+        "keyword": "rehab greeley co",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 25,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehab growth accelerator",
+        "page": "https://acceleratedrehabtherapy.com/contact/",
+        "position": 14.75,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "rehab massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 63,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehab massage therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehabilitation massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 56.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "rehabilitation massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 77,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehabilitation massage therapist",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 66,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehabilitation massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 82,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "rehabilitative massage therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 82.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "remedial massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 78,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sciatica treatment",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 24
+      },
+      {
+        "keyword": "shoulder pain relief",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 4,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "shoulder pain relief greeley",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 11.5,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "shoulder pain relief greeley",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 92.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "shoulder pain relief greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "shoulder pain relief greeley",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 49.333333333333336,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "shoulder pain relief greeley",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 82.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "soft tissue therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 16,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "soft tissue treatment near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 35.666666666666664,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "sport massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 36.666666666666664,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "sport therapy massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports and therapeutic massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 70,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "sports chiropractic near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 205
+      },
+      {
+        "keyword": "sports chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1.0495049504950495,
+        "clicks": 0,
+        "impressions": 202
+      },
+      {
+        "keyword": "sports chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports injury chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 51.2,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "sports madsage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 5,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports massage and rehabilitation",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 51,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports massage and therapy",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 73,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 16.605263157894736,
+        "clicks": 0,
+        "impressions": 38
+      },
+      {
+        "keyword": "sports massage therapist near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 51,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "sports massage therapists near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 49.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "sports massage therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 56.8,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "sports massages near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 26,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports med massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 86,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports medicine massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 89,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports medicine massage therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 9.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "sports recovery massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 9,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "sports therapy",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 11.777777777777779,
+        "clicks": 0,
+        "impressions": 9
+      },
+      {
+        "keyword": "sports therapy massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 36,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "sports therapy massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 48,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "targeted focus massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 74,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "therapeutic & sports massage",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 72,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "therapeutic sports massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 82.66666666666667,
+        "clicks": 0,
+        "impressions": 3
+      },
+      {
+        "keyword": "therapy greeley co",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 5,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 1,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "tmj physical therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 6,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "trauma recovery after accident injury (intitle:links | intitle:resources | inurl:links | inurl:resources)",
+        "page": "https://acceleratedrehabtherapy.com/resources/",
+        "position": 48.75,
+        "clicks": 0,
+        "impressions": 4
+      },
+      {
+        "keyword": "treatment for facial fractures near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 12,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "trigger point massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 36.81818181818182,
+        "clicks": 0,
+        "impressions": 11
+      },
+      {
+        "keyword": "trigger point massage therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 11,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "trigger point therapist near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 44.5,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "trigger point therapy massage near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 48,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "trigger point therapy near me",
+        "page": "http://acceleratedrehabtherapy.com/massage/",
+        "position": 47.3235294117647,
+        "clicks": 0,
+        "impressions": 34
+      },
+      {
+        "keyword": "vertigo treatment in greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 7.8,
+        "clicks": 0,
+        "impressions": 5
+      },
+      {
+        "keyword": "vestibular massage therapy",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "vestibular therapy near me",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 2,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "walk in acupuncture near me",
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "position": 80.83333333333333,
+        "clicks": 0,
+        "impressions": 6
+      },
+      {
+        "keyword": "walk in adjustments near me",
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "position": 93,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "walk in chiropractor greeley",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 12,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "walk in chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 57,
+        "clicks": 0,
+        "impressions": 2
+      },
+      {
+        "keyword": "wellness accelerated",
+        "page": "http://acceleratedrehabtherapy.com/",
+        "position": 16,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "what do patients say about accelerate health denver after receiving treatment for auto accident injuries?",
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "position": 7.625,
+        "clicks": 0,
+        "impressions": 16
+      },
+      {
+        "keyword": "what do patients say about accelerate health denver after receiving treatment for auto accident injuries?",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 7.8,
+        "clicks": 0,
+        "impressions": 100
+      },
+      {
+        "keyword": "what do patients say about accelerate health denver after receiving treatment for auto accident injuries?",
+        "page": "https://acceleratedrehabtherapy.com/resources/",
+        "position": 8.666666666666668,
+        "clicks": 0,
+        "impressions": 24
+      },
+      {
+        "keyword": "whiplash treatment greenwood village co",
+        "page": "https://acceleratedrehabtherapy.com/",
+        "position": 18,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "whiplash treatment near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 62.294117647058826,
+        "clicks": 0,
+        "impressions": 17
+      },
+      {
+        "keyword": "workers comp chiropractor near me",
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "position": 27,
+        "clicks": 0,
+        "impressions": 1
+      },
+      {
+        "keyword": "workplace injuries specialist near me",
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "position": 44,
+        "clicks": 0,
+        "impressions": 1
+      }
+    ],
+    "secretMap": {
+      "art-gsc-readonly": "[REDACTED:art-gsc-readonly]"
+    },
+    "sources": [
+      "gsc"
+    ]
+  },
+  "local_rank": {
+    "source": "dataforseo-local-rank",
+    "as_of": "2026-07-24T03:09:56.154058Z",
+    "rank_metric": "organic_rank_position",
+    "rows": [
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "physical therapy greeley",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "physical therapy denver",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "chiropractor greeley",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "chiropractor denver",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "auto injury treatment greeley",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "auto injury treatment denver",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "work comp injury care greeley",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "work comp injury care denver",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "massage therapy greeley",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "massage therapy denver",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "acupuncture greeley",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Greeley",
+        "location_address": "1823 65th Ave Suite 3 Greeley, CO 80634",
+        "zip": "80634",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "acupuncture denver",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "physical therapy greeley",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "physical therapy denver",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "chiropractor greeley",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "chiropractor denver",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "auto injury treatment greeley",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "auto injury treatment denver",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "work comp injury care greeley",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "work comp injury care denver",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "massage therapy greeley",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "massage therapy denver",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "acupuncture greeley",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "Denver",
+        "location_address": "2480 W 26th Ave #90B Denver, CO 80211",
+        "zip": "80211",
+        "location_code": 200751,
+        "location_target": "Denver, CO,Colorado,United States",
+        "keyword": "acupuncture denver",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "physical therapy greeley",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "physical therapy denver",
+        "page": "/physical-therapy/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "chiropractor greeley",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "chiropractor denver",
+        "page": "/chiropractor/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "auto injury treatment greeley",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "auto injury treatment denver",
+        "page": "/auto-injury/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "work comp injury care greeley",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "work comp injury care denver",
+        "page": "/work-comp/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "massage therapy greeley",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "massage therapy denver",
+        "page": "/massage/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "acupuncture greeley",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      },
+      {
+        "location_name": "UNC Campus",
+        "location_address": "1901 10th Ave, Cassidy Hall Greeley, CO 80639",
+        "zip": "80639",
+        "location_code": 1014529,
+        "location_target": "Greeley,Colorado,United States",
+        "keyword": "acupuncture denver",
+        "page": "/acupuncture/",
+        "organic_rank_position": null,
+        "result_url": null
+      }
+    ],
+    "secretMap": {
+      "art-dataforseo-readonly": "[REDACTED:art-dataforseo-readonly]"
+    }
+  },
+  "backlinks": {
+    "source": "dataforseo-backlinks",
+    "as_of": "2026-07-24T03:09:57.009166Z",
+    "target": "acceleratedrehabtherapy.com",
+    "date_from": "2026-06-24",
+    "date_to": "2026-07-24",
+    "summary": {
+      "referring_domains": 86,
+      "backlinks": 130
+    },
+    "history": {
+      "new_backlinks": null,
+      "lost_backlinks": null,
+      "new_referring_domains": null,
+      "lost_referring_domains": null
+    },
+    "secretMap": {
+      "art-dataforseo-readonly": "[REDACTED:art-dataforseo-readonly]"
+    }
+  },
+  "technical_health": {
+    "as_of": "2026-07-24T03:08:20.528139Z",
+    "pagespeed_as_of": "2026-07-24T03:08:20.528139Z",
+    "indexation_as_of": "2026-07-24T03:09:31.325023Z",
+    "pagespeed_rows": [
+      {
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 97,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 94,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 97,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 92,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/massage/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 98,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 97,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-denver/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 68,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-greeley/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 89,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-plantar-fasciitis/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 87,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/chronic-tendon-pain-treatment/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 90,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/non-surgical-pain-relief-denver/",
+        "strategy": "mobile",
+        "lcp_ms": null,
+        "inp_ms": null,
+        "cls": null,
+        "performance_score": 89,
+        "cwv_status": "unknown",
+        "metric_statuses": {
+          "lcp": "unknown",
+          "inp": "unknown",
+          "cls": "unknown"
+        }
+      }
+    ],
+    "indexation_rows": [
+      {
+        "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "coverage_state": "Submitted and indexed",
+        "verdict": "PASS",
+        "robots_txt_state": "ALLOWED",
+        "indexing_state": "INDEXING_ALLOWED",
+        "last_crawl_time": "2026-07-19T05:17:31Z",
+        "page_fetch_state": "SUCCESSFUL",
+        "google_canonical": "https://acceleratedrehabtherapy.com/physical-therapy/",
+        "user_canonical": "https://acceleratedrehabtherapy.com/physical-therapy/"
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "coverage_state": "Submitted and indexed",
+        "verdict": "PASS",
+        "robots_txt_state": "ALLOWED",
+        "indexing_state": "INDEXING_ALLOWED",
+        "last_crawl_time": "2026-07-01T06:41:00Z",
+        "page_fetch_state": "SUCCESSFUL",
+        "google_canonical": "https://acceleratedrehabtherapy.com/auto-injury/",
+        "user_canonical": "https://acceleratedrehabtherapy.com/auto-injury/"
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/work-comp/",
+        "coverage_state": "Submitted and indexed",
+        "verdict": "PASS",
+        "robots_txt_state": "ALLOWED",
+        "indexing_state": "INDEXING_ALLOWED",
+        "last_crawl_time": "2026-07-09T10:19:36Z",
+        "page_fetch_state": "SUCCESSFUL",
+        "google_canonical": "https://acceleratedrehabtherapy.com/work-comp/",
+        "user_canonical": "https://acceleratedrehabtherapy.com/work-comp/"
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "coverage_state": "Submitted and indexed",
+        "verdict": "PASS",
+        "robots_txt_state": "ALLOWED",
+        "indexing_state": "INDEXING_ALLOWED",
+        "last_crawl_time": "2026-07-18T00:01:14Z",
+        "page_fetch_state": "SUCCESSFUL",
+        "google_canonical": "https://acceleratedrehabtherapy.com/chiropractor/",
+        "user_canonical": "https://acceleratedrehabtherapy.com/chiropractor/"
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/massage/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "coverage_state": "Submitted and indexed",
+        "verdict": "PASS",
+        "robots_txt_state": "ALLOWED",
+        "indexing_state": "INDEXING_ALLOWED",
+        "last_crawl_time": "2026-06-11T01:18:49Z",
+        "page_fetch_state": "SUCCESSFUL",
+        "google_canonical": "https://acceleratedrehabtherapy.com/acupuncture/",
+        "user_canonical": "https://acceleratedrehabtherapy.com/acupuncture/"
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-denver/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-greeley/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/shockwave-therapy-plantar-fasciitis/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/chronic-tendon-pain-treatment/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      },
+      {
+        "page": "https://acceleratedrehabtherapy.com/non-surgical-pain-relief-denver/",
+        "coverage_state": "URL is unknown to Google",
+        "verdict": "NEUTRAL",
+        "robots_txt_state": "ROBOTS_TXT_STATE_UNSPECIFIED",
+        "indexing_state": "INDEXING_STATE_UNSPECIFIED",
+        "last_crawl_time": null,
+        "page_fetch_state": "PAGE_FETCH_STATE_UNSPECIFIED",
+        "google_canonical": null,
+        "user_canonical": null
+      }
+    ],
+    "sitemaps": [
+      {
+        "path": "https://acceleratedrehabtherapy.com/sitemap.xml",
+        "type": "sitemap",
+        "last_submitted": "2022-01-27T13:08:19.885Z",
+        "is_pending": false,
+        "last_downloaded": "2025-02-13T02:54:32.973Z",
+        "warnings": "12",
+        "errors": "0"
+      }
+    ],
+    "secretMap": {
+      "art-pagespeed-key": "[REDACTED:art-pagespeed-key]",
+      "art-gsc-readonly": "[REDACTED:art-gsc-readonly]"
+    }
+  }
+}

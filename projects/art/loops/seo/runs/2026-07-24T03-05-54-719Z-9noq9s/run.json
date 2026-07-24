@@ -1,0 +1,156 @@
+{
+  "run_id": "2026-07-24T03-05-54-719Z-9noq9s",
+  "project": "art",
+  "loop": "seo",
+  "mode": "full",
+  "run_name": "full",
+  "start": "2026-07-24T03:05:54.719154Z",
+  "end": "2026-07-24T03:09:57.041906Z",
+  "status": "ok",
+  "tool_calls": [
+    {
+      "tool": "gsc",
+      "args": {
+        "site_url": "sc-domain:acceleratedrehabtherapy.com",
+        "start_date": "2026-06-27",
+        "end_date": "2026-07-24"
+      },
+      "at": "2026-07-24T03:05:55.476621Z",
+      "ok": true
+    },
+    {
+      "tool": "pagespeed",
+      "args": {
+        "pages": [
+          "https://acceleratedrehabtherapy.com/physical-therapy/",
+          "https://acceleratedrehabtherapy.com/auto-injury/",
+          "https://acceleratedrehabtherapy.com/work-comp/",
+          "https://acceleratedrehabtherapy.com/chiropractor/",
+          "https://acceleratedrehabtherapy.com/massage/",
+          "https://acceleratedrehabtherapy.com/acupuncture/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-denver/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-greeley/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-plantar-fasciitis/",
+          "https://acceleratedrehabtherapy.com/chronic-tendon-pain-treatment/",
+          "https://acceleratedrehabtherapy.com/non-surgical-pain-relief-denver/"
+        ]
+      },
+      "at": "2026-07-24T03:08:20.528389Z",
+      "ok": true
+    },
+    {
+      "tool": "gsc-indexation",
+      "args": {
+        "pages": [
+          "https://acceleratedrehabtherapy.com/physical-therapy/",
+          "https://acceleratedrehabtherapy.com/auto-injury/",
+          "https://acceleratedrehabtherapy.com/work-comp/",
+          "https://acceleratedrehabtherapy.com/chiropractor/",
+          "https://acceleratedrehabtherapy.com/massage/",
+          "https://acceleratedrehabtherapy.com/acupuncture/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-denver/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-greeley/",
+          "https://acceleratedrehabtherapy.com/shockwave-therapy-plantar-fasciitis/",
+          "https://acceleratedrehabtherapy.com/chronic-tendon-pain-treatment/",
+          "https://acceleratedrehabtherapy.com/non-surgical-pain-relief-denver/"
+        ],
+        "site_url": "sc-domain:acceleratedrehabtherapy.com"
+      },
+      "at": "2026-07-24T03:09:31.325161Z",
+      "ok": true
+    },
+    {
+      "tool": "dataforseo-local-rank",
+      "args": {
+        "locations": [
+          "Greeley",
+          "Denver",
+          "UNC Campus"
+        ],
+        "targets": [
+          {
+            "keyword": "physical therapy greeley",
+            "page": "/physical-therapy/"
+          },
+          {
+            "keyword": "physical therapy denver",
+            "page": "/physical-therapy/"
+          },
+          {
+            "keyword": "chiropractor greeley",
+            "page": "/chiropractor/"
+          },
+          {
+            "keyword": "chiropractor denver",
+            "page": "/chiropractor/"
+          },
+          {
+            "keyword": "auto injury treatment greeley",
+            "page": "/auto-injury/"
+          },
+          {
+            "keyword": "auto injury treatment denver",
+            "page": "/auto-injury/"
+          },
+          {
+            "keyword": "work comp injury care greeley",
+            "page": "/work-comp/"
+          },
+          {
+            "keyword": "work comp injury care denver",
+            "page": "/work-comp/"
+          },
+          {
+            "keyword": "massage therapy greeley",
+            "page": "/massage/"
+          },
+          {
+            "keyword": "massage therapy denver",
+            "page": "/massage/"
+          },
+          {
+            "keyword": "acupuncture greeley",
+            "page": "/acupuncture/"
+          },
+          {
+            "keyword": "acupuncture denver",
+            "page": "/acupuncture/"
+          }
+        ]
+      },
+      "at": "2026-07-24T03:09:56.154410Z",
+      "ok": true
+    },
+    {
+      "tool": "dataforseo-backlinks",
+      "args": {
+        "target": "acceleratedrehabtherapy.com",
+        "date_from": null
+      },
+      "at": "2026-07-24T03:09:57.009216Z",
+      "ok": true
+    }
+  ],
+  "credential_alias_used": {
+    "gsc": "art-gsc-readonly",
+    "pagespeed": "art-pagespeed-key",
+    "gsc-indexation": "art-gsc-readonly",
+    "dataforseo-local-rank": "art-dataforseo-readonly",
+    "dataforseo-backlinks": "art-dataforseo-readonly"
+  },
+  "decisions": [
+    "keyword_exclusions filtered 12 candidate(s)"
+  ],
+  "proposals_created": [
+    "prop-2026-07-24T03-05-54-719Z-9noq9s-0",
+    "prop-2026-07-24T03-05-54-719Z-9noq9s-1",
+    "prop-2026-07-24T03-05-54-719Z-9noq9s-2"
+  ],
+  "proposals_evaluated": [],
+  "stale_proposals": [],
+  "awaiting_live_confirmation": [],
+  "stuck_implemented": [],
+  "attention_flags": [],
+  "snapshot": "runs\\2026-07-24T03-05-54-719Z-9noq9s\\snapshot.json",
+  "final_status": "ok"
+}
