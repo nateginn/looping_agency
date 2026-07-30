@@ -2,6 +2,7 @@
 # Operates on a disposable projects/_phase1-test-tmp/ fixture (created and
 # torn down here) so it never touches the real projects/_demo run history
 # used for the separate "two consecutive dry runs" proof.
+import glob
 import json
 import os
 import shutil
@@ -22,7 +23,7 @@ try:
     from tools.draft_copy import draft_copy  # noqa: E402
     from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from tools.run_loop import run_loop, _promote_live_implementations  # noqa: E402
-    from tools.lib.artwebsite_seo import create_worktree, make_attempt, proposal_branch_name  # noqa: E402
+    from tools.lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
 except ImportError:
     if TOOLS_DIR not in sys.path:
         sys.path.insert(0, TOOLS_DIR)
@@ -30,7 +31,7 @@ except ImportError:
     from draft_copy import draft_copy  # noqa: E402
     from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from run_loop import run_loop, _promote_live_implementations  # noqa: E402
-    from lib.artwebsite_seo import create_worktree, make_attempt, proposal_branch_name  # noqa: E402
+    from lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
 
 PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
 PROJECT = "_phase1-test-tmp"
@@ -152,6 +153,18 @@ def _force_rmtree(path):
             except OSError:
                 pass
     shutil.rmtree(path, ignore_errors=True)
+    # _make_temp_git_site() pairs every working repo with a bare "origin"
+    # remote at this sibling path (needed so Phase 5's verify_main_baseline
+    # has something real to fetch) - tear it down alongside the repo.
+    origin_path = path + "-origin"
+    if os.path.exists(origin_path):
+        for root, _dirs, files in os.walk(origin_path):
+            for name in files:
+                try:
+                    os.chmod(os.path.join(root, name), stat.S_IWRITE | stat.S_IREAD)
+                except OSError:
+                    pass
+        shutil.rmtree(origin_path, ignore_errors=True)
 
 
 def _write_text(path, text):
@@ -203,6 +216,18 @@ def _make_temp_git_site():
     _git(repo_path, "config", "user.name", "Loop Agency Test")
     _git(repo_path, "add", "-A")
     _git(repo_path, "commit", "-m", "fixture init")
+
+    # Phase 5's verify_main_baseline() fetches origin and compares
+    # refs/heads/main to refs/remotes/origin/main, so the fixture needs a
+    # real origin remote whose main starts in sync with the local one - a
+    # bare repo at a sibling path (torn down by _force_rmtree alongside
+    # repo_path) plays that role without touching the network.
+    origin_path = repo_path + "-origin"
+    os.makedirs(origin_path, exist_ok=True)
+    _git(origin_path, "init", "--bare", "-b", "main")
+    _git(repo_path, "remote", "add", "origin", origin_path)
+    _git(repo_path, "push", "origin", "main")
+    _git(repo_path, "fetch", "origin")
     return repo_path
 
 
@@ -478,6 +503,11 @@ def test_apply_refuses_stale_previous_value():
         )
         _git(repo_path, "add", "-A")
         _git(repo_path, "commit", "-m", "someone else's edit")
+        # Push so refs/heads/main and refs/remotes/origin/main still agree -
+        # this test is proving the previous_value content check catches the
+        # drift, not Phase 5's separate baseline-drift check (covered by its
+        # own test below).
+        _git(repo_path, "push", "origin", "main")
 
         result = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
         stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
@@ -738,6 +768,148 @@ def test_crash_recovery_commit_exists_path():
         check("crash recovery (commit exists): proposal promoted to implemented", recovered["status"] == "implemented" and stored["status"] == "implemented")
         check("crash recovery (commit exists): existing commit sha preserved", stored["implemented_commit_sha"] == expected_head == branch_head)
         check("crash recovery (commit exists): implement_attempt cleared", "implement_attempt" not in stored)
+        check(
+            "crash recovery (commit exists): implementation_base_sha backfilled from the recovered attempt, surviving implement_attempt removal",
+            stored.get("implementation_base_sha") == attempt["base_commit"],
+        )
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_crash_recovery_legacy_attempt_without_base_sha_backfill():
+    # A proposal already fully `implemented` under pre-Phase-5 code has no
+    # implementation_base_sha field at all (the field didn't exist yet).
+    # apply_proposal must still treat it as an idempotent no-op - nothing may
+    # require the new field to be present on old data.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-legacy-implemented", status="implemented")
+        proposal["implemented_branch"] = "seo/prop-legacy-implemented"
+        proposal["implemented_commit_sha"] = "legacy1234567890"
+        proposal["implemented_at"] = "2026-07-20T12:00:00Z"
+        _seed_proposal(proposal)
+
+        result = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check(
+            "legacy implemented proposal with no implementation_base_sha: apply_proposal is an idempotent no-op, not a crash",
+            result["status"] == "implemented" and result["implemented_commit_sha"] == "legacy1234567890",
+        )
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_apply_refuses_on_main_baseline_drift():
+    # If origin/main has moved (someone pushed directly) since this
+    # checkout's local main was last updated, apply.py must refuse rather
+    # than branch its worktree off a stale or diverged base.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-baseline-drift", status="approved")
+        _seed_proposal(proposal)
+
+        # Push a commit to origin's main from a throwaway branch, without
+        # ever updating this checkout's local refs/heads/main - after a
+        # fetch, refs/heads/main and refs/remotes/origin/main disagree.
+        _git(repo_path, "checkout", "-b", "drift-temp")
+        _write_text(os.path.join(repo_path, "templates", "services.html"), "{% block title %}Drifted upstream{% endblock %}\n{% block meta_description %}Old service meta{% endblock %}\n")
+        _git(repo_path, "add", "-A")
+        _git(repo_path, "commit", "-m", "pushed straight to origin/main")
+        _git(repo_path, "push", "origin", "drift-temp:refs/heads/main")
+        _git(repo_path, "checkout", "main")
+        _git(repo_path, "branch", "-D", "drift-temp")
+
+        leak_glob = os.path.join(tempfile.gettempdir(), "looping-artwebsite-*")
+        before_leak_check = set(glob.glob(leak_glob))
+
+        refused = False
+        try:
+            apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        except ValueError as e:
+            refused = "baseline drift" in str(e) and "refs/heads/main" in str(e) and "refs/remotes/origin/main" in str(e)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("apply.py refuses on main baseline drift (origin ahead of local)", refused)
+        check("baseline drift: proposal left approved, untouched (no implement_attempt written)", stored["status"] == "approved" and "implement_attempt" not in stored)
+        branches = _git(repo_path, "worktree", "list")
+        check("baseline drift: no worktree was created before the refusal", branches.count("\n") == 0 or len(branches.strip().splitlines()) == 1)
+        after_leak_check = set(glob.glob(leak_glob))
+        check("baseline drift: no temp worktree directory leaked by the refused apply", after_leak_check == before_leak_check)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_make_attempt_and_create_worktree_never_use_a_bare_main_ref():
+    # Phase 5: every place that used to resolve the bare name `main` must use
+    # a fully-qualified ref (refs/heads/main, refs/remotes/origin/main)
+    # instead, so a stray tag/symref named `main` can't resolve to the wrong
+    # thing. Prove it by recording every git argv make_attempt()/
+    # create_worktree() issue against a real repo.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        calls = []
+
+        def recording_runner(args, cwd):
+            calls.append(list(args))
+            completed = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True)
+            return completed.stdout.strip()
+
+        attempt = make_attempt(repo_path, "prop-fq-refs", git_runner=recording_runner)
+        create_worktree(repo_path, attempt, git_runner=recording_runner)
+
+        bare_main_used = any(arg == "main" for call in calls for arg in call)
+        fq_heads_used = any(arg == "refs/heads/main" for call in calls for arg in call)
+        fq_remote_used = any(arg == "refs/remotes/origin/main" for call in calls for arg in call)
+        check("make_attempt/create_worktree never pass a bare 'main' git argument", not bare_main_used)
+        check("make_attempt resolves refs/heads/main explicitly", fq_heads_used)
+        check("make_attempt resolves refs/remotes/origin/main explicitly", fq_remote_used)
+
+        cleanup_worktree(repo_path, attempt, git_runner=recording_runner, delete_branch=True)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_apply_persists_implementation_base_sha_surviving_attempt_removal():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-base-sha-persist", status="approved")
+        _seed_proposal(proposal)
+        expected_base_sha = _git(repo_path, "rev-parse", "refs/heads/main")
+
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("apply.py persists implementation_base_sha on the proposal", implemented.get("implementation_base_sha") == expected_base_sha)
+        check(
+            "implementation_base_sha survives implement_attempt being popped on success",
+            "implement_attempt" not in stored and stored.get("implementation_base_sha") == expected_base_sha,
+        )
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_apply_refuses_on_inconsistent_commit_ancestry():
+    # Defense-in-depth: even though apply.py creates the implementation
+    # commit itself, verify its parent really is the recorded base SHA
+    # before marking it implemented - the same check a later publish step
+    # needs to trust the commit it's about to push.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-ancestry-mismatch", status="approved")
+        _seed_proposal(proposal)
+
+        def tampering_runner(args, cwd):
+            if len(args) >= 3 and args[1] == "rev-parse" and args[2].endswith("^"):
+                return "0" * 40
+            completed = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True)
+            return completed.stdout.strip()
+
+        result = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path, git_runner=tampering_runner)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("ancestry mismatch: apply.py refuses and marks implement-failed, not implemented", result["status"] == "implement-failed" and stored["status"] == "implement-failed")
+        check("ancestry mismatch: implement_error names the ancestry failure", "inconsistent commit ancestry" in stored.get("implement_error", ""))
     finally:
         _force_rmtree(repo_path)
 
@@ -1080,6 +1252,11 @@ def main():
     test_apply_recovers_from_a_stale_run_lock_left_by_a_crashed_apply()
     test_crash_recovery_no_commit_path()
     test_crash_recovery_commit_exists_path()
+    test_crash_recovery_legacy_attempt_without_base_sha_backfill()
+    test_apply_refuses_on_main_baseline_drift()
+    test_make_attempt_and_create_worktree_never_use_a_bare_main_ref()
+    test_apply_persists_implementation_base_sha_surviving_attempt_removal()
+    test_apply_refuses_on_inconsistent_commit_ancestry()
     test_retry_transition()
     test_live_detection_transitions_implemented_to_applied()
     test_awaiting_live_confirmation_and_stuck_reporting()

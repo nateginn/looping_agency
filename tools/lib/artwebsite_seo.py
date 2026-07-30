@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 import shutil
@@ -197,12 +198,66 @@ def worktree_path_for(parent_dir, proposal_id):
     return os.path.join(parent_dir, f"seo-{proposal_id}")
 
 
+def verify_main_baseline(repo_path, git_runner=None):
+    """Fetch origin and confirm the local refs/heads/main matches
+    refs/remotes/origin/main before anything branches off it - refuses on
+    drift (a human pushed to origin, or pulled locally, since the last
+    fetch) rather than silently implementing against a stale or diverged
+    base. Always uses fully-qualified refs, never a bare `main`, so a stray
+    tag or symbolic ref named `main` cannot resolve to something else."""
+    git_runner = git_runner or _default_git_runner
+    try:
+        git_runner(["git", "fetch", "origin", "+refs/heads/main:refs/remotes/origin/main"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: could not fetch origin to verify the main baseline - {err}")
+
+    try:
+        local_main = git_runner(["git", "rev-parse", "refs/heads/main"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: refs/heads/main does not resolve locally - {err}")
+
+    try:
+        remote_main = git_runner(["git", "rev-parse", "refs/remotes/origin/main"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: refs/remotes/origin/main does not resolve after fetch - {err}")
+
+    if local_main != remote_main:
+        raise ValueError(
+            f"REFUSED: baseline drift - local refs/heads/main ({local_main}) does not match "
+            f"refs/remotes/origin/main ({remote_main}) after fetch. Pull/fast-forward main before applying."
+        )
+    return local_main
+
+
+def verify_implementation_ancestry(repo_path, commit_sha, expected_base_sha, git_runner=None):
+    """Confirm an implementation commit's parent is exactly the recorded
+    base SHA - the check a later publish step needs to prove the commit it
+    is about to push is actually based on the source it was drafted/applied
+    against, not a rebased or otherwise altered one."""
+    git_runner = git_runner or _default_git_runner
+    try:
+        parent = git_runner(["git", "rev-parse", f"{commit_sha}^"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: could not resolve the parent of implementation commit {commit_sha} - {err}")
+
+    if parent != expected_base_sha:
+        raise ValueError(
+            f"REFUSED: inconsistent commit ancestry - implementation commit {commit_sha} has parent {parent}, "
+            f"which does not match the recorded implementation_base_sha ({expected_base_sha})"
+        )
+    return True
+
+
 def make_attempt(repo_path, proposal_id, git_runner=None, started_at=None):
     git_runner = git_runner or _default_git_runner
     branch = proposal_branch_name(proposal_id)
+    # Verify the baseline before creating anything on disk - a drifted
+    # baseline or failed fetch must not leak a temp worktree directory that
+    # nothing will ever clean up (nobody holds an attempt dict to pass to
+    # cleanup_worktree() for one that never got returned).
+    base_commit = verify_main_baseline(repo_path, git_runner=git_runner)
     parent_dir = tempfile.mkdtemp(prefix="looping-artwebsite-")
     worktree_path = worktree_path_for(parent_dir, proposal_id)
-    base_commit = git_runner(["git", "rev-parse", "main"], cwd=repo_path)
     return {
         "started_at": started_at or _now_iso(),
         "branch": branch,
@@ -216,7 +271,12 @@ def create_worktree(repo_path, attempt, git_runner=None):
     git_runner = git_runner or _default_git_runner
     worktree_path = attempt["worktree_path"]
     branch = attempt["branch"]
-    git_runner(["git", "worktree", "add", worktree_path, "-b", branch, "main"], cwd=repo_path)
+    # Branch from the exact SHA verify_main_baseline() already confirmed
+    # matches refs/remotes/origin/main, rather than re-resolving `main`
+    # (bare or qualified) a second time - closes the TOCTOU gap between
+    # verification and worktree creation.
+    base_commit = attempt["base_commit"]
+    git_runner(["git", "worktree", "add", worktree_path, "-b", branch, base_commit], cwd=repo_path)
     return attempt
 
 
@@ -320,6 +380,75 @@ def _self_test():
         checks.append(("apply_rewrite skips the staleness check for legacy proposals with no previous_value", read_current_value(repo_dir, "/", "meta-description-rewrite") == "New description"))
     finally:
         shutil.rmtree(repo_dir, ignore_errors=True)
+
+    def _fake_runner(responses):
+        def runner(args, cwd):
+            for matcher, result in responses:
+                if matcher(args):
+                    if isinstance(result, Exception):
+                        raise result
+                    return result
+            raise AssertionError(f"unexpected git command in fake runner: {args}")
+        return runner
+
+    matching_runner = _fake_runner(
+        [
+            (lambda a: a[:2] == ["git", "fetch"], ""),
+            (lambda a: a == ["git", "rev-parse", "refs/heads/main"], "abc123"),
+            (lambda a: a == ["git", "rev-parse", "refs/remotes/origin/main"], "abc123"),
+        ]
+    )
+    checks.append(("verify_main_baseline returns the shared SHA when refs/heads/main matches refs/remotes/origin/main", verify_main_baseline("/fake/repo", git_runner=matching_runner) == "abc123"))
+
+    drifted_runner = _fake_runner(
+        [
+            (lambda a: a[:2] == ["git", "fetch"], ""),
+            (lambda a: a == ["git", "rev-parse", "refs/heads/main"], "local111"),
+            (lambda a: a == ["git", "rev-parse", "refs/remotes/origin/main"], "remote222"),
+        ]
+    )
+    drift_refused = False
+    try:
+        verify_main_baseline("/fake/repo", git_runner=drifted_runner)
+    except ValueError as e:
+        drift_refused = "baseline drift" in str(e) and "local111" in str(e) and "remote222" in str(e)
+    checks.append(("verify_main_baseline refuses on baseline drift between refs/heads/main and refs/remotes/origin/main", drift_refused))
+
+    fetch_failed_runner = _fake_runner([(lambda a: a[:2] == ["git", "fetch"], RuntimeError("network unreachable"))])
+    fetch_refused = False
+    try:
+        verify_main_baseline("/fake/repo", git_runner=fetch_failed_runner)
+    except ValueError as e:
+        fetch_refused = "could not fetch origin" in str(e)
+    checks.append(("verify_main_baseline refuses safely when fetching origin fails", fetch_refused))
+
+    ancestry_matching_runner = _fake_runner([(lambda a: a[-1] == "sha-child^", "sha-base")])
+    ancestry_ok = False
+    try:
+        ancestry_ok = verify_implementation_ancestry("/fake/repo", "sha-child", "sha-base", git_runner=ancestry_matching_runner) is True
+    except ValueError:
+        pass
+    checks.append(("verify_implementation_ancestry accepts a commit whose parent matches the recorded base SHA", ancestry_ok))
+
+    ancestry_mismatch_runner = _fake_runner([(lambda a: a[-1] == "sha-child^", "sha-unexpected-parent")])
+    ancestry_refused = False
+    try:
+        verify_implementation_ancestry("/fake/repo", "sha-child", "sha-base", git_runner=ancestry_mismatch_runner)
+    except ValueError as e:
+        ancestry_refused = "inconsistent commit ancestry" in str(e)
+    checks.append(("verify_implementation_ancestry refuses on inconsistent commit ancestry", ancestry_refused))
+
+    leak_glob = os.path.join(tempfile.gettempdir(), "looping-artwebsite-*")
+    before_leak_check = set(glob.glob(leak_glob))
+    fetch_failed_for_attempt = _fake_runner([(lambda a: a[:2] == ["git", "fetch"], RuntimeError("network unreachable"))])
+    attempt_refused = False
+    try:
+        make_attempt("/fake/repo", "prop-leak-test", git_runner=fetch_failed_for_attempt)
+    except ValueError:
+        attempt_refused = True
+    after_leak_check = set(glob.glob(leak_glob))
+    checks.append(("make_attempt refuses when verify_main_baseline fails", attempt_refused))
+    checks.append(("make_attempt does not leak a temp worktree directory when verify_main_baseline fails", after_leak_check == before_leak_check))
 
     failed = 0
     for name, ok in checks:

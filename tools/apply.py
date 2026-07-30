@@ -5,13 +5,27 @@ from datetime import datetime, timezone
 import yaml
 
 try:
-    from .lib.artwebsite_seo import cleanup_worktree, create_worktree, finalize_worktree, inspect_attempt, make_attempt
+    from .lib.artwebsite_seo import (
+        cleanup_worktree,
+        create_worktree,
+        finalize_worktree,
+        inspect_attempt,
+        make_attempt,
+        verify_implementation_ancestry,
+    )
     from .lib.lock import acquire_lock, release_lock
     from .lib.proposals import load_json, loop_dir_for, pending_dir_for, proposal_path, atomic_write_json
     from .run_loop import _read_lock_ttl_minutes_unsafe
     from .spec_validate import extract_frontmatter
 except ImportError:
-    from lib.artwebsite_seo import cleanup_worktree, create_worktree, finalize_worktree, inspect_attempt, make_attempt
+    from lib.artwebsite_seo import (
+        cleanup_worktree,
+        create_worktree,
+        finalize_worktree,
+        inspect_attempt,
+        make_attempt,
+        verify_implementation_ancestry,
+    )
     from lib.lock import acquire_lock, release_lock
     from lib.proposals import load_json, loop_dir_for, pending_dir_for, proposal_path, atomic_write_json
     from run_loop import _read_lock_ttl_minutes_unsafe
@@ -54,6 +68,24 @@ def _recover_attempt_if_needed(proposal, proposal_pathname, repo_path, git_runne
 
     inspection = inspect_attempt(repo_path, attempt, git_runner=git_runner)
     if inspection["state"] == "commit-exists":
+        # A crashed apply left this attempt's base SHA only inside
+        # implement_attempt (or, for an attempt created before this base-SHA
+        # persistence existed, not recorded at proposal level at all).
+        # Backfill implementation_base_sha now, before implement_attempt is
+        # popped below, so recovering a real commit never loses it.
+        base_sha = attempt.get("base_commit")
+        if base_sha and not proposal.get("implementation_base_sha"):
+            proposal["implementation_base_sha"] = base_sha
+        if base_sha:
+            try:
+                verify_implementation_ancestry(repo_path, inspection["head"], base_sha, git_runner=git_runner)
+            except ValueError as err:
+                cleanup_worktree(repo_path, attempt, git_runner=git_runner, delete_branch=True)
+                proposal["status"] = "implement-failed"
+                proposal["implement_error"] = str(err)
+                proposal.pop("implement_attempt", None)
+                _write_proposal_state(proposal_pathname, proposal)
+                return proposal
         cleanup_worktree(repo_path, attempt, git_runner=git_runner, delete_branch=False)
         proposal["status"] = "implemented"
         proposal["implemented_branch"] = attempt["branch"]
@@ -116,12 +148,17 @@ def apply_proposal(project, loop, proposal_id, by="human", repo_path=None, git_r
 
         attempt = make_attempt(repo_path, proposal_id, git_runner=git_runner, started_at=_now_iso(now))
         proposal["implement_attempt"] = attempt
+        # Persisted on the proposal itself (not just inside implement_attempt,
+        # which finalize/recovery both eventually pop) so it survives to the
+        # `implemented` state a later publish step needs it in.
+        proposal["implementation_base_sha"] = attempt["base_commit"]
         proposal["implemented_by"] = by
         _write_proposal_state(proposal_pathname, proposal)
 
         try:
             create_worktree(repo_path, attempt, git_runner=git_runner)
             implementation = finalize_worktree(repo_path, proposal, attempt, git_runner=git_runner, now=now)
+            verify_implementation_ancestry(repo_path, implementation["implemented_commit_sha"], attempt["base_commit"], git_runner=git_runner)
         except Exception as err:
             proposal = load_json(proposal_pathname)
             proposal["status"] = "implement-failed"
