@@ -19,15 +19,17 @@ if WORKSPACE_ROOT not in sys.path:
 
 try:
     from tools.apply import apply_proposal  # noqa: E402
+    from tools.draft_copy import draft_copy  # noqa: E402
     from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
-    from tools.run_loop import run_loop  # noqa: E402
+    from tools.run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from tools.lib.artwebsite_seo import create_worktree, make_attempt, proposal_branch_name  # noqa: E402
 except ImportError:
     if TOOLS_DIR not in sys.path:
         sys.path.insert(0, TOOLS_DIR)
     from apply import apply_proposal  # noqa: E402
+    from draft_copy import draft_copy  # noqa: E402
     from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
-    from run_loop import run_loop  # noqa: E402
+    from run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from lib.artwebsite_seo import create_worktree, make_attempt, proposal_branch_name  # noqa: E402
 
 PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
@@ -382,6 +384,111 @@ def test_apply_success_and_tier2_refusal():
         _force_rmtree(repo_path)
 
 
+def test_draft_copy_succeeds_on_draft_status():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-draft-status-ok", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        drafted = draft_copy(PROJECT, LOOP, proposal["id"], "New Draft Status Title", "claude-test", repo_path=repo_path)
+        check("draft_copy: a fresh draft proposal accepts new implementation copy", drafted["implementation"]["new_value"] == "New Draft Status Title")
+        check("draft_copy: proposal status stays draft after drafting copy", drafted["status"] == "draft")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_draft_copy_refuses_past_draft_status():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-redraft-approved", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        draft_copy(PROJECT, LOOP, proposal["id"], "Original Approved Title", "claude-test", repo_path=repo_path)
+        decide(PROJECT, LOOP, proposal["id"], "approve", by="test")
+        before = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check(
+            "setup: proposal is approved with drafted copy before the refused redraft attempt",
+            before["status"] == "approved" and before["implementation"]["new_value"] == "Original Approved Title",
+        )
+
+        refused = False
+        try:
+            draft_copy(PROJECT, LOOP, proposal["id"], "Sneaky Overwrite Title", "claude-test", repo_path=repo_path)
+        except ValueError as e:
+            refused = 'not "draft"' in str(e)
+        check("draft_copy: drafting an already-approved proposal is refused", refused)
+
+        after = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("draft_copy: approved proposal's status is unchanged after the refused redraft", after["status"] == "approved")
+        check(
+            "draft_copy: approved proposal's existing implementation is unchanged after the refused redraft",
+            after["implementation"] == before["implementation"],
+        )
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_draft_copy_end_to_end_apply():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-draft-e2e", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        drafted = draft_copy(PROJECT, LOOP, proposal["id"], "New Services Title For SEO", "claude-test", repo_path=repo_path)
+        check("draft_copy: previous_value is read from the live template, not guessed", drafted["implementation"]["previous_value"] == "Old service title")
+        check("draft_copy: new_value stored verbatim", drafted["implementation"]["new_value"] == "New Services Title For SEO")
+        check("draft_copy: drafted_at/drafted_by stamped on the proposal", bool(drafted["implementation"]["drafted_at"]) and drafted["implementation"]["drafted_by"] == "claude-test")
+
+        decide(PROJECT, LOOP, proposal["id"], "approve", by="test")
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("draft_copy end-to-end: apply succeeds using the drafted copy", implemented["status"] == "implemented")
+
+        branch_head = _git(repo_path, "rev-parse", proposal_branch_name(proposal["id"]))
+        committed = subprocess.run(
+            ["git", "show", f"{branch_head}:templates/services.html"], cwd=repo_path, capture_output=True, text=True, check=True
+        ).stdout
+        check("draft_copy end-to-end: committed content contains the drafted new_value", "New Services Title For SEO" in committed)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_apply_refuses_stale_previous_value():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-stale-apply", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        draft_copy(PROJECT, LOOP, proposal["id"], "New Services Title", "claude-test", repo_path=repo_path)
+        decide(PROJECT, LOOP, proposal["id"], "approve", by="test")
+
+        # Simulate someone else editing the live page directly (a commit
+        # landing on `main`) after this proposal was drafted but before it
+        # was applied - the approved previous_value is now stale.
+        _write_text(
+            os.path.join(repo_path, "templates", "services.html"),
+            "{% block title %}Title changed by someone else{% endblock %}\n{% block meta_description %}Old service meta{% endblock %}\n",
+        )
+        _git(repo_path, "add", "-A")
+        _git(repo_path, "commit", "-m", "someone else's edit")
+
+        result = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("stale previous_value: apply refuses and marks implement-failed, not implemented", result["status"] == "implement-failed" and stored["status"] == "implement-failed")
+        check("stale previous_value: implement_error explains the drift", "no longer matches the approved previous_value" in stored.get("implement_error", ""))
+        with open(os.path.join(repo_path, "templates", "services.html"), "r", encoding="utf-8") as f:
+            check("stale previous_value: the other person's edit on the live page is left untouched", "Title changed by someone else" in f.read())
+    finally:
+        _force_rmtree(repo_path)
+
+
 def test_manual_approval_only_hard_refusal():
     reset_fixture()
     repo_path = _make_temp_git_site()
@@ -417,19 +524,168 @@ def test_propose_only_refuses_tier1_apply():
         _force_rmtree(repo_path)
 
 
-def test_apply_lock_independent_of_run_lock():
+def test_apply_and_review_pending_block_on_a_concurrent_run_lock_holder():
+    # Phase 3: apply.py/review_pending.py/draft_copy.py now share run_loop.py's
+    # single run.lock (the old, separately-named apply.lock let apply.py run
+    # concurrently with an active run - exactly the stale-write race this
+    # phase closes). A live held lock must refuse all of them, and each must
+    # leave the proposal completely untouched.
     reset_fixture()
     repo_path = _make_temp_git_site()
     try:
+        proposal = _proposal("prop-approve-vs-runlock", status="draft")
+        _seed_proposal(proposal)
+
         _write_json(
             os.path.join(loop_dir, "run.lock"),
             {"runId": "held-run", "pid": os.getpid(), "startTime": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
         )
-        proposal = _proposal("prop-apply-vs-runlock", status="approved")
-        _seed_proposal(proposal)
+
+        approve_refused = False
+        try:
+            decide(PROJECT, LOOP, proposal["id"], "approve", by="test")
+        except ValueError as e:
+            approve_refused = "run lock active" in str(e)
+        check("review_pending.decide refuses while a concurrent run holds the lock", approve_refused)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("review_pending.decide: proposal status untouched while refused", stored["status"] == "draft" and stored.get("decision") is None)
+
+        apply_refused = False
+        try:
+            apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        except ValueError as e:
+            apply_refused = "run lock active" in str(e)
+        check("apply.py refuses while a concurrent run holds the lock", apply_refused)
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("apply.py: proposal status untouched while refused (still draft, no implement_attempt)", stored["status"] == "draft" and "implement_attempt" not in stored)
+        check("run.lock is untouched by the refused calls (still held by the original runId)", _read_json(os.path.join(loop_dir, "run.lock"))["runId"] == "held-run")
+
+        # Once the simulated run finishes and releases the lock, the same
+        # calls succeed normally.
+        os.remove(os.path.join(loop_dir, "run.lock"))
+        decide(PROJECT, LOOP, proposal["id"], "approve", by="test")
         implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
-        check("apply-scoped lock does not block on a concurrent run-lock holder", implemented["status"] == "implemented")
-        check("run.lock remains untouched by apply.py", _read_json(os.path.join(loop_dir, "run.lock"))["runId"] == "held-run")
+        check("apply.py succeeds normally once the concurrent run's lock is released", implemented["status"] == "implemented")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_draft_copy_blocks_on_a_concurrent_run_lock_holder():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-draft-vs-runlock", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        _write_json(
+            os.path.join(loop_dir, "run.lock"),
+            {"runId": "held-run-2", "pid": os.getpid(), "startTime": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
+        )
+
+        refused = False
+        try:
+            draft_copy(PROJECT, LOOP, proposal["id"], "New Title While Run Active", "claude-test", repo_path=repo_path)
+        except ValueError as e:
+            refused = "run lock active" in str(e)
+        check("draft_copy refuses to draft while a concurrent run holds the lock", refused)
+
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        check("draft_copy: proposal has no implementation written while refused", "implementation" not in stored)
+
+        os.remove(os.path.join(loop_dir, "run.lock"))
+        drafted = draft_copy(PROJECT, LOOP, proposal["id"], "New Title While Run Active", "claude-test", repo_path=repo_path)
+        check("draft_copy succeeds normally once the concurrent run's lock is released", drafted["implementation"]["new_value"] == "New Title While Run Active")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_promote_live_implementations_no_nested_lock_deadlock():
+    # The pre-Phase-3 code had _promote_live_implementations() acquire its
+    # own separate apply.lock nested inside run_loop()'s held run.lock - safe
+    # only because the two locks had different names. Consolidating onto one
+    # shared lock without also dropping this nested acquisition would make
+    # run_loop() self-refuse against its own held lock every single run,
+    # silently skipping every implemented->applied promotion forever. Prove
+    # the fix: call the promotion function directly while run.lock is already
+    # held (simulating the caller) and confirm it still promotes - it must
+    # not attempt to acquire anything itself.
+    reset_fixture()
+    proposal = _proposal("prop-nested-lock", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["implemented_branch"] = "seo/prop-nested-lock"
+    proposal["implemented_commit_sha"] = "abc123"
+    proposal["implemented_at"] = "2026-07-20T12:00:00Z"
+    _seed_proposal(proposal)
+
+    _write_json(
+        os.path.join(loop_dir, "run.lock"),
+        {"runId": "outer-run", "pid": os.getpid(), "startTime": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
+    )
+
+    proposals = [proposal]
+    decisions, awaiting_ids, stuck_ids = _promote_live_implementations(
+        PROJECT,
+        pending_dir,
+        proposals,
+        requester=_compare_requester("ahead"),
+        compare_target={"owner": "nateginn", "repo": "artwebsite"},
+    )
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("no nested-lock deadlock: promotion succeeds while the outer run.lock is already held", stored["status"] == "applied")
+    check("no nested-lock deadlock: nothing skipped it as busy", proposal["id"] not in awaiting_ids and proposal["id"] not in stuck_ids)
+    check("no nested-lock deadlock: the outer run.lock is untouched (still held by the outer runId)", _read_json(os.path.join(loop_dir, "run.lock"))["runId"] == "outer-run")
+    os.remove(os.path.join(loop_dir, "run.lock"))
+
+
+def test_run_loop_promotion_survives_end_of_run_write():
+    # The bug this phase closes: apply.py transitions a proposal mid-run,
+    # then run_loop.py's end-of-run write of its own (now stale) in-memory
+    # proposal list reverts it. With one shared lock, a concurrent apply.py
+    # write during a run_loop() run is now impossible (previous test proves
+    # it's refused); this proves the promotion run_loop() makes *to itself*
+    # mid-run (via _promote_live_implementations) is not clobbered by its own
+    # end-of-run write of the in-memory `proposals` list.
+    reset_fixture()
+    proposal = _proposal("prop-no-stale-revert", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["implemented_branch"] = "seo/prop-no-stale-revert"
+    proposal["implemented_commit_sha"] = "abc123"
+    proposal["implemented_at"] = "2026-07-20T12:00:00Z"
+    _seed_proposal(proposal)
+
+    result = run_loop(
+        PROJECT,
+        LOOP,
+        scenario="normal",
+        _github_requester=_compare_requester("ahead"),
+        _github_compare_target={"owner": "nateginn", "repo": "artwebsite"},
+    )
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check(
+        "no stale final write: run_loop's end-of-run write persists the mid-run implemented->applied promotion",
+        stored["status"] == "applied" and result["run_json"]["status"] == "ok",
+    )
+
+
+def test_apply_recovers_from_a_stale_run_lock_left_by_a_crashed_apply():
+    # A prior apply.py process that crashed mid-flight would have died while
+    # holding the shared run.lock rather than releasing it. Prove the
+    # existing stale-lock recovery (dead pid / age > max_run_duration) covers
+    # this now that apply.py uses the same lock file run_loop.py does.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-crashed-apply-lock", status="approved")
+        _seed_proposal(proposal)
+
+        _write_json(
+            os.path.join(loop_dir, "run.lock"),
+            {"runId": "crashed-apply-run", "pid": 999999, "startTime": (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")},
+        )
+
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("apply.py recovers a stale run.lock left by a crashed prior apply (dead pid)", implemented["status"] == "implemented")
+        check("apply.py: the stale lock is archived for audit, same mechanism as a crashed run_loop", os.path.exists(os.path.join(loop_dir, "runs", "crashed-apply-run", "stale-lock.json")))
+        check("apply.py: the lock is released after recovery + successful apply", not os.path.exists(os.path.join(loop_dir, "run.lock")))
     finally:
         _force_rmtree(repo_path)
 
@@ -580,6 +836,132 @@ def test_verified_delta_surfaces_in_report():
     check("verified report section includes explicit position delta", "delta +0.0" in report_text)
 
 
+def test_evaluator_missing_row_is_not_evaluable():
+    reset_fixture()
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    proposal = _proposal("prop-missing-row", status="applied", page="/blog/does-not-exist", keyword="nothing tracks this")
+    proposal["baseline_position"] = 12.0
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    result = run_loop(PROJECT, LOOP, scenario="normal")
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    report_text = open(os.path.join(loop_dir, "runs", result["run_id"], "report.md"), "r", encoding="utf-8").read()
+    check("missing row: proposal status stays applied, not falsely verified", stored["status"] == "applied")
+    check("missing row: evaluation_outcome is not-evaluable", stored["evaluation_outcome"] == "not-evaluable")
+    check("missing row: evaluation_reason recorded", "no metrics row matched" in (stored.get("evaluation_reason") or ""))
+    check(
+        "missing row: run_json lists it as not-evaluable, not as evaluated",
+        proposal["id"] in result["run_json"]["proposals_not_evaluable"] and proposal["id"] not in result["run_json"]["proposals_evaluated"],
+    )
+    check("missing row: report.md carries a Not evaluable section entry", "Not evaluable this run" in report_text and proposal["id"] in report_text)
+
+
+def test_evaluator_wrong_keyword_row_is_not_used():
+    reset_fixture()
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    # /blog/loop-agency exists in the mock keyword set, but only under "best loop
+    # agency" - the pre-fix bug matched on page alone and would have scored this
+    # proposal against that unrelated row's position instead of refusing to evaluate.
+    proposal = _proposal("prop-wrong-keyword", status="applied", page="/blog/loop-agency", keyword="totally unrelated keyword")
+    proposal["baseline_position"] = 12.0
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    result = run_loop(PROJECT, LOOP, scenario="normal")
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("wrong keyword: same-page-different-keyword row is not falsely verified", stored["status"] == "applied")
+    check("wrong keyword: evaluation_outcome is not-evaluable, not verified", stored["evaluation_outcome"] == "not-evaluable")
+    check("wrong keyword: mismatched row's id not in this run's evaluated list", proposal["id"] not in result["run_json"]["proposals_evaluated"])
+
+
+def test_evaluator_ambiguous_duplicate_rows_refused():
+    reset_fixture()
+    _write_spec(GSC_SPEC)
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    proposal = _proposal("prop-ambiguous", status="applied", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["baseline_position"] = 8.2
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    def fake_http(url, headers, body_bytes):
+        payload = {
+            "rows": [
+                {"keys": ["Best Loop Agency", "/blog/loop-agency"], "clicks": 20, "impressions": 400, "position": 5.0},
+                {"keys": ["  best   loop agency ", "/blog/loop-agency"], "clicks": 20, "impressions": 400, "position": 9.0},
+            ]
+        }
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http)
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("ambiguous duplicate rows: refuses to guess, proposal stays applied", stored["status"] == "applied")
+    check("ambiguous duplicate rows: evaluation_outcome is not-evaluable", stored["evaluation_outcome"] == "not-evaluable")
+    check("ambiguous duplicate rows: reason names the ambiguity", "multiple metrics rows" in (stored.get("evaluation_reason") or ""))
+    check("ambiguous duplicate rows: not counted as evaluated", proposal["id"] not in result["run_json"]["proposals_evaluated"])
+
+
+def test_evaluator_null_position_is_not_evaluable():
+    reset_fixture()
+    _write_spec(GSC_SPEC)
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    proposal = _proposal("prop-null-position", status="applied", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["baseline_position"] = 8.2
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    def fake_http(url, headers, body_bytes):
+        # GSC omits "position" on rows below its reporting threshold; gsc.py maps
+        # that to position: None rather than a number.
+        payload = {"rows": [{"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 42, "impressions": 900}]}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=fake_http)
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("null position: matched-but-null row is not falsely verified", stored["status"] == "applied")
+    check("null position: evaluation_outcome is not-evaluable", stored["evaluation_outcome"] == "not-evaluable")
+    check("null position: reason mentions the null position", "null position" in (stored.get("evaluation_reason") or ""))
+
+
+def test_evaluator_normalizes_case_and_whitespace_for_valid_match():
+    reset_fixture()
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    proposal = _proposal("prop-normalized-match", status="applied", page="/blog/loop-agency", keyword="  Best   LOOP Agency  ")
+    proposal["baseline_position"] = 8.2
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    run_loop(PROJECT, LOOP, scenario="normal")
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("normalization: differently-cased/spaced keyword still matches the real row", stored["status"] == "verified")
+    check("normalization: evaluation_outcome is verified", stored["evaluation_outcome"] == "verified")
+
+
+def test_not_evaluable_streak_surfaces_attention_after_three_runs():
+    reset_fixture()
+    applied_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    proposal = _proposal("prop-streak", status="applied", page="/blog/does-not-exist", keyword="ghost keyword")
+    proposal["baseline_position"] = 12.0
+    proposal["applied_at"] = applied_at
+    proposal["created_at"] = applied_at
+    _seed_proposal(proposal)
+
+    last_result = None
+    for _ in range(3):
+        last_result = run_loop(PROJECT, LOOP, scenario="normal")
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("not-evaluable streak: counter reaches 3 after three consecutive not-evaluable runs", stored.get("not_evaluable_streak") == 3)
+    check(
+        "not-evaluable streak: attention_flags surfaces it on the 3rd run",
+        any(proposal["id"] in flag and "3 consecutive runs" in flag for flag in last_result["run_json"]["attention_flags"]),
+    )
+
+
 def test_stale_lock_ttl_comes_from_spec():
     reset_fixture()
     aged_start = (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat().replace("+00:00", "Z")
@@ -685,9 +1067,17 @@ def main():
     test_partial_failure_clean_log()
     test_pause_on_breach_blocks_new_proposals()
     test_apply_success_and_tier2_refusal()
+    test_draft_copy_succeeds_on_draft_status()
+    test_draft_copy_refuses_past_draft_status()
+    test_draft_copy_end_to_end_apply()
+    test_apply_refuses_stale_previous_value()
     test_manual_approval_only_hard_refusal()
     test_propose_only_refuses_tier1_apply()
-    test_apply_lock_independent_of_run_lock()
+    test_apply_and_review_pending_block_on_a_concurrent_run_lock_holder()
+    test_draft_copy_blocks_on_a_concurrent_run_lock_holder()
+    test_promote_live_implementations_no_nested_lock_deadlock()
+    test_run_loop_promotion_survives_end_of_run_write()
+    test_apply_recovers_from_a_stale_run_lock_left_by_a_crashed_apply()
     test_crash_recovery_no_commit_path()
     test_crash_recovery_commit_exists_path()
     test_retry_transition()
@@ -695,6 +1085,12 @@ def main():
     test_awaiting_live_confirmation_and_stuck_reporting()
     test_cooldown_extends_to_approved_implemented_and_failed()
     test_verified_delta_surfaces_in_report()
+    test_evaluator_missing_row_is_not_evaluable()
+    test_evaluator_wrong_keyword_row_is_not_used()
+    test_evaluator_ambiguous_duplicate_rows_refused()
+    test_evaluator_null_position_is_not_evaluable()
+    test_evaluator_normalizes_case_and_whitespace_for_valid_match()
+    test_not_evaluable_streak_surfaces_attention_after_three_runs()
     test_stale_lock_ttl_comes_from_spec()
     test_gsc_dispatch_offline()
     test_gsc_dataforseo_merge()

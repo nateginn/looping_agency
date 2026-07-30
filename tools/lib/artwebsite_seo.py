@@ -109,6 +109,36 @@ def resolve_edit_location(repo_path, page, action_type):
     raise ValueError(f"unsupported action_type for auto-implement: {action_type}")
 
 
+def _read_block_value(path, block_name):
+    block_re = TITLE_BLOCK_RE if block_name == "title" else META_BLOCK_RE
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    match = block_re.search(source)
+    if not match:
+        raise ValueError(f"expected a {block_name} block in {path}")
+    return match.group(2).strip()
+
+
+def _read_views_value(path, start, end):
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    return source[start:end]
+
+
+def _read_value_at_location(location):
+    if location["kind"] == "template-block":
+        return _read_block_value(location["path"], location["block"])
+    return _read_views_value(location["path"], location["start"], location["end"])
+
+
+def read_current_value(repo_path, page, action_type):
+    """Read the live title/meta text at a proposal's target, reusing the same
+    edit-location resolution apply_rewrite() uses - raises ValueError on a
+    missing or ambiguous location rather than guessing."""
+    location = resolve_edit_location(repo_path, page, action_type)
+    return _read_value_at_location(location)
+
+
 def _rewrite_template_block(path, block_name, new_value):
     block_re = TITLE_BLOCK_RE if block_name == "title" else META_BLOCK_RE
     with open(path, "r", encoding="utf-8") as f:
@@ -136,6 +166,17 @@ def apply_rewrite(repo_path, proposal):
             f'proposal {proposal["id"]} is approved for {proposal["action_type"]} but has no implementation.new_value text to write'
         )
     location = resolve_edit_location(repo_path, proposal["target"]["page"], proposal["action_type"])
+
+    previous_value = rewrite.get("previous_value")
+    if previous_value is not None:
+        current_value = _read_value_at_location(location)
+        if current_value != previous_value:
+            raise ValueError(
+                f'proposal {proposal["id"]} refuses to apply: the source content for {proposal["action_type"]} on '
+                f'{proposal["target"]["page"]} no longer matches the approved previous_value '
+                f'(expected {previous_value!r}, found {current_value!r}) - the page changed since this proposal was drafted'
+            )
+
     if location["kind"] == "template-block":
         _rewrite_template_block(location["path"], location["block"], new_value)
     else:
@@ -243,7 +284,40 @@ def _self_test():
         checks = [
             ("template title resolves", resolve_edit_location(repo_dir, "/services/", "title-tag-rewrite")["kind"] == "template-block"),
             ("views home meta resolves", resolve_edit_location(repo_dir, "/", "meta-description-rewrite")["kind"] == "views-context"),
+            ("read_current_value reads a template block", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "Old"),
+            ("read_current_value reads a views-context string", read_current_value(repo_dir, "/", "meta-description-rewrite") == "Old desc"),
         ]
+
+        stale_proposal = {
+            "id": "prop-stale-test",
+            "action_type": "title-tag-rewrite",
+            "target": {"page": "/services/"},
+            "implementation": {"previous_value": "This is not the real current value", "new_value": "New title"},
+        }
+        stale_refused = False
+        try:
+            apply_rewrite(repo_dir, stale_proposal)
+        except ValueError as e:
+            stale_refused = "no longer matches the approved previous_value" in str(e)
+        checks.append(("apply_rewrite refuses when previous_value no longer matches the source", stale_refused))
+
+        fresh_proposal = {
+            "id": "prop-fresh-test",
+            "action_type": "title-tag-rewrite",
+            "target": {"page": "/services/"},
+            "implementation": {"previous_value": "Old", "new_value": "New title"},
+        }
+        apply_rewrite(repo_dir, fresh_proposal)
+        checks.append(("apply_rewrite proceeds when previous_value matches the source", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "New title"))
+
+        no_previous_value_proposal = {
+            "id": "prop-no-previous-value-test",
+            "action_type": "meta-description-rewrite",
+            "target": {"page": "/"},
+            "implementation": {"new_value": "New description"},
+        }
+        apply_rewrite(repo_dir, no_previous_value_proposal)
+        checks.append(("apply_rewrite skips the staleness check for legacy proposals with no previous_value", read_current_value(repo_dir, "/", "meta-description-rewrite") == "New description"))
     finally:
         shutil.rmtree(repo_dir, ignore_errors=True)
 

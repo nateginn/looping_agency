@@ -13,7 +13,7 @@ This is the human approval gate in the approval state machine (`draft -> reviewe
    ```
    ./.venv/Scripts/python.exe tools/review_pending.py <project> <loop> --list
    ```
-   Present each to the human: id, status, tier, action type, target, and whether it's flagged `[STALE]` (undecided for 2+ run cycles).
+   Present each to the human: id, status, tier, action type, target, and whether it's flagged `[STALE]` (undecided for 2+ run cycles). If a proposal has been drafted (`tools/draft_copy.py`), the listing also shows the current live value next to the proposed replacement — read that back to the human verbatim so they're approving actual copy, not just an action type.
 2. If the loop's `state.json` shows `paused-breach`, lead with that: explain the breach reason and ask whether the human wants to resolve it now via:
    ```
    ./.venv/Scripts/python.exe tools/review_pending.py <project> <loop> --resolve-breach --reason "<human's reasoning>"

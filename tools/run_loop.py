@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
@@ -19,7 +20,7 @@ try:
     from .lib.errors import ConnectorError
     from .lib.github_compare import compare_commit_to_main
     from .lib.gsc_auth import bearer_for_secret
-    from .lib.lock import acquire_lock, acquire_named_lock, release_lock, release_named_lock, log_refusal
+    from .lib.lock import acquire_lock, release_lock, log_refusal
     from .lib.paths import assert_within
     from .lib.proposals import atomic_write_json, list_proposals, load_json, proposal_path, write_proposal
     from .lib.redact import redact_deep
@@ -35,7 +36,7 @@ except ImportError:
     from lib.errors import ConnectorError
     from lib.github_compare import compare_commit_to_main
     from lib.gsc_auth import bearer_for_secret
-    from lib.lock import acquire_lock, acquire_named_lock, release_lock, release_named_lock, log_refusal
+    from lib.lock import acquire_lock, release_lock, log_refusal
     from lib.paths import assert_within
     from lib.proposals import atomic_write_json, list_proposals, load_json, proposal_path, write_proposal
     from lib.redact import redact_deep
@@ -49,8 +50,6 @@ PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
 DEFAULT_LOCK_TTL_MINUTES = 60
 MIN_LOCK_TTL_MINUTES = 1
 MAX_LOCK_TTL_MINUTES = 24 * 60
-APPLY_LOCK_NAME = "apply.lock"
-APPLY_LOCK_TTL_MINUTES = 240
 LIVE_COMPARE_TARGETS = {"art": {"owner": "nateginn", "repo": "artwebsite"}}
 LOCATION_DIFF_FILENAME = "locations-detected.json"
 
@@ -131,6 +130,13 @@ def _page_path(page):
     if isinstance(page, str) and (page.startswith("http://") or page.startswith("https://")):
         return urlsplit(page).path or "/"
     return page
+
+
+def _normalize_match_text(value):
+    if not isinstance(value, str):
+        return ""
+    text = unicodedata.normalize("NFKC", value).strip().casefold()
+    return re.sub(r"\s+", " ", text)
 
 
 def _merge_metrics(results):
@@ -381,8 +387,31 @@ def _fetch_metrics(spec, run_mode, scenario, previous_snapshot=None, project_dir
 
 
 def _proposal_row_for_page(metrics, proposal):
-    target_page = _page_path(proposal["target"]["page"])
-    return next((k for k in metrics["keywords"] if _page_path(k.get("page")) == target_page), None)
+    """Match a metrics row to a proposal's target by normalized page AND
+    normalized keyword. Returns (row, reason) - reason is None on an
+    unambiguous match, "missing" on zero matches, "ambiguous" on 2+."""
+    target_page = _normalize_match_text(_page_path(proposal["target"]["page"]))
+    target_keyword = _normalize_match_text(proposal["target"].get("keyword"))
+    matches = [
+        k
+        for k in metrics["keywords"]
+        if _normalize_match_text(_page_path(k.get("page"))) == target_page and _normalize_match_text(k.get("keyword")) == target_keyword
+    ]
+    if not matches:
+        return None, "missing"
+    if len(matches) > 1:
+        return None, "ambiguous"
+    return matches[0], None
+
+
+def _mark_not_evaluable(p, run_id, reason):
+    p["evaluation_outcome"] = "not-evaluable"
+    p["evaluation_reason"] = reason
+    p["evaluated_run_id"] = run_id
+    p["evaluated_position"] = None
+    p["position_delta"] = None
+    p["not_evaluable_streak"] = p.get("not_evaluable_streak", 0) + 1
+    return f'proposal {p["id"]}: not-evaluable - {reason}'
 
 
 def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
@@ -403,33 +432,55 @@ def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
             decisions.append(f'proposal {p["id"]}: still in observation window (age {age_days:.1f}d/{p["observation_window_days"]}d, sample {metrics["sample_size"]}/{p["min_sample_size"]})')
             continue
 
-        row = _proposal_row_for_page(metrics, p)
+        row, match_reason = _proposal_row_for_page(metrics, p)
+        target_desc = f'page "{p["target"]["page"]}" and keyword "{p["target"].get("keyword")}"'
+
+        if match_reason == "missing":
+            decisions.append(_mark_not_evaluable(p, run_id, f"no metrics row matched target {target_desc}"))
+            continue
+        if match_reason == "ambiguous":
+            decisions.append(_mark_not_evaluable(p, run_id, f"multiple metrics rows matched target {target_desc} after normalization; refusing to guess"))
+            continue
+
+        metric_value = row["position"]
+        if metric_value is None:
+            decisions.append(_mark_not_evaluable(p, run_id, f"matched metrics row for target {target_desc} has a null position"))
+            continue
+
         ft = spec["failure_threshold"]
-        metric_value = row["position"] if row else None
         baseline = p.get("baseline_position")
-        drift = (metric_value - baseline) if (row is not None and baseline is not None) else None
+        drift = (metric_value - baseline) if baseline is not None else None
         breached = drift is not None and "position" in ft["metric"] and _compare(drift, ft["comparator"], ft["value"])
 
         p["evaluated_position"] = metric_value
-        p["position_delta"] = None if (metric_value is None or baseline is None) else metric_value - baseline
+        p["position_delta"] = None if baseline is None else metric_value - baseline
+        p["not_evaluable_streak"] = 0
 
         if breached:
             p["status"] = "breached"
+            p["evaluation_outcome"] = "breached"
             p["evaluated_run_id"] = run_id
-            breach = {
-                "proposal_id": p["id"],
-                "reason": f'guardrail breach on {ft["metric"]} for {p["target"]["page"]}: position moved {baseline} -> {metric_value} (drift {drift:.1f} {ft["comparator"]} {ft["value"]})',
-            }
-            decisions.append(f'proposal {p["id"]}: BREACH - {breach["reason"]}')
+            breach_reason = f'guardrail breach on {ft["metric"]} for {p["target"]["page"]}: position moved {baseline} -> {metric_value} (drift {drift:.1f} {ft["comparator"]} {ft["value"]})'
+            p["evaluation_reason"] = breach_reason
+            breach = {"proposal_id": p["id"], "reason": breach_reason}
+            decisions.append(f'proposal {p["id"]}: BREACH - {breach_reason}')
         else:
             p["status"] = "verified"
+            p["evaluation_outcome"] = "verified"
+            p["evaluation_reason"] = None
             p["evaluated_run_id"] = run_id
             decisions.append(f'proposal {p["id"]}: verified winner (position {baseline} -> {metric_value}, within guardrail)')
 
     return decisions, breach, still_cooling_down
 
 
-def _promote_live_implementations(project_slug, loop_dir, pending_dir, proposals, requester=None, now=None, compare_target=None):
+def _promote_live_implementations(project_slug, pending_dir, proposals, requester=None, now=None, compare_target=None):
+    """Promotes implemented -> applied once GitHub confirms a proposal is live
+    on main. Caller (run_loop()) must already hold the loop's single run.lock
+    for the whole run - this function acquires no lock of its own (Phase 3:
+    one shared mutation lock; a nested acquisition of that same lock here
+    would self-refuse against the caller's own held lock and either deadlock
+    the check or silently skip every promotion)."""
     now_iso = _now_iso(now)
     decisions = []
     awaiting_ids = []
@@ -468,32 +519,23 @@ def _promote_live_implementations(project_slug, loop_dir, pending_dir, proposals
     if not promotions:
         return decisions, awaiting_ids, stuck_ids
 
-    lock = acquire_named_lock(loop_dir, APPLY_LOCK_NAME, max_run_duration_minutes=APPLY_LOCK_TTL_MINUTES, runs_dir=os.path.join(loop_dir, "runs"), now=now)
-    if not lock["acquired"]:
-        for proposal_id in promotions:
-            decisions.append(f"proposal {proposal_id}: compare API says live, but apply lock is busy so applied transition will retry next run")
-        return decisions, awaiting_ids, stuck_ids
-
-    try:
-        for proposal_id in promotions:
-            fresh_path = proposal_path(pending_dir, proposal_id)
-            fresh = load_json(fresh_path)
-            if fresh.get("status") != "implemented":
-                continue
-            fresh["status"] = "applied"
-            fresh["applied_at"] = now_iso
-            fresh["applied_by"] = "github-compare-api"
-            fresh.pop("live_check_error", None)
-            fresh["implemented_run_cycles_seen"] = fresh.get("implemented_run_cycles_seen", 0)
-            atomic_write_json(fresh_path, fresh)
-            for proposal in proposals:
-                if proposal["id"] == proposal_id:
-                    proposal.clear()
-                    proposal.update(fresh)
-                    break
-            decisions.append(f'proposal {proposal_id}: live on GitHub main - transitioned implemented -> applied at {now_iso}')
-    finally:
-        release_named_lock(loop_dir, lock["run_id"], APPLY_LOCK_NAME)
+    for proposal_id in promotions:
+        fresh_path = proposal_path(pending_dir, proposal_id)
+        fresh = load_json(fresh_path)
+        if fresh.get("status") != "implemented":
+            continue
+        fresh["status"] = "applied"
+        fresh["applied_at"] = now_iso
+        fresh["applied_by"] = "github-compare-api"
+        fresh.pop("live_check_error", None)
+        fresh["implemented_run_cycles_seen"] = fresh.get("implemented_run_cycles_seen", 0)
+        atomic_write_json(fresh_path, fresh)
+        for proposal in proposals:
+            if proposal["id"] == proposal_id:
+                proposal.clear()
+                proposal.update(fresh)
+                break
+        decisions.append(f'proposal {proposal_id}: live on GitHub main - transitioned implemented -> applied at {now_iso}')
 
     return decisions, awaiting_ids, stuck_ids
 
@@ -632,7 +674,8 @@ def _fetch_footer_location_diff(loop_dir, spec, now):
     return payload
 
 
-def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check):
+def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=None):
+    not_evaluable_now = not_evaluable_now or []
     status_buckets = _status_buckets(proposals)
     report_lines = [
         f"# Run {run_id} ({loop_name} / {project_slug})",
@@ -704,6 +747,12 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
             delta = proposal.get("position_delta")
             delta_text = "unknown" if delta is None else f"{delta:+.1f}"
             report_lines.append(f'- {proposal["id"]}: {proposal["status"]} (position {proposal.get("baseline_position")} -> {proposal.get("evaluated_position")}, delta {delta_text})')
+    else:
+        report_lines.append("- none")
+    report_lines.extend(["", "## Not evaluable this run"])
+    if not_evaluable_now:
+        for proposal in not_evaluable_now:
+            report_lines.append(f'- {proposal["id"]}: {proposal.get("evaluation_reason")}')
     else:
         report_lines.append("- none")
     report_lines.extend(["", "## Stale proposals (>=3 cycles undecided)"])
@@ -794,7 +843,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
                 secret_map.update(section.get("secretMap") or {})
         snapshot_path = write_snapshot(run_dir, snapshot, secret_map)
 
-        live_decisions, awaiting_ids, stuck_ids = _promote_live_implementations(project_slug, loop_dir, pending_dir, proposals, requester=_github_requester, now=now, compare_target=_github_compare_target)
+        live_decisions, awaiting_ids, stuck_ids = _promote_live_implementations(project_slug, pending_dir, proposals, requester=_github_requester, now=now, compare_target=_github_compare_target)
 
         eval_decisions = list(live_decisions)
         breach = None
@@ -858,7 +907,11 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         updated_sections = set(pulled["sections"].keys())
         attention_findings = _evaluate_attention(spec, run_id, runs_dir, snapshot, updated_sections)
         footer_check = _fetch_footer_location_diff(loop_dir, spec, now) if run_mode["mode"] == "full" and "local_rank" in updated_sections else None
-        evaluated_now = [p for p in proposals if p.get("evaluated_run_id") == run_id]
+        evaluated_now = [p for p in proposals if p.get("evaluated_run_id") == run_id and p.get("evaluation_outcome") in ("verified", "breached")]
+        not_evaluable_now = [p for p in proposals if p.get("evaluated_run_id") == run_id and p.get("evaluation_outcome") == "not-evaluable"]
+        for proposal in not_evaluable_now:
+            if proposal.get("not_evaluable_streak", 0) >= 3:
+                attention_findings.append(f'proposal {proposal["id"]}: not-evaluable for {proposal["not_evaluable_streak"]} consecutive runs ({proposal.get("evaluation_reason")})')
         run_json = redact_deep(
             {
                 "run_id": run_id,
@@ -874,6 +927,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
                 "decisions": list(eval_decisions),
                 "proposals_created": [p["id"] for p in new_proposals],
                 "proposals_evaluated": [p["id"] for p in evaluated_now],
+                "proposals_not_evaluable": [p["id"] for p in not_evaluable_now],
                 "stale_proposals": stale_ids,
                 "awaiting_live_confirmation": awaiting_ids,
                 "stuck_implemented": stuck_ids,
@@ -885,7 +939,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         )
         atomic_write_json(os.path.join(run_dir, "run.json"), run_json)
 
-        report_lines = _report_lines(run_id, project_slug, loop_name, run_mode["mode"], run_json["status"], eval_decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check)
+        report_lines = _report_lines(run_id, project_slug, loop_name, run_mode["mode"], run_json["status"], eval_decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=not_evaluable_now)
         with open(os.path.join(run_dir, "report.md"), "w", encoding="utf-8", newline="\n") as f:
             f.write("\n".join(report_lines) + "\n")
 

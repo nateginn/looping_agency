@@ -6,20 +6,20 @@ import yaml
 
 try:
     from .lib.artwebsite_seo import cleanup_worktree, create_worktree, finalize_worktree, inspect_attempt, make_attempt
-    from .lib.lock import acquire_named_lock, release_named_lock
+    from .lib.lock import acquire_lock, release_lock
     from .lib.proposals import load_json, loop_dir_for, pending_dir_for, proposal_path, atomic_write_json
+    from .run_loop import _read_lock_ttl_minutes_unsafe
     from .spec_validate import extract_frontmatter
 except ImportError:
     from lib.artwebsite_seo import cleanup_worktree, create_worktree, finalize_worktree, inspect_attempt, make_attempt
-    from lib.lock import acquire_named_lock, release_named_lock
+    from lib.lock import acquire_lock, release_lock
     from lib.proposals import load_json, loop_dir_for, pending_dir_for, proposal_path, atomic_write_json
+    from run_loop import _read_lock_ttl_minutes_unsafe
     from spec_validate import extract_frontmatter
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(THIS_DIR)
 PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
-APPLY_LOCK_NAME = "apply.lock"
-APPLY_LOCK_TTL_MINUTES = 240
 IMPLEMENTABLE_ACTIONS = {"title-tag-rewrite", "meta-description-rewrite"}
 
 
@@ -79,9 +79,14 @@ def apply_proposal(project, loop, proposal_id, by="human", repo_path=None, git_r
     if not os.path.exists(proposal_pathname):
         raise ValueError(f"proposal {proposal_id} not found")
 
-    lock = acquire_named_lock(loop_dir, APPLY_LOCK_NAME, max_run_duration_minutes=APPLY_LOCK_TTL_MINUTES, runs_dir=os.path.join(loop_dir, "runs"), now=now)
+    # Phase 3: one shared mutation lock across run_loop.py/apply.py/
+    # review_pending.py/draft_copy.py, not a separate apply.lock - a
+    # scheduled run_loop.py run and a human apply/approve/draft can no
+    # longer race the same proposal JSON.
+    lock_ttl_minutes = _read_lock_ttl_minutes_unsafe(os.path.join(loop_dir, "spec.md"))
+    lock = acquire_lock(loop_dir, max_run_duration_minutes=lock_ttl_minutes, runs_dir=os.path.join(loop_dir, "runs"), now=now)
     if not lock["acquired"]:
-        raise ValueError(f'REFUSED: apply lock active for {project}/{loop} - {lock["reason"]}')
+        raise ValueError(f'REFUSED: run lock active for {project}/{loop} - {lock["reason"]}')
 
     repo_path = repo_path or _load_repo_path(project)
 
@@ -136,7 +141,7 @@ def apply_proposal(project, loop, proposal_id, by="human", repo_path=None, git_r
         _write_proposal_state(proposal_pathname, proposal)
         return proposal
     finally:
-        release_named_lock(loop_dir, lock["run_id"], APPLY_LOCK_NAME)
+        release_lock(loop_dir, lock["run_id"])
 
 
 def _cli():
