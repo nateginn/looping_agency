@@ -21,6 +21,7 @@ if WORKSPACE_ROOT not in sys.path:
 try:
     from tools.apply import apply_proposal  # noqa: E402
     from tools.draft_copy import draft_copy  # noqa: E402
+    from tools.publish import publish_proposal  # noqa: E402
     from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from tools.run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from tools.lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
@@ -29,6 +30,7 @@ except ImportError:
         sys.path.insert(0, TOOLS_DIR)
     from apply import apply_proposal  # noqa: E402
     from draft_copy import draft_copy  # noqa: E402
+    from publish import publish_proposal  # noqa: E402
     from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
@@ -189,14 +191,19 @@ def _git(repo_path, *args):
     return completed.stdout.strip()
 
 
+GOOD_DEPLOY_WORKFLOW_YAML = "name: Deploy to Production\n\non:\n  push:\n    branches: [ main ]\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n"
+
+
 def _make_temp_git_site():
     repo_path = tempfile.mkdtemp(prefix="artwebsite-fixture-")
     os.makedirs(os.path.join(repo_path, "templates"), exist_ok=True)
     os.makedirs(os.path.join(repo_path, "app"), exist_ok=True)
+    os.makedirs(os.path.join(repo_path, ".github", "workflows"), exist_ok=True)
     _write_text(
         os.path.join(repo_path, "templates", "services.html"),
         "{% block title %}Old service title{% endblock %}\n{% block meta_description %}Old service meta{% endblock %}\n",
     )
+    _write_text(os.path.join(repo_path, ".github", "workflows", "deploy.yml"), GOOD_DEPLOY_WORKFLOW_YAML)
     _write_text(
         os.path.join(repo_path, "app", "views.py"),
         "from django.shortcuts import render\n\n"
@@ -914,6 +921,317 @@ def test_apply_refuses_on_inconsistent_commit_ancestry():
         _force_rmtree(repo_path)
 
 
+def _approved_publishable_proposal(proposal_id, **overrides):
+    proposal = _proposal(proposal_id, status="approved", implementation_value=overrides.pop("implementation_value", "New service title for publish e2e"))
+    proposal["decision"] = {"action": "approve", "by": "nate", "note": "looks good", "at": "2026-07-29T12:00:00Z"}
+    proposal.update(overrides)
+    return proposal
+
+
+def _good_branch_protection_requester(url, headers):
+    # Phase 0 protection verification queries two mechanisms combined
+    # (github_compare.verify_branch_protection(): effective rules + classic
+    # protection + rulesets) - a compliant fake must serve all three GET
+    # endpoints. An empty rulesets list is a legitimate "protection is
+    # fully classic, no rulesets configured" configuration.
+    if "/rules/branches/" in url:
+        effective_rules = [
+            {"type": "pull_request", "parameters": {"required_approving_review_count": 1}},
+            {"type": "non_fast_forward", "parameters": {}},
+            {"type": "deletion", "parameters": {}},
+        ]
+        return 200, "OK", json.dumps(effective_rules).encode("utf-8")
+    if url.endswith("/rulesets"):
+        return 200, "OK", b"[]"
+    payload = {
+        "required_pull_request_reviews": {"required_approving_review_count": 1, "bypass_pull_request_allowances": {}},
+        "allow_force_pushes": {"enabled": False},
+        "allow_deletions": {"enabled": False},
+        "enforce_admins": {"enabled": True},
+    }
+    return 200, "OK", json.dumps(payload).encode("utf-8")
+
+
+def _unprotected_branch_requester(url, headers):
+    # Genuinely no protection: the effective-rules endpoint (GitHub's own
+    # merge of classic protection + rulesets) reports nothing enforced.
+    if "/rules/branches/" in url:
+        return 200, "OK", b"[]"
+    if url.endswith("/rulesets"):
+        return 200, "OK", b"[]"
+    return 404, "Not Found", b"{}"
+
+
+def _good_pr_and_automerge_poster(pr_number, commit_sha):
+    def poster(url, headers, body):
+        if url.endswith("/pulls"):
+            payload = {
+                "number": pr_number,
+                "html_url": f"https://github.com/nateginn/artwebsite/pull/{pr_number}",
+                "node_id": f"PR_e2e_{pr_number}",
+                "head": {"sha": commit_sha},
+            }
+            return 201, "Created", json.dumps(payload).encode("utf-8")
+        payload = {"data": {"enablePullRequestAutoMerge": {"pullRequest": {"autoMergeRequest": {"enabledAt": "2026-07-30T00:00:00Z"}}}}}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    return poster
+
+
+def _real_git_with_faked_origin_push_url(fake_url="https://github.com/nateginn/artwebsite.git"):
+    """Real git for everything (diff-tree, show, rev-parse, push all run for
+    real against the fixture's actual bare-origin remote) except the one
+    value publish.py cannot get from a local-only fixture: origin's push
+    URL, which a real local test repo points at a filesystem path, not
+    github.com. `git push origin <sha>:refs/heads/<branch>` still resolves
+    the "origin" remote from the real git config regardless of what this
+    intercepted get-url call reports, so the push itself is exercised for
+    real."""
+
+    def runner(args, cwd):
+        if args[:5] == ["git", "remote", "get-url", "--push", "origin"]:
+            return fake_url
+        completed = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True)
+        return completed.stdout.strip()
+
+    return runner
+
+
+def test_publish_end_to_end_real_git_push_pr_and_auto_merge():
+    # The one true end-to-end proof: draft -> approve -> apply (real git
+    # worktree/commit) -> publish (real git diff-tree/show/push against the
+    # fixture's real bare origin, plus faked GitHub HTTP responses since no
+    # network call is allowed in this suite).
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2epub-0")
+        _seed_proposal(proposal)
+
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("publish e2e: apply succeeds first", implemented["status"] == "implemented")
+
+        published = publish_proposal(
+            PROJECT,
+            LOOP,
+            proposal["id"],
+            repo_path=repo_path,
+            github_owner="nateginn",
+            github_repo="artwebsite",
+            token="fake-token",
+            git_runner=_real_git_with_faked_origin_push_url(),
+            requester=_good_branch_protection_requester,
+            poster=_good_pr_and_automerge_poster(99, implemented["implemented_commit_sha"]),
+        )
+        check("publish e2e: real push+PR+auto-merge succeeds", published.get("pr_number") == 99 and published.get("auto_merge_enabled") is True)
+        check("publish e2e: pr_url recorded", published.get("pr_url") == "https://github.com/nateginn/artwebsite/pull/99")
+
+        origin_path = repo_path + "-origin"
+        landed_sha = _git(origin_path, "rev-parse", f'refs/heads/{proposal_branch_name(proposal["id"])}')
+        check("publish e2e: the implementation commit actually landed on the real bare origin remote", landed_sha == implemented["implemented_commit_sha"])
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_publish_refuses_on_multi_file_commit_using_real_git():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2emulti-0")
+        _seed_proposal(proposal)
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+
+        # Tamper: amend the real implementation commit so it touches a second
+        # file too - a real multi-file diff, not a simulated one.
+        branch = proposal_branch_name(proposal["id"])
+        worktree_parent = tempfile.mkdtemp(prefix="artwebsite-publish-tamper-")
+        worktree_path = os.path.join(worktree_parent, "tamper")
+        try:
+            _git(repo_path, "worktree", "add", worktree_path, branch)
+            _write_text(os.path.join(worktree_path, "app", "views.py"), "# tampered extra change\n")
+            _git(worktree_path, "add", "-A")
+            _git(worktree_path, "commit", "--amend", "--no-edit")
+            new_head = _git(worktree_path, "rev-parse", "HEAD")
+        finally:
+            _git(repo_path, "worktree", "remove", worktree_path, "--force")
+            shutil.rmtree(worktree_parent, ignore_errors=True)
+
+        stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+        stored["implemented_commit_sha"] = new_head
+        _write_json(os.path.join(pending_dir, f'{proposal["id"]}.json'), stored)
+
+        refused = False
+        try:
+            publish_proposal(
+                PROJECT, LOOP, proposal["id"],
+                repo_path=repo_path, github_owner="nateginn", github_repo="artwebsite", token="fake-token",
+                git_runner=_real_git_with_faked_origin_push_url(),
+                requester=_good_branch_protection_requester, poster=_good_pr_and_automerge_poster(1, new_head),
+            )
+        except ValueError as e:
+            refused = "changes 2 file(s)" in str(e)
+        check("publish.py refuses a real 2-file commit via real git diff-tree, before any push", refused)
+
+        origin_path = repo_path + "-origin"
+        branch_on_origin = _git(origin_path, "branch", "--list", branch)
+        check("publish.py's refusal on a multi-file diff never pushed the branch to origin", branch_on_origin == "")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_publish_refuses_when_deploy_workflow_trigger_shape_has_drifted():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        # Drift the workflow's trigger shape on main (post-fixture-init, so
+        # it becomes part of the base commit apply.py branches from) before
+        # any proposal is implemented.
+        _write_text(os.path.join(repo_path, ".github", "workflows", "deploy.yml"), "on:\n  push:\n    branches: [ main, staging ]\n")
+        _git(repo_path, "add", "-A")
+        _git(repo_path, "commit", "-m", "drift deploy trigger shape")
+        _git(repo_path, "push", "origin", "main")
+
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2eshape-0")
+        _seed_proposal(proposal)
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+
+        refused = False
+        try:
+            publish_proposal(
+                PROJECT, LOOP, proposal["id"],
+                repo_path=repo_path, github_owner="nateginn", github_repo="artwebsite", token="fake-token",
+                git_runner=_real_git_with_faked_origin_push_url(),
+                requester=_good_branch_protection_requester, poster=_good_pr_and_automerge_poster(2, implemented["implemented_commit_sha"]),
+            )
+        except ValueError as e:
+            refused = "branches is" in str(e)
+        check("publish.py refuses a real base commit whose deploy.yml trigger shape has drifted, before any push", refused)
+
+        origin_path = repo_path + "-origin"
+        branch = proposal_branch_name(proposal["id"])
+        branch_on_origin = _git(origin_path, "branch", "--list", branch)
+        check("publish.py's refusal on a drifted deploy.yml never pushed the branch to origin", branch_on_origin == "")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_publish_refuses_when_branch_protection_is_missing():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2eunprot-0")
+        _seed_proposal(proposal)
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+
+        refused = False
+        try:
+            publish_proposal(
+                PROJECT, LOOP, proposal["id"],
+                repo_path=repo_path, github_owner="nateginn", github_repo="artwebsite", token="fake-token",
+                git_runner=_real_git_with_faked_origin_push_url(),
+                requester=_unprotected_branch_requester, poster=_good_pr_and_automerge_poster(3, implemented["implemented_commit_sha"]),
+            )
+        except ValueError as e:
+            refused = "no effective pull_request rule found" in str(e)
+        check("publish.py hard-refuses on real git when main has no branch protection, before any push", refused)
+
+        origin_path = repo_path + "-origin"
+        branch = proposal_branch_name(proposal["id"])
+        branch_on_origin = _git(origin_path, "branch", "--list", branch)
+        check("publish.py's refusal on missing branch protection never pushed the branch to origin", branch_on_origin == "")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_publish_refuses_on_real_non_github_remote_url():
+    # Without the faked get-url override, the fixture's real bare-repo
+    # remote is a filesystem path, not github.com - proving the push-
+    # destination check runs against the real `git remote get-url --push`
+    # output and correctly refuses a non-matching remote.
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2eremote-0")
+        _seed_proposal(proposal)
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+
+        refused = False
+        try:
+            publish_proposal(
+                PROJECT, LOOP, proposal["id"],
+                repo_path=repo_path, github_owner="nateginn", github_repo="artwebsite", token="fake-token",
+                requester=_good_branch_protection_requester, poster=_good_pr_and_automerge_poster(4, implemented["implemented_commit_sha"]),
+            )
+        except ValueError as e:
+            refused = "possible pushurl/insteadOf rewrite" in str(e)
+        check("publish.py refuses the fixture's real non-github.com origin URL, before any push", refused)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def _ruleset_bypass_requester(url, headers):
+    # Classic protection and the effective-rules endpoint both look fully
+    # compliant on their own; the hole is a repository ruleset that also
+    # targets main, is actively enforced, and lists a bypass actor -
+    # PLAN.md Phase 0c-bis's exact scenario ("classic data alone does not
+    # prove absence of a ruleset bypass actor").
+    if "/rules/branches/" in url:
+        effective_rules = [
+            {"type": "pull_request", "parameters": {"required_approving_review_count": 1}},
+            {"type": "non_fast_forward", "parameters": {}},
+            {"type": "deletion", "parameters": {}},
+        ]
+        return 200, "OK", json.dumps(effective_rules).encode("utf-8")
+    if url.endswith("/rulesets"):
+        ruleset_summary = {"id": 900, "name": "main-bypass", "target": "branch", "enforcement": "active"}
+        return 200, "OK", json.dumps([ruleset_summary]).encode("utf-8")
+    if "/rulesets/" in url:
+        ruleset_detail = {
+            "id": 900, "name": "main-bypass", "target": "branch", "enforcement": "active",
+            "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+            "rules": [], "bypass_actors": [{"actor_id": 1, "actor_type": "RepositoryRole"}],
+        }
+        return 200, "OK", json.dumps(ruleset_detail).encode("utf-8")
+    payload = {
+        "required_pull_request_reviews": {"required_approving_review_count": 1, "bypass_pull_request_allowances": {}},
+        "allow_force_pushes": {"enabled": False},
+        "allow_deletions": {"enabled": False},
+        "enforce_admins": {"enabled": True},
+    }
+    return 200, "OK", json.dumps(payload).encode("utf-8")
+
+
+def test_publish_refuses_when_a_ruleset_bypass_actor_exists_on_real_main():
+    reset_fixture()
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _approved_publishable_proposal("prop-2026-07-24T03-05-54-719Z-e2erulesetbp-0")
+        _seed_proposal(proposal)
+        implemented = apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+
+        refused = False
+        try:
+            publish_proposal(
+                PROJECT, LOOP, proposal["id"],
+                repo_path=repo_path, github_owner="nateginn", github_repo="artwebsite", token="fake-token",
+                git_runner=_real_git_with_faked_origin_push_url(),
+                requester=_ruleset_bypass_requester, poster=_good_pr_and_automerge_poster(5, implemented["implemented_commit_sha"]),
+            )
+        except ValueError as e:
+            refused = "bypass actor" in str(e) and "900" in str(e)
+        check(
+            "publish.py refuses when classic protection looks compliant but an active ruleset targeting main has a bypass actor",
+            refused,
+        )
+
+        origin_path = repo_path + "-origin"
+        branch = proposal_branch_name(proposal["id"])
+        branch_on_origin = _git(origin_path, "branch", "--list", branch)
+        check("publish.py's refusal on a ruleset bypass actor never pushed the branch to origin", branch_on_origin == "")
+    finally:
+        _force_rmtree(repo_path)
+
+
 def test_retry_transition():
     reset_fixture()
     proposal = _proposal("prop-retry", status="implement-failed")
@@ -1257,6 +1575,12 @@ def main():
     test_make_attempt_and_create_worktree_never_use_a_bare_main_ref()
     test_apply_persists_implementation_base_sha_surviving_attempt_removal()
     test_apply_refuses_on_inconsistent_commit_ancestry()
+    test_publish_end_to_end_real_git_push_pr_and_auto_merge()
+    test_publish_refuses_on_multi_file_commit_using_real_git()
+    test_publish_refuses_when_deploy_workflow_trigger_shape_has_drifted()
+    test_publish_refuses_when_branch_protection_is_missing()
+    test_publish_refuses_when_a_ruleset_bypass_actor_exists_on_real_main()
+    test_publish_refuses_on_real_non_github_remote_url()
     test_retry_transition()
     test_live_detection_transitions_implemented_to_applied()
     test_awaiting_live_confirmation_and_stuck_reporting()

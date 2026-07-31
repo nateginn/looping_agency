@@ -8,6 +8,8 @@ import tempfile
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
+import yaml
+
 
 TITLE_BLOCK_RE = re.compile(r"({%\s*block\s+title\s*%})(.*?)(({%\s*endblock\s*%}))", re.DOTALL)
 META_BLOCK_RE = re.compile(r"({%\s*block\s+meta_description\s*%})(.*?)(({%\s*endblock\s*%}))", re.DOTALL)
@@ -248,6 +250,84 @@ def verify_implementation_ancestry(repo_path, commit_sha, expected_base_sha, git
     return True
 
 
+def verify_commit_single_file_diff(repo_path, commit_sha, base_sha, git_runner=None):
+    """Phase 6 (Codex #9): validate the diff from the commit's own objects,
+    not the working tree - a mutable checkout is not proof of what a commit
+    actually contains. Uses an explicit two-tree `git diff-tree` (base_sha
+    vs commit_sha) rather than relying on the commit's implicit first
+    parent, and refuses unless exactly one file changed."""
+    git_runner = git_runner or _default_git_runner
+    try:
+        output = git_runner(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", base_sha, commit_sha], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: could not diff commit {commit_sha} against base {base_sha} - {err}")
+    changed_paths = [line.strip() for line in output.splitlines() if line.strip()]
+    if len(changed_paths) != 1:
+        raise ValueError(
+            f"REFUSED: commit {commit_sha} changes {len(changed_paths)} file(s) relative to base {base_sha} "
+            f"(expected exactly 1): {changed_paths}"
+        )
+    return changed_paths[0]
+
+
+def verify_commit_blob_contains(repo_path, commit_sha, path, expected_substring, git_runner=None):
+    """Read the changed file's content as committed at commit_sha (via `git
+    show <sha>:<path>`, a blob read - never the mutable working tree) and
+    confirm the approved new_value text is actually present in it."""
+    git_runner = git_runner or _default_git_runner
+    try:
+        content = git_runner(["git", "show", f"{commit_sha}:{path}"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: could not read blob {path} at commit {commit_sha} - {err}")
+    if expected_substring not in content:
+        raise ValueError(
+            f"REFUSED: commit {commit_sha}'s blob {path} does not contain the approved new_value text - "
+            "the commit does not appear to implement the approved proposal"
+        )
+    return True
+
+
+def verify_deploy_workflow_trigger_shape(repo_path, base_sha, git_runner=None):
+    """Phase 6 stale-baseline check (Codex R1 #1, scoped precisely per
+    Codex R2 #11): confirm .github/workflows/deploy.yml, as committed at the
+    proposal's base commit, still triggers on exactly `push` to exactly
+    `main` - nothing else. This only proves the shape at the commit being
+    published from; it cannot bind what happens to the workflow between
+    publication and merge (that is governed by required review on the
+    protected branch, not by this check). PyYAML's default (YAML 1.1)
+    resolver reads a bare `on:` key as the boolean True, not the string
+    "on" - both are checked."""
+    git_runner = git_runner or _default_git_runner
+    try:
+        content = git_runner(["git", "show", f"{base_sha}:.github/workflows/deploy.yml"], cwd=repo_path)
+    except Exception as err:
+        raise ValueError(f"REFUSED: could not read .github/workflows/deploy.yml at base commit {base_sha} - {err}")
+    try:
+        parsed = yaml.safe_load(content)
+    except yaml.YAMLError as err:
+        raise ValueError(f"REFUSED: .github/workflows/deploy.yml at base commit {base_sha} is not valid YAML - {err}")
+    if not isinstance(parsed, dict):
+        raise ValueError(f"REFUSED: .github/workflows/deploy.yml at base commit {base_sha} does not parse to a mapping")
+
+    on_value = parsed.get("on", parsed.get(True))
+    if not isinstance(on_value, dict) or set(on_value.keys()) != {"push"}:
+        keys = sorted(str(k) for k in on_value.keys()) if isinstance(on_value, dict) else on_value
+        raise ValueError(
+            f"REFUSED: .github/workflows/deploy.yml at base commit {base_sha} has unexpected top-level triggers {keys!r} (expected only 'push')"
+        )
+    push_value = on_value.get("push")
+    if not isinstance(push_value, dict) or set(push_value.keys()) != {"branches"}:
+        raise ValueError(
+            f"REFUSED: .github/workflows/deploy.yml at base commit {base_sha} push trigger has an unexpected shape {push_value!r} (expected only 'branches')"
+        )
+    branches = push_value.get("branches")
+    if branches != ["main"]:
+        raise ValueError(
+            f"REFUSED: .github/workflows/deploy.yml at base commit {base_sha} push trigger branches is {branches!r}, expected ['main'] exactly"
+        )
+    return True
+
+
 def make_attempt(repo_path, proposal_id, git_runner=None, started_at=None):
     git_runner = git_runner or _default_git_runner
     branch = proposal_branch_name(proposal_id)
@@ -437,6 +517,108 @@ def _self_test():
     except ValueError as e:
         ancestry_refused = "inconsistent commit ancestry" in str(e)
     checks.append(("verify_implementation_ancestry refuses on inconsistent commit ancestry", ancestry_refused))
+
+    # verify_commit_single_file_diff (Phase 6, Codex #9)
+    single_file_runner = _fake_runner([(lambda a: a[:2] == ["git", "diff-tree"], "templates/services.html\n")])
+    checks.append(
+        (
+            "verify_commit_single_file_diff returns the sole changed path",
+            verify_commit_single_file_diff("/fake/repo", "sha-child", "sha-base", git_runner=single_file_runner) == "templates/services.html",
+        )
+    )
+
+    multi_file_runner = _fake_runner([(lambda a: a[:2] == ["git", "diff-tree"], "templates/services.html\napp/views.py\n")])
+    multi_file_refused = False
+    try:
+        verify_commit_single_file_diff("/fake/repo", "sha-child", "sha-base", git_runner=multi_file_runner)
+    except ValueError as e:
+        multi_file_refused = "changes 2 file(s)" in str(e)
+    checks.append(("verify_commit_single_file_diff refuses when more than one file changed", multi_file_refused))
+
+    zero_file_runner = _fake_runner([(lambda a: a[:2] == ["git", "diff-tree"], "")])
+    zero_file_refused = False
+    try:
+        verify_commit_single_file_diff("/fake/repo", "sha-child", "sha-base", git_runner=zero_file_runner)
+    except ValueError as e:
+        zero_file_refused = "changes 0 file(s)" in str(e)
+    checks.append(("verify_commit_single_file_diff refuses when no file changed", zero_file_refused))
+
+    diff_tree_error_runner = _fake_runner([(lambda a: a[:2] == ["git", "diff-tree"], RuntimeError("bad object"))])
+    diff_tree_error_refused = False
+    try:
+        verify_commit_single_file_diff("/fake/repo", "sha-child", "sha-base", git_runner=diff_tree_error_runner)
+    except ValueError as e:
+        diff_tree_error_refused = "could not diff commit" in str(e)
+    checks.append(("verify_commit_single_file_diff refuses cleanly when the diff-tree command fails", diff_tree_error_refused))
+
+    # verify_commit_blob_contains
+    blob_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], "{% block title %}New Services Title{% endblock %}\n")])
+    checks.append(
+        (
+            "verify_commit_blob_contains accepts a blob containing the approved new_value",
+            verify_commit_blob_contains("/fake/repo", "sha-child", "templates/services.html", "New Services Title", git_runner=blob_runner) is True,
+        )
+    )
+
+    blob_missing_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], "{% block title %}Something else entirely{% endblock %}\n")])
+    blob_missing_refused = False
+    try:
+        verify_commit_blob_contains("/fake/repo", "sha-child", "templates/services.html", "New Services Title", git_runner=blob_missing_runner)
+    except ValueError as e:
+        blob_missing_refused = "does not contain the approved new_value" in str(e)
+    checks.append(("verify_commit_blob_contains refuses when the blob does not contain the approved new_value", blob_missing_refused))
+
+    blob_read_error_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], RuntimeError("path not in commit"))])
+    blob_read_error_refused = False
+    try:
+        verify_commit_blob_contains("/fake/repo", "sha-child", "templates/services.html", "New Services Title", git_runner=blob_read_error_runner)
+    except ValueError as e:
+        blob_read_error_refused = "could not read blob" in str(e)
+    checks.append(("verify_commit_blob_contains refuses cleanly when the blob cannot be read", blob_read_error_refused))
+
+    # verify_deploy_workflow_trigger_shape
+    good_deploy_yaml = "name: Deploy to Production\n\non:\n  push:\n    branches: [ main ]\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n"
+    good_deploy_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], good_deploy_yaml)])
+    checks.append(
+        (
+            "verify_deploy_workflow_trigger_shape accepts the exact push-to-main-only shape (bare `on:` parses as YAML 1.1 boolean True)",
+            verify_deploy_workflow_trigger_shape("/fake/repo", "sha-base", git_runner=good_deploy_runner) is True,
+        )
+    )
+
+    extra_branch_yaml = "on:\n  push:\n    branches: [ main, staging ]\n"
+    extra_branch_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], extra_branch_yaml)])
+    extra_branch_refused = False
+    try:
+        verify_deploy_workflow_trigger_shape("/fake/repo", "sha-base", git_runner=extra_branch_runner)
+    except ValueError as e:
+        extra_branch_refused = "branches is" in str(e)
+    checks.append(("verify_deploy_workflow_trigger_shape refuses when an extra branch is triggered", extra_branch_refused))
+
+    extra_trigger_yaml = "on:\n  push:\n    branches: [ main ]\n  pull_request: {}\n"
+    extra_trigger_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], extra_trigger_yaml)])
+    extra_trigger_refused = False
+    try:
+        verify_deploy_workflow_trigger_shape("/fake/repo", "sha-base", git_runner=extra_trigger_runner)
+    except ValueError as e:
+        extra_trigger_refused = "unexpected top-level triggers" in str(e)
+    checks.append(("verify_deploy_workflow_trigger_shape refuses when an extra trigger (e.g. pull_request) is present", extra_trigger_refused))
+
+    bad_yaml_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], "on: [this is: not valid")])
+    bad_yaml_refused = False
+    try:
+        verify_deploy_workflow_trigger_shape("/fake/repo", "sha-base", git_runner=bad_yaml_runner)
+    except ValueError as e:
+        bad_yaml_refused = "not valid YAML" in str(e)
+    checks.append(("verify_deploy_workflow_trigger_shape refuses cleanly on unparsable YAML", bad_yaml_refused))
+
+    missing_workflow_runner = _fake_runner([(lambda a: a[:2] == ["git", "show"], RuntimeError("path does not exist"))])
+    missing_workflow_refused = False
+    try:
+        verify_deploy_workflow_trigger_shape("/fake/repo", "sha-base", git_runner=missing_workflow_runner)
+    except ValueError as e:
+        missing_workflow_refused = "could not read .github/workflows/deploy.yml" in str(e)
+    checks.append(("verify_deploy_workflow_trigger_shape refuses cleanly when the workflow file is missing", missing_workflow_refused))
 
     leak_glob = os.path.join(tempfile.gettempdir(), "looping-artwebsite-*")
     before_leak_check = set(glob.glob(leak_glob))
