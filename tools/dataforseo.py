@@ -117,12 +117,16 @@ def pull_metrics(
     location_code=2840,
     language_code="en",
     device="desktop",
+    depth=100,
     http_post=_default_http_post,
 ):
     """
     resolve_credential: callable(alias) -> "login:password" credential string in a live run.
     targets: list of {"keyword": str, "page": str} pairs to rank-check.
     location_code: DataForSEO location code, defaults to 2840 (United States).
+    depth: SERP results to check per keyword. DataForSEO defaults to 10 (page 1 only)
+    if omitted, which silently under-reports rank for anything past page 1 as "not
+    found" rather than as an error - 100 matches standard top-100 rank tracking.
     """
     if not credential_alias:
         raise ValueError("dataforseo.py: credential_alias is required")
@@ -138,7 +142,7 @@ def pull_metrics(
     credentials = resolve_credential(credential_alias)
     secret_map = {credential_alias: credentials}
     headers = _auth_headers(credentials)
-    tasks = [{"keyword": t["keyword"], "location_code": location_code, "language_code": language_code, "device": device} for t in targets]
+    tasks = [{"keyword": t["keyword"], "location_code": location_code, "language_code": language_code, "device": device, "depth": depth} for t in targets]
     body_bytes = json.dumps(tasks).encode("utf-8")
 
     try:
@@ -189,6 +193,7 @@ def pull_local_rank(
     locations=None,
     language_code="en",
     device="desktop",
+    depth=100,
     http_post=_default_http_post,
     http_get=_default_http_get,
 ):
@@ -210,9 +215,34 @@ def pull_local_rank(
     headers = _auth_headers(credentials)
     rows = []
 
-    for location in locations:
-        location_code, location_name = _resolve_location_code(credentials, location, http_get)
-        tasks = [{"keyword": t["keyword"], "location_code": location_code, "language_code": language_code, "device": device} for t in targets]
+    # Each target may opt into a single matched location via target["location"]
+    # (a name matching locations[].name), avoiding a full location x keyword
+    # cross-product where most pairings are irrelevant (e.g. checking a
+    # Denver-intent keyword from the Greeley location). Targets without a
+    # "location" key fall back to being checked from every configured location,
+    # preserving the original cross-product behavior.
+    locations_by_name = {location.get("name"): location for location in locations}
+    targets_by_location_name = {}
+    for target in targets:
+        target_location_name = target.get("location")
+        if target_location_name:
+            if target_location_name not in locations_by_name:
+                raise ValueError(
+                    f'dataforseo.py: target "{target.get("keyword")}" references location '
+                    f'"{target_location_name}" which is not in locations'
+                )
+            targets_by_location_name.setdefault(target_location_name, []).append(target)
+        else:
+            for location_name in locations_by_name:
+                targets_by_location_name.setdefault(location_name, []).append(target)
+
+    for location_name, location_targets in targets_by_location_name.items():
+        location = locations_by_name[location_name]
+        location_code, resolved_location_name = _resolve_location_code(credentials, location, http_get)
+        tasks = [
+            {"keyword": t["keyword"], "location_code": location_code, "language_code": language_code, "device": device, "depth": depth}
+            for t in location_targets
+        ]
         body_bytes = json.dumps(tasks).encode("utf-8")
         try:
             status, reason, raw = http_post(SERP_ENDPOINT, headers, body_bytes)
@@ -224,7 +254,7 @@ def pull_local_rank(
         body = _decode_json(raw)
         api_tasks = body.get("tasks") or []
         for i, task in enumerate(api_tasks):
-            target = targets[i] if i < len(targets) else {}
+            target = location_targets[i] if i < len(location_targets) else {}
             result = task.get("result") or []
             items = (result[0].get("items") if result else None) or []
             match = next(
@@ -237,7 +267,7 @@ def pull_local_rank(
                     "location_address": location.get("address"),
                     "zip": location.get("zip"),
                     "location_code": location_code,
-                    "location_target": location_name,
+                    "location_target": resolved_location_name,
                     "keyword": target.get("keyword"),
                     "page": target.get("page"),
                     "organic_rank_position": match.get("rank_absolute") if match else None,
@@ -357,8 +387,10 @@ def _self_test():
 
     fake_secret = "sk-test-fake-dataforseo-token"
     targets = [{"keyword": "ai marketing loops", "page": "/blog/ai-marketing"}]
+    sent_bodies = []
 
     def fake_serp_ok(url, headers, body_bytes):
+        sent_bodies.append(json.loads(body_bytes))
         payload = {
             "tasks": [
                 {
@@ -384,6 +416,7 @@ def _self_test():
     checks.append(("live call path maps SERP items into keyword records", result["keywords"][0]["position"] == 6))
     checks.append(("clicks/impressions are None (SERP has no click data)", result["keywords"][0]["clicks"] is None))
     checks.append(("resolved credential never appears unredacted in the returned object", fake_secret not in json.dumps(result)))
+    checks.append(("pull_metrics requests depth=100 by default (API defaults to 10/page-1 if omitted)", sent_bodies[-1][0]["depth"] == 100))
 
     def fake_locations(url, headers):
         payload = {"tasks": [{"result": [{"location_code": 123, "location_name": "Denver,Colorado,United States"}]}]}
@@ -399,6 +432,49 @@ def _self_test():
     )
     checks.append(("local rank uses fallback organic_rank_position field", local_rank["rows"][0]["organic_rank_position"] == 6))
     checks.append(("local rank stores resolved location metadata", local_rank["rows"][0]["location_code"] == 123))
+    checks.append(("pull_local_rank requests depth=100 by default", sent_bodies[-1][0]["depth"] == 100))
+
+    def fake_locations_multi(url, headers):
+        payload = {
+            "tasks": [
+                {
+                    "result": [
+                        {"location_code": 100, "location_name": "Denver,Colorado,United States"},
+                        {"location_code": 200, "location_name": "Greeley,Colorado,United States"},
+                    ]
+                }
+            ]
+        }
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    call_bodies = []
+
+    def fake_serp_multi(url, headers, body_bytes):
+        tasks_in = json.loads(body_bytes)
+        call_bodies.append(tasks_in)
+        payload = {"tasks": [{"result": [{"items": [{"type": "organic", "rank_absolute": 5, "url": "https://example.com/x"}]}]}] * len(tasks_in)}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    matched_local_rank = pull_local_rank(
+        credential_alias="acme-dataforseo-read",
+        resolve_credential=lambda alias: fake_secret,
+        targets=[
+            {"keyword": "chiropractor denver", "page": "/chiropractor/", "location": "Denver"},
+            {"keyword": "general keyword", "page": "/general/"},
+        ],
+        locations=[
+            {"name": "Denver", "address": "2480 W 26th Ave #90B, Denver, CO 80211", "zip": "80211"},
+            {"name": "Greeley", "address": "1823 65th Ave Suite 3 Greeley, CO 80634", "zip": "80634"},
+        ],
+        http_post=fake_serp_multi,
+        http_get=fake_locations_multi,
+    )
+    checks.append(("a target with a matched location triggers exactly one location's SERP call, not both", len(call_bodies) == 2))
+    checks.append(("the matched location's batch includes both the pinned target and the fallback target", len(call_bodies[0]) == 2))
+    checks.append(("the non-matched location's batch only includes the fallback target", len(call_bodies[1]) == 1))
+    greeley_rows = [r for r in matched_local_rank["rows"] if r["location_name"] == "Greeley"]
+    checks.append(("a target pinned to Denver never appears under Greeley's rows", all(r["keyword"] != "chiropractor denver" for r in greeley_rows)))
+    checks.append(("a target with no location still appears under every configured location (fallback preserved)", any(r["keyword"] == "general keyword" for r in greeley_rows)))
 
     def fake_backlinks(url, headers, body_bytes):
         if "summary" in url:

@@ -20,20 +20,26 @@ if WORKSPACE_ROOT not in sys.path:
 
 try:
     from tools.apply import apply_proposal  # noqa: E402
+    from tools.codex_review_proposal import adjudicate_proposal, auto_implement, evidence_packet, record_round, start_review  # noqa: E402
     from tools.draft_copy import draft_copy  # noqa: E402
+    from tools.draft_link import draft_link  # noqa: E402
     from tools.publish import publish_proposal  # noqa: E402
     from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from tools.run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from tools.lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
+    from tools.lib.event_log import read_events, reconcile as event_log_reconcile  # noqa: E402
 except ImportError:
     if TOOLS_DIR not in sys.path:
         sys.path.insert(0, TOOLS_DIR)
     from apply import apply_proposal  # noqa: E402
+    from codex_review_proposal import adjudicate_proposal, auto_implement, evidence_packet, record_round, start_review  # noqa: E402
     from draft_copy import draft_copy  # noqa: E402
+    from draft_link import draft_link  # noqa: E402
     from publish import publish_proposal  # noqa: E402
     from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
     from run_loop import run_loop, _promote_live_implementations  # noqa: E402
     from lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
+    from lib.event_log import read_events, reconcile as event_log_reconcile  # noqa: E402
 
 PROJECTS_ROOT = os.path.join(WORKSPACE_ROOT, "projects")
 PROJECT = "_phase1-test-tmp"
@@ -91,6 +97,16 @@ approval_mode: yolo-mode
 ---
 # broken
 """
+
+# Phase 7 (PLAN-PHASE7-CODEX-REVIEW.md): opts into the codex-review
+# auto-implementation path for the fixture project only - two of the three
+# independent gates (approval_mode: tier1-enabled already in GOOD_SPEC,
+# auto_implementation_enabled: true here); the third (manual_approval_only)
+# is left at its GOOD_SPEC default of absent/false on title-tag-rewrite.
+AUTO_IMPL_SPEC = GOOD_SPEC.replace(
+    "approval_mode: tier1-enabled\n",
+    "approval_mode: tier1-enabled\nauto_implementation_enabled: true\n",
+)
 
 GSC_SPEC = """---
 version: 1
@@ -1264,6 +1280,63 @@ def test_live_detection_transitions_implemented_to_applied():
     check("live detection: run.json records no awaiting entry after promotion", proposal["id"] not in result["run_json"]["awaiting_live_confirmation"])
 
 
+def test_promote_live_implementations_invokes_on_promoted_callback():
+    # Phase 6a integration point: _promote_live_implementations() accepts
+    # an optional on_promoted hook (deploy_verify.record_deployment() is
+    # the intended real caller, wired outside run_loop.py so this module
+    # stays decoupled) - default None must remain a strict no-op (already
+    # covered by every other live-detection test above using no callback),
+    # and a supplied callback must fire exactly once per promotion with
+    # the fresh applied proposal, and never crash/block the run if it
+    # itself raises.
+    reset_fixture()
+    proposal = _proposal("prop-on-promoted", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["implemented_branch"] = "seo/prop-on-promoted"
+    proposal["implemented_commit_sha"] = "newsha000"
+    proposal["implementation_base_sha"] = "oldsha000"
+    proposal["implemented_at"] = "2026-07-20T12:00:00Z"
+    _seed_proposal(proposal)
+
+    promoted_calls = []
+    result = run_loop(
+        PROJECT,
+        LOOP,
+        scenario="normal",
+        _github_requester=_compare_requester("ahead"),
+        _github_compare_target={"owner": "nateginn", "repo": "artwebsite"},
+        _on_promoted=lambda p: promoted_calls.append(p),
+    )
+    check("on_promoted fires exactly once for the one promoted proposal", len(promoted_calls) == 1)
+    check("on_promoted receives the fresh proposal with its new and previous SHAs", promoted_calls[0]["implemented_commit_sha"] == "newsha000" and promoted_calls[0]["implementation_base_sha"] == "oldsha000")
+    check("on_promoted receives the already-applied status", promoted_calls[0]["status"] == "applied")
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("on_promoted firing does not change the promotion's own outcome", stored["status"] == "applied")
+
+    reset_fixture()
+    proposal2 = _proposal("prop-on-promoted-raises", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
+    proposal2["implemented_branch"] = "seo/prop-on-promoted-raises"
+    proposal2["implemented_commit_sha"] = "newsha111"
+    proposal2["implementation_base_sha"] = "oldsha111"
+    proposal2["implemented_at"] = "2026-07-20T12:00:00Z"
+    _seed_proposal(proposal2)
+
+    def _raising_hook(p):
+        raise RuntimeError("deploy_verify.record_deployment blew up")
+
+    result2 = run_loop(
+        PROJECT,
+        LOOP,
+        scenario="normal",
+        _github_requester=_compare_requester("ahead"),
+        _github_compare_target={"owner": "nateginn", "repo": "artwebsite"},
+        _on_promoted=_raising_hook,
+    )
+    stored2 = _read_json(os.path.join(pending_dir, f'{proposal2["id"]}.json'))
+    check("a raising on_promoted hook never blocks or crashes the run", result2["status"] == "ok")
+    check("a raising on_promoted hook never prevents the promotion itself", stored2["status"] == "applied")
+    check("a raising on_promoted hook's failure is surfaced in decisions, not swallowed silently", any("on_promoted deploy-verification hook failed" in d for d in result2["run_json"]["decisions"]))
+
+
 def test_awaiting_live_confirmation_and_stuck_reporting():
     reset_fixture()
     proposal = _proposal("prop-awaiting", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
@@ -1550,6 +1623,260 @@ def test_keyword_exclusions_filters_candidates():
     check("keyword_exclusions: exclusion count surfaced in decisions", any("keyword_exclusions filtered" in d for d in result["run_json"]["decisions"]))
 
 
+# ---------------------------------------------------------------------------
+# Phase 7 (PLAN-PHASE7-CODEX-REVIEW.md): codex-review auto-implementation
+# pipeline - offline end-to-end coverage. No live SEO run, live GitHub call,
+# or live Telegram send anywhere below; verdicts are fabricated dicts (the
+# .claude/skills/codex-seo-review skill is what actually invokes `codex
+# exec` in a real Claude Code session).
+# ---------------------------------------------------------------------------
+
+
+def test_codex_review_end_to_end_with_revision_and_auto_implement():
+    reset_fixture()
+    _write_spec(AUTO_IMPL_SPEC)
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-codex-e2e", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+
+        draft_copy(PROJECT, LOOP, proposal["id"], "Pass One Services Title", "claude-test", repo_path=repo_path)
+        started = start_review(PROJECT, LOOP, proposal["id"])
+        check("start_review moves draft -> review-pending", started["status"] == "review-pending")
+
+        threw_start_review_twice = False
+        try:
+            start_review(PROJECT, LOOP, proposal["id"])
+        except ValueError as e:
+            threw_start_review_twice = "not \"draft\"" in str(e)
+        check("start_review refuses a proposal that already left draft", threw_start_review_twice)
+
+        packet1 = evidence_packet(PROJECT, LOOP, proposal["id"])
+        check("evidence_packet includes the proposed value", packet1["proposed_value"] == "Pass One Services Title")
+        packet1_again = evidence_packet(PROJECT, LOOP, proposal["id"])
+        check("re-calling evidence_packet for the same pass returns the identical persisted artifact", packet1_again["evidence_packet_hash"] == packet1["evidence_packet_hash"])
+
+        threw_stale_hash = False
+        try:
+            record_round(PROJECT, LOOP, proposal["id"], 1, {"verdict": "approve", "confidence": 0.5, "objections": [], "required_corrections": [], "evidence_packet_hash": "not-the-real-hash"})
+        except ValueError as e:
+            threw_stale_hash = "does not match" in str(e)
+        check("record_round refuses a verdict declaring the wrong evidence_packet_hash", threw_stale_hash)
+
+        # Pass 1: round A holds with a correctable objection, round B approves - disagreement.
+        record_round(PROJECT, LOOP, proposal["id"], 1, {"verdict": "hold", "confidence": 0.6, "objections": ["title could be more specific"], "required_corrections": ["mention 'Denver' explicitly"], "evidence_packet_hash": packet1["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 2, {"verdict": "approve", "confidence": 0.8, "objections": [], "required_corrections": [], "evidence_packet_hash": packet1["evidence_packet_hash"]})
+
+        threw_out_of_order = False
+        try:
+            record_round(PROJECT, LOOP, proposal["id"], 5, {"verdict": "approve", "confidence": 0.5, "objections": [], "required_corrections": [], "evidence_packet_hash": packet1["evidence_packet_hash"]})
+        except ValueError as e:
+            threw_out_of_order = "out of order" in str(e)
+        check("record_round refuses an out-of-order round number", threw_out_of_order)
+
+        after_pass1 = adjudicate_proposal(PROJECT, LOOP, proposal["id"])
+        check("adjudicate on a pass-1 disagreement moves to review-revision-needed", after_pass1["status"] == "review-revision-needed")
+
+        revised = draft_copy(PROJECT, LOOP, proposal["id"], "Pass One Services Title - Denver", "claude-test", repo_path=repo_path)
+        check("revision produces review-pending for pass 2", revised["status"] == "review-pending")
+
+        packet2 = evidence_packet(PROJECT, LOOP, proposal["id"])
+        check("pass-2 evidence packet reflects the revised copy", packet2["proposed_value"] == "Pass One Services Title - Denver")
+        check("pass-2 packet is a distinct artifact from pass-1's", packet2["evidence_packet_hash"] != packet1["evidence_packet_hash"])
+
+        record_round(PROJECT, LOOP, proposal["id"], 3, {"verdict": "approve", "confidence": 0.9, "objections": [], "required_corrections": [], "evidence_packet_hash": packet2["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 4, {"verdict": "approve", "confidence": 0.85, "objections": [], "required_corrections": [], "evidence_packet_hash": packet2["evidence_packet_hash"]})
+
+        adjudicated = adjudicate_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("adjudicate on pass-2 agreement moves to approved-for-implementation", adjudicated["status"] == "approved-for-implementation")
+        check("adjudicate correctly used pass-2 rounds, not pass-1's disagreement, to reach agreement", adjudicated["review"]["final_adjudication"] == "approve")
+        check("auto_implementation.eligible is true and recorded as output-only", adjudicated["auto_implementation"]["eligible"] is True)
+
+        implemented = auto_implement(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("auto_implement produces a real local commit", implemented["status"] == "implemented" and implemented["implemented_by"] == "codex-review-pipeline")
+
+        branch_head = _git(repo_path, "rev-parse", proposal_branch_name(proposal["id"]))
+        committed = subprocess.run(["git", "show", f"{branch_head}:templates/services.html"], cwd=repo_path, capture_output=True, text=True, check=True).stdout
+        check("committed content contains the revised, pass-2-approved copy", "Pass One Services Title - Denver" in committed)
+        check("committed content does not contain the pre-revision pass-1 copy", "Pass One Services Title" not in committed.replace("Pass One Services Title - Denver", ""))
+
+        events = read_events(loop_dir, proposal_id=proposal["id"])
+        event_types = [e["event_type"] for e in events]
+        check("event log has exactly one review_started", event_types.count("review_started") == 1)
+        check("event log has exactly 4 review_round_completed events", event_types.count("review_round_completed") == 4)
+        check("event log has exactly one proposal_revised", event_types.count("proposal_revised") == 1)
+        check("event log has exactly one proposal_auto_approved", event_types.count("proposal_auto_approved") == 1)
+        check("event log has exactly one implementation_created", event_types.count("implementation_created") == 1)
+        seqs = [e["seq"] for e in events]
+        check("event seqs are unique and monotonically increasing", seqs == sorted(seqs) and len(seqs) == len(set(seqs)))
+
+        # Idempotency: retrying an already-completed apply must not duplicate the event.
+        retried = apply_proposal(PROJECT, LOOP, proposal["id"], by="codex-review-pipeline", repo_path=repo_path)
+        check("retrying apply_proposal on an already-implemented proposal is a safe no-op", retried["status"] == "implemented")
+        events_after_retry = read_events(loop_dir, proposal_id=proposal["id"])
+        check("retrying an already-completed apply does not duplicate its event", sum(1 for e in events_after_retry if e["event_type"] == "implementation_created") == 1)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_codex_review_missing_evidence_holds():
+    reset_fixture()
+    _write_spec(AUTO_IMPL_SPEC.replace(
+        "  - type: title-tag-rewrite\n    tier: 1\n    rollback: revert PR\n    observation_window_days: 0.0001\n    min_sample_size: 100\n",
+        "  - type: title-tag-rewrite\n    tier: 1\n    rollback: revert PR\n    observation_window_days: 0.0001\n    min_sample_size: 100\n"
+        "  - type: internal-link-addition\n    tier: 1\n    rollback: revert PR\n    observation_window_days: 0.0001\n    min_sample_size: 100\n",
+    ))
+    proposal = {
+        "id": "prop-missing-evidence", "loop": LOOP, "action_type": "internal-link-addition", "tier": 1,
+        "target": {"page": "/blog/post/", "keyword": "x"}, "baseline_position": 8.2, "rationale": "test",
+        "rollback": "revert PR", "manual_approval_only": False, "status": "draft", "created_run_id": "seed",
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "run_cycles_seen": 0,
+        "decision": None, "applied_at": None, "observation_window_days": 0.0001, "min_sample_size": 100,
+    }
+    _seed_proposal(proposal)
+    start_review(PROJECT, LOOP, proposal["id"])
+
+    threw_missing = False
+    try:
+        evidence_packet(PROJECT, LOOP, proposal["id"])
+    except ValueError as e:
+        threw_missing = "missing required evidence" in str(e)
+    check("evidence_packet refuses an internal-link proposal with no source/destination/anchor drafted", threw_missing)
+    stored = _read_json(os.path.join(pending_dir, f'{proposal["id"]}.json'))
+    check("a proposal missing required evidence is moved to review-held, never submitted for review", stored["status"] == "review-held")
+
+
+def test_codex_review_disagreement_at_pass_2_holds_permanently():
+    reset_fixture()
+    _write_spec(AUTO_IMPL_SPEC)
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-codex-final-hold", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+        draft_copy(PROJECT, LOOP, proposal["id"], "Title A", "claude-test", repo_path=repo_path)
+        start_review(PROJECT, LOOP, proposal["id"])
+        packet1 = evidence_packet(PROJECT, LOOP, proposal["id"])
+        # Both pass-1 rounds hold (e.g. simulated reviewer timeout/failure - the
+        # orchestrating skill records that as verdict="hold" too, never approve).
+        record_round(PROJECT, LOOP, proposal["id"], 1, {"verdict": "hold", "confidence": None, "objections": ["reviewer failure/timeout"], "required_corrections": [], "evidence_packet_hash": packet1["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 2, {"verdict": "hold", "confidence": None, "objections": ["reviewer failure/timeout"], "required_corrections": [], "evidence_packet_hash": packet1["evidence_packet_hash"]})
+        after_pass1 = adjudicate_proposal(PROJECT, LOOP, proposal["id"])
+        check("both rounds holding in pass 1 still allows one revision", after_pass1["status"] == "review-revision-needed")
+
+        draft_copy(PROJECT, LOOP, proposal["id"], "Title B", "claude-test", repo_path=repo_path)
+        packet2 = evidence_packet(PROJECT, LOOP, proposal["id"])
+        record_round(PROJECT, LOOP, proposal["id"], 3, {"verdict": "hold", "confidence": None, "objections": ["still unclear"], "required_corrections": [], "evidence_packet_hash": packet2["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 4, {"verdict": "reject", "confidence": 0.7, "objections": ["not a good fit"], "required_corrections": [], "evidence_packet_hash": packet2["evidence_packet_hash"]})
+        after_pass2 = adjudicate_proposal(PROJECT, LOOP, proposal["id"])
+        check("disagreement at pass 2 is a final review-held, no further revision offered", after_pass2["status"] == "review-held")
+
+        threw_no_pass3_artifact = False
+        try:
+            evidence_packet(PROJECT, LOOP, proposal["id"])
+        except ValueError as e:
+            threw_no_pass3_artifact = "bounded at 4 total" in str(e)
+        check("no third pass can be started - bounded at 4 total Codex calls, no further revision is ever permitted", threw_no_pass3_artifact)
+
+        rescued = decide(PROJECT, LOOP, proposal["id"], "reject", by="nate", note="agreeing with Codex's hold")
+        check("a human can still rescue (here: reject) a review-held proposal via the existing /review-pending path", rescued["status"] == "rejected")
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_codex_review_tier2_and_breach_never_auto_implement():
+    reset_fixture()
+    _write_spec(AUTO_IMPL_SPEC)
+    repo_path = _make_temp_git_site()
+    try:
+        tier2 = _proposal("prop-tier2-forged", status="approved-for-implementation", page="/services/", tier=2)
+        tier2["implementation"] = {"new_value": "New Title", "previous_value": "Old service title"}
+        tier2["review"] = {"rounds": [], "final_adjudication": "approve"}
+        tier2["auto_implementation"] = {"eligible": True, "authorized_by": "forged"}
+        _seed_proposal(tier2)
+        threw_tier2 = False
+        try:
+            apply_proposal(PROJECT, LOOP, tier2["id"], repo_path=repo_path)
+        except ValueError as e:
+            threw_tier2 = "Tier 2" in str(e)
+        check("a Tier-2 proposal is always refused by apply.py, even forged into approved-for-implementation with auto_implementation.eligible=True", threw_tier2)
+
+        state_path = os.path.join(loop_dir, "state.json")
+        _write_json(state_path, {"status": "paused-breach", "paused_reason": "test breach"})
+        proposal = _proposal("prop-codex-breach", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+        draft_copy(PROJECT, LOOP, proposal["id"], "New Services Title", "claude-test", repo_path=repo_path)
+        start_review(PROJECT, LOOP, proposal["id"])
+        packet = evidence_packet(PROJECT, LOOP, proposal["id"])
+        record_round(PROJECT, LOOP, proposal["id"], 1, {"verdict": "approve", "confidence": 0.9, "objections": [], "required_corrections": [], "evidence_packet_hash": packet["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 2, {"verdict": "approve", "confidence": 0.9, "objections": [], "required_corrections": [], "evidence_packet_hash": packet["evidence_packet_hash"]})
+        adjudicated = adjudicate_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("adjudicate refuses eligibility while the loop is paused-breach", adjudicated["status"] == "review-approved" and adjudicated["auto_implementation"]["eligible"] is False)
+        check("the breach reason is named in failed_reasons", any("paused-breach" in r for r in adjudicated["auto_implementation"]["failed_reasons"]))
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_codex_review_disable_switches_stop_apply_after_adjudication():
+    reset_fixture()
+    _write_spec(AUTO_IMPL_SPEC)
+    repo_path = _make_temp_git_site()
+    try:
+        proposal = _proposal("prop-codex-disable", status="draft", page="/services/")
+        del proposal["implementation"]
+        _seed_proposal(proposal)
+        draft_copy(PROJECT, LOOP, proposal["id"], "New Services Title", "claude-test", repo_path=repo_path)
+        start_review(PROJECT, LOOP, proposal["id"])
+        packet = evidence_packet(PROJECT, LOOP, proposal["id"])
+        record_round(PROJECT, LOOP, proposal["id"], 1, {"verdict": "approve", "confidence": 0.9, "objections": [], "required_corrections": [], "evidence_packet_hash": packet["evidence_packet_hash"]})
+        record_round(PROJECT, LOOP, proposal["id"], 2, {"verdict": "approve", "confidence": 0.9, "objections": [], "required_corrections": [], "evidence_packet_hash": packet["evidence_packet_hash"]})
+        adjudicated = adjudicate_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        check("setup: proposal reaches approved-for-implementation before the disable check", adjudicated["status"] == "approved-for-implementation")
+
+        # Flip auto_implementation_enabled off AFTER adjudication - apply.py
+        # must re-read spec.md fresh and refuse, not trust the adjudication-
+        # time decision (Codex round 2/3 finding: "disable switch ineffective
+        # after adjudication").
+        _write_spec(GOOD_SPEC)  # GOOD_SPEC has no auto_implementation_enabled at all
+        threw_disabled = False
+        disabled_reason = ""
+        try:
+            apply_proposal(PROJECT, LOOP, proposal["id"], repo_path=repo_path)
+        except ValueError as e:
+            threw_disabled = True
+            disabled_reason = str(e)
+        check("flipping auto_implementation_enabled off after adjudication genuinely disables the auto path", threw_disabled)
+        check("the refusal names auto_implementation_enabled", "auto_implementation_enabled" in disabled_reason)
+    finally:
+        _force_rmtree(repo_path)
+
+
+def test_codex_review_cooldown_blocks_duplicate_proposal_on_same_page():
+    reset_fixture()
+    in_review = _proposal("prop-in-review-cooldown", status="review-pending", page="/blog/loop-agency", keyword="best loop agency")
+    in_review["review"] = {"rounds": [], "final_adjudication": None}
+    _seed_proposal(in_review)
+
+    result = run_loop(
+        PROJECT, LOOP, scenario="normal",
+        _github_requester=_compare_requester("behind"),
+        _github_compare_target={"owner": "nateginn", "repo": "artwebsite"},
+    )
+    created = [_read_json(os.path.join(pending_dir, f"{pid}.json")) for pid in result["run_json"]["proposals_created"]]
+    check("cooldown blocks a new proposal for a page with a review-pending proposal already active", not any(p["target"]["page"] == "/blog/loop-agency" for p in created))
+
+
+def test_event_log_reconcile_backfills_via_cli_lock():
+    reset_fixture()
+    proposal = _proposal("prop-reconcile-cli", status="implemented", page="/blog/loop-agency", keyword="best loop agency")
+    proposal["implemented_commit_sha"] = "deadbeefcafe"
+    _seed_proposal(proposal)
+    backfilled = event_log_reconcile(loop_dir, PROJECT, LOOP, pending_dir)
+    check("reconcile backfills a missing implementation_created event for an existing proposal with no event history", any(e["event_type"] == "implementation_created" and e["proposal_id"] == proposal["id"] for e in backfilled))
+
+
 def main():
     test_spec_validation_rejects_bad_spec()
     test_lock_refusal_and_stale_recovery()
@@ -1583,6 +1910,7 @@ def main():
     test_publish_refuses_on_real_non_github_remote_url()
     test_retry_transition()
     test_live_detection_transitions_implemented_to_applied()
+    test_promote_live_implementations_invokes_on_promoted_callback()
     test_awaiting_live_confirmation_and_stuck_reporting()
     test_cooldown_extends_to_approved_implemented_and_failed()
     test_verified_delta_surfaces_in_report()
@@ -1597,6 +1925,13 @@ def main():
     test_gsc_dataforseo_merge()
     test_gsc_connector_failure_clean_partial()
     test_keyword_exclusions_filters_candidates()
+    test_codex_review_end_to_end_with_revision_and_auto_implement()
+    test_codex_review_missing_evidence_holds()
+    test_codex_review_disagreement_at_pass_2_holds_permanently()
+    test_codex_review_tier2_and_breach_never_auto_implement()
+    test_codex_review_disable_switches_stop_apply_after_adjudication()
+    test_codex_review_cooldown_blocks_duplicate_proposal_on_same_page()
+    test_event_log_reconcile_backfills_via_cli_lock()
 
     _force_rmtree(project_dir)
 

@@ -22,30 +22,49 @@ domain: "acceleratedrehabtherapy.com"
 site_url: "sc-domain:acceleratedrehabtherapy.com"
 metrics_window_days: 28
 targets:
+  # "location" pins each keyword to its matching city's SERP check only (see
+  # dataforseo.py pull_local_rank) instead of checking every keyword from every
+  # configured location - added 2026-07-26 to cut dataforseo-local-rank from a
+  # 3-location x 12-keyword cross-product (36 checks/run) down to 12 matched
+  # checks/run. Checking e.g. "chiropractor denver" from the Greeley location
+  # wasn't answering a real question. UNC Campus is intentionally unused here -
+  # it stays in `locations` only for the footer-address-diff check.
   - keyword: physical therapy greeley
     page: /physical-therapy/
+    location: Greeley
   - keyword: physical therapy denver
     page: /physical-therapy/
+    location: Denver
   - keyword: chiropractor greeley
     page: /chiropractor/
+    location: Greeley
   - keyword: chiropractor denver
     page: /chiropractor/
+    location: Denver
   - keyword: auto injury treatment greeley
     page: /auto-injury/
+    location: Greeley
   - keyword: auto injury treatment denver
     page: /auto-injury/
+    location: Denver
   - keyword: work comp injury care greeley
     page: /work-comp/
+    location: Greeley
   - keyword: work comp injury care denver
     page: /work-comp/
+    location: Denver
   - keyword: massage therapy greeley
     page: /massage/
+    location: Greeley
   - keyword: massage therapy denver
     page: /massage/
+    location: Denver
   - keyword: acupuncture greeley
     page: /acupuncture/
+    location: Greeley
   - keyword: acupuncture denver
     page: /acupuncture/
+    location: Denver
 language_code: en
 device: desktop
 # Organic-intent pages only. The 5 shockwave/chronic-tendon/non-surgical pages were
@@ -103,6 +122,11 @@ additional_schedules:
     inputs:
       - pagespeed
       - gsc-indexation
+  - name: daily-rank-check
+    cron: "0 6 * * *"
+    mode: technical-only   # reuses the no-proposal-generation gate; not literally "technical" data, but this label is the only mode that skips _pick_new_actions/_evaluate_prior_experiments (which otherwise run on stale carried-forward GSC data when gsc isn't in this schedule's inputs)
+    inputs:
+      - dataforseo-local-rank
 allowed_actions:
   - type: title-tag-rewrite
     tier: 1

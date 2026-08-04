@@ -8,17 +8,32 @@ import sys
 from datetime import datetime, timezone
 
 try:
+    from .lib.event_log import append_event, build_secret_map
     from .lib.lock import acquire_lock, release_lock
     from .lib.proposals import atomic_write_json, load_json, loop_dir_for, pending_dir_for, proposal_path
     from .run_loop import _read_lock_ttl_minutes_unsafe
+    from .spec_validate import extract_frontmatter
 except ImportError:
+    from lib.event_log import append_event, build_secret_map
     from lib.lock import acquire_lock, release_lock
     from lib.proposals import atomic_write_json, load_json, loop_dir_for, pending_dir_for, proposal_path
     from run_loop import _read_lock_ttl_minutes_unsafe
+    from spec_validate import extract_frontmatter
+
+import yaml
+
+# Phase 7 (PLAN-PHASE7-CODEX-REVIEW.md item 11): "approve"/"reject" widened to
+# rescue a proposal out of ANY codex-review state - including one Codex held,
+# or one that's review-approved but policy-ineligible for auto-implementation
+# - into these same existing, unchanged human-approval terminals. No new
+# human-facing states to learn; for any project without the auto_implementation
+# opt-in (art included), these states simply never occur, so behavior there is
+# unchanged in every way that matters.
+_REVIEW_SUBSYSTEM_STATES = ["review-pending", "review-revision-needed", "review-approved", "review-held"]
 
 TRANSITIONS = {
-    "approve": {"from": ["draft", "reviewed"], "to": "approved"},
-    "reject": {"from": ["draft", "reviewed", "approved"], "to": "rejected"},
+    "approve": {"from": ["draft", "reviewed"] + _REVIEW_SUBSYSTEM_STATES, "to": "approved"},
+    "reject": {"from": ["draft", "reviewed", "approved"] + _REVIEW_SUBSYSTEM_STATES, "to": "rejected"},
     "review": {"from": ["draft"], "to": "reviewed"},
     "retry": {"from": ["implement-failed"], "to": "approved"},
 }
@@ -81,11 +96,47 @@ def decide(project, loop, proposal_id, action, by="human", note=""):
         if p["status"] not in t["from"]:
             raise ValueError(f'cannot {action} proposal {proposal_id}: current status is "{p["status"]}", expected one of {", ".join(t["from"])}')
         p["status"] = t["to"]
+        # decision stays exclusively the human-approval record - never
+        # overloaded to make an automated (Codex-review) approval look like
+        # Nate approved it. See proposal["review"]/["auto_implementation"]
+        # for the separate Codex-review and auto-implementation-authorization
+        # records (Phase 7 - PLAN-PHASE7-CODEX-REVIEW.md).
         p["decision"] = {"action": action, "by": by, "note": note, "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
         _write_proposal(project, loop, p)
+        _emit_human_decision(loop_dir, project, loop, p, action, by, note)
         return p
     finally:
         release_lock(loop_dir, lock["run_id"])
+
+
+def _emit_human_decision(loop_dir, project, loop, proposal, action, by, note):
+    """Best-effort: a human decision is recorded as an event too, alongside
+    the existing `decision` field, so the review subsystem's event-sourced
+    projection (event_log.sync_proposal_projection) correctly reflects a
+    human rescue as the latest transition rather than being silently
+    overwritten by the last Codex-review event the next time a tool replays
+    this proposal's history."""
+    try:
+        spec_path = os.path.join(loop_dir, "spec.md")
+        with open(spec_path, "r", encoding="utf-8") as f:
+            spec = yaml.safe_load(extract_frontmatter(f.read())) or {}
+        project_dir = os.path.dirname(os.path.dirname(os.path.dirname(loop_dir)))
+        repo_project_path = os.path.join(project_dir, project, "project.md")
+        repo_path = None
+        if os.path.exists(repo_project_path):
+            with open(repo_project_path, "r", encoding="utf-8") as f:
+                repo_path = (yaml.safe_load(extract_frontmatter(f.read())) or {}).get("repo")
+        secret_map = build_secret_map(repo_path, spec.get("credential_aliases"))
+        append_event(
+            loop_dir, "human_decision_recorded", project=project, loop=loop, proposal_id=proposal["id"],
+            action_type=proposal.get("action_type"), target_page=(proposal.get("target") or {}).get("page"),
+            keyword=(proposal.get("target") or {}).get("keyword"), resulting_proposal_status=proposal["status"],
+            review_verdict=action, note=note[:500] if note else None, secret_map=secret_map,
+        )
+    except Exception:
+        # Observability, not authorization - a failure to log must never
+        # block or unwind an already-written human decision.
+        pass
 
 
 def resolve_breach(project, loop, by="human", note=""):

@@ -2,6 +2,14 @@
 
 Act 1 (grill) complete — plan locked with the user 2026-07-23 (local). MAX_ROUNDS=5, raised to 6 by Nate after Round 5 to allow one confirmatory pass on the Local Pack vs. organic rank fix. PLAN_FILE=PLAN.md.
 
+## Phase 6a implementation closeout — 2026-07-30
+
+The credential-free Phase 6a foundation was implemented in `tools/lib/deploy_health.py` and `tools/deploy_verify.py`, with a wiring seam added to `run_loop.py`. It records both the deployed SHA and previous known-good SHA, waits through a non-blocking 15-minute stabilization window, performs bounded DNS/TLS/HTTP/canonical/robots/representative-page checks, persists redacted health and rollback outcomes, and escalates if rollback or post-rollback validation fails. `PHASE0-RUNBOOK.md` documents the remaining human/live controls.
+
+Independent verification: 31/31 health self-tests, 42/42 deployment-verification self-tests, 153/153 full-suite checks, all supported module self-tests, `compileall tools`, and `git diff --check` passed. No credentials, live GitHub API, push, merge, deployment, or `D:\Dev\artwebsite` modification occurred.
+
+This closes the offline implementation step, not production activation. The default redeploy hook intentionally refuses; no project callback or scheduler is wired; commit evidence remains advisory without a live build marker; and `art` remains `approval_mode: propose-only` with `manual_approval_only: true` on every action.
+
 Scope: geo/local rank tracking, backlink monitoring, and free technical/on-page health checks for the `art`/`seo` loop, reported through the loop's existing artifacts so MMC's briefing picks it up with no MMC-side changes. Full plan in `PLAN.md` (current top section).
 
 ## Round 1 — Codex (VERDICT: REVISE)
@@ -348,3 +356,219 @@ VERDICT: APPROVED
 ## Final outcome
 
 **Converged in 4 rounds** (1 over the original MAX_ROUNDS=3 cap; human explicitly approved spending a 4th round rather than stopping at the Round 3 near-miss). 16 total findings across the argument, all accepted by Claude, zero disputed. `PLAN.md` is the final, mutually-approved Phase 3 plan. Codex flagged two items as test-coverage guidance for the build phase, not plan gaps: (1) a test proving the apply-scoped lock and the live-detection status write cannot race, (2) a recovery test for the "commit exists, JSON not yet updated" crash path. Human final sign-off on implementation approach (who builds it) is the next and last gate before any code is written.
+
+---
+
+# Plan Review Log: Remote + local SEO change pipeline (draft → approve → apply → PR → human merge)
+
+Started 2026-07-26 (session). MAX_ROUNDS=3. Reviewer model: `gpt-5.6-luna` (reasoning effort medium), codex-cli 0.144.1, read-only sandbox enforced every round.
+
+Scope under review: `PLAN.md` as rewritten this session — the four-repo pipeline letting Nate approve and ship SEO title/meta changes locally or from Telegram, with a human PR merge as the sole production gate.
+
+
+## Round 1 — Codex
+
+Material problems remain.
+
+1. **The R6 premise is only currently true, not durable.** `deploy.yml` currently triggers on `push` to `main`, but a future workflow change could deploy on branch pushes, PRs, tags, or manual dispatch. The workflow also changes production `.env` from GitHub Secrets and restarts Gunicorn, so “only landing on main deploys” is too broad.
+
+   Fix: retain human-only status for all pushes, or enforce a runtime policy that cryptographically verifies the reviewed workflow and rejects publication if deployment triggers/configuration differ.
+
+2. **The remote rail already defeats the stated production gate.** DAC has `defaultMode: "dontAsk"`, `Bash(*)`, and write access to all `D:/Dev`; plain `git push` is allowed. A dispatched Claude session can bypass `publish.py` and push `main` directly.
+
+   Fix: use an OS-level restricted account/clone with no main-push credential, plus GitHub branch protection; settings deny-rules alone are insufficient.
+
+3. **The proposed deny-rules are trivially bypassable.** Equivalent commands include `git -C D:/Dev/artwebsite push origin HEAD:refs/heads/main`, `git push origin refs/heads/seo/x:refs/heads/main`, Python `subprocess`, shell aliases, or editing the settings/credential environment itself. `Bash(*)` and `Write(D:/Dev/**)` make the gate non-enforcing.
+
+   Fix: remove unrestricted Bash/write permissions from the remote session and expose only a narrowly validated publish wrapper.
+
+4. **`publish.py` has a refspec injection hazard.** `^seo/` is only a prefix check, and the plan proposes `git push origin seo/<id>`. A proposal ID containing `:main` or another refspec construct can turn that into a push whose destination is `main`. Also, `implemented_branch` is not required to equal the branch actually pushed.
+
+   Fix: require exact equality with `refs/heads/seo/<strict-id>`, reject all refspec metacharacters, and push an explicit immutable SHA to `refs/heads/seo/<id>`.
+
+5. **The diff checks are vulnerable to TOCTOU.** The plan checks one commit and then pushes the mutable local branch. Another process can advance or replace that branch between validation and push; the pushed commit need not be the checked commit.
+
+   Fix: serialize apply/publish with a repo lock and push the validated SHA with a lease/refspec, verifying the branch still points to that SHA immediately beforehand.
+
+6. **`origin` is not a durable trust anchor.** `git push origin ...` can use `remote.origin.pushurl`, URL rewrite rules, or repository configuration changed by the permissive remote session. `push.default` is not relevant when an explicit refspec is supplied, but the plan should not imply that naming `origin` guarantees the intended destination.
+
+   Fix: validate the canonical remote URL and use an explicit fully qualified destination/refspec.
+
+7. **The apply baseline is stale-prone.** `apply.py` creates the branch from local `main`; it does not fetch or verify that local `main` equals `origin/main`. The publish-time drift check happens after the edit and does not prevent a proposal from being authored against stale code.
+
+   Fix: fetch and verify `refs/heads/main == refs/remotes/origin/main` before creating the worktree, then record and validate that exact base SHA.
+
+8. **`previous_value` is informational only.** `apply_rewrite()` checks `new_value` but never verifies that the current source still contains `implementation.previous_value`. A page can change after review, causing the approved copy to overwrite an unreviewed intervening change.
+
+   Fix: require an exact previous-value match in the worktree before rewriting, and refuse on mismatch.
+
+9. **The planned diff re-derivation can inspect the wrong tree.** `resolve_edit_location()` scans the current checkout, while the commit being published may have a different tree/path layout. Comparing a commit diff against a path discovered from mutable working-tree state is not a sound proof of what the commit changes.
+
+   Fix: resolve and inspect paths from the commit’s parent/tree objects, not from the current checkout; verify the parent is the recorded baseline and compare blobs directly.
+
+10. **Proposal files have no shared lock or compare-and-swap protocol.** `review_pending.py`, `apply.py`, `run_loop.py`, and the future publish tool can read and atomically replace the same JSON independently. A run can overwrite an approval or implementation field written by another process, and publish can race with apply.
+
+   Fix: lock each proposal or use versioned writes requiring the expected prior status/version.
+
+11. **The observation evaluator can declare the wrong experiment successful.** `_proposal_row_for_page()` matches only the target page and returns the first keyword row; it ignores the proposal’s target keyword. A proposal for one query can be evaluated using another query’s position. If no row exists, it marks the proposal verified without a breach.
+
+   Fix: match both normalized page and target keyword, and treat missing target data as “not evaluable,” not verified.
+
+12. **The end-to-end test sequence does not prove live verification.** The planned chain stops at PR creation. `_promote_live_implementations()` only changes `implemented` to `applied` after the commit is actually in GitHub `main`; until Nate merges, the proposal remains implemented and no observation window starts. That is expected behavior, but the plan’s “end-to-end” confirmation must explicitly include merge and a later eligible run.
+
+   Fix: test separately through PR creation, post-merge promotion, observation-window expiry, verification, and breach handling.
+
+13. **The security threat model is incoherent.** The plan calls branch publication Tier 1 while acknowledging the same token can push `main`, and calls the Telegram chain “safe” despite giving the headless agent arbitrary commands and writes. An allowlisted Telegram user authenticates dispatch, not the exact approved proposal or permitted command sequence.
+
+   Fix: bind approval to a proposal hash and enforce the allowed operation outside the model with a capability-limited service.
+
+14. **Production changes have additional paths beyond the workflow trigger.** Manual SSH changes, GitHub Actions reruns, GitHub UI/API changes, secret updates consumed by deployment, and future workflow modifications can alter production without the proposed `publish.py` participating.
+
+   Fix: document the actual production control plane and require GitHub-side branch/workflow protections rather than treating the local publisher as the complete safety boundary.
+
+VERDICT: REVISE
+### Claude's response — Round 1
+
+**Verified before accepting.** Codex #11 was a claim about existing code, so I checked it rather than trusting it. Confirmed at `run_loop.py:383-385` (`_proposal_row_for_page` matches page path only, ignores `target.keyword`, returns first match) and `run_loop.py:406-427` (missing row -> `metric_value=None` -> `drift=None` -> `breached=False` -> falls into the `else` branch and marks the proposal `verified`, logging "verified winner (position 7 -> None)"). Real, serious, pre-existing. Promoted to its own phase ahead of the pipeline.
+
+**Accepted and incorporated (11 of 14):**
+- **#2, #3, #13 — the security model was wrong.** This is the structural change of the round. Round 0 leaned on `publish.py` guards plus a `dual-agent-core` deny-list as the production gate; Codex correctly showed both are non-enforcing against a session with `Bash(*)` + `Write(D:/Dev/**)`, which can push via `git -C ... push origin HEAD:refs/heads/main`, a Python subprocess, or by editing the settings file. Replaced with **GitHub branch protection on `main` as the load-bearing, server-side control** (new Phase 0a, a hard gate on everything remote). Local guards are explicitly demoted to correctness/ergonomics. The deny-list survives as optional anti-accident hardening with its bypassability stated.
+- **#11 — evaluator bug.** New Phase 1: match page *and* keyword; add a `not-evaluable` outcome so only a measured position can produce `verified`/`breached`.
+- **#8 — `previous_value` unverified.** `apply_rewrite()` must confirm on-disk content still matches `previous_value` and refuse otherwise (lost-update protection).
+- **#4, #5 — refspec injection + TOCTOU.** Both closed by one change: push the immutable `implemented_commit_sha` to a fully-qualified `refs/heads/seo/<id>` rather than a mutable local branch name, plus strict ID regex and a re-check that the ref still points at the validated SHA. Noted honestly that practical severity of #4 is low (IDs are generated from timestamp+random, not attacker-supplied) but the check is nearly free.
+- **#6 — `origin` not a trust anchor.** Validate `git remote get-url --push origin` against the expected URL; refuse on `pushurl`/`insteadOf` rewrites.
+- **#7 — stale apply baseline.** Moved the fetch/drift check from publish time to *apply* time (new Phase 5) and record the base SHA, so copy is authored against current code rather than merely published against it.
+- **#9 — diff re-derivation inspected the wrong tree.** Validate from the commit's own objects (`git diff-tree` against the recorded parent, blob comparison), not `resolve_edit_location()` against the mutable checkout.
+- **#10 — no CAS on proposal JSON.** New Phase 3: `version` integer, every write asserting expected prior version *and* status.
+- **#1 — R6 premise has an expiry date.** Accepted in proportionate form: `publish.py` refuses if `deploy.yml`'s trigger shape at the base commit differs from expected. Rejected the stronger "cryptographic attestation" form (see below).
+- **#12 — end-to-end test stopped too early.** Verification now explicitly spans PR creation -> merge -> post-merge promotion -> observation-window expiry -> verification -> breach handling as separate stages.
+- **#14 — wider production control plane.** New Phase 0c documents SSH, Actions re-run, web UI/API edits, secret changes, and `deploy.yml` edits, stating plainly that this pipeline covers one path only.
+
+**Rejected, with reasons (2):**
+- **#1's stronger form — cryptographic verification of the reviewed workflow.** Disproportionate for a solo operator on a single desktop. Branch protection (server-side, unbypassable locally) plus a trigger-shape check gets the same practical outcome far more cheaply. Logged as revisit-if-this-serves-a-third-party-client.
+- **#13's remedy — a capability-limited service binding approval to a proposal hash.** Same reasoning. The incoherence Codex identified was real, but the fix is to state the threat model honestly and put the control server-side, not to build an approval-attestation service for one user approving their own SEO copy.
+
+**Downgraded, not rejected:**
+- **#2's "OS-level restricted account/clone with no main-push credential."** Sound, but no PAT scope actually prevents a `main` push (fine-grained "Contents: write" includes it), so a restricted credential doesn't achieve what branch protection achieves for free. Kept as a note in the plan's token caveat rather than as a phase.
+
+Net: the plan grew from 6 phases to 10, gained a hard prerequisite it didn't have, and reversed its central safety claim. Two of the accepted findings (#11, #8) are correctness bugs that would have silently corrupted results rather than failed loudly.
+
+## Round 2 — Codex
+
+The security model is much better, but the plan still has material gaps.
+
+1. **Branch protection as described does not guarantee a human merge.** Phase 0a requires a PR, but not a required approving review. A token with pull-request write access may be able to create and merge its own PR, bypassing Nate’s intended review gate.
+
+   Fix: require at least one approving review from Nate, prevent self-approval, dismiss stale approvals, and verify no actor/token has bypass permission.
+
+2. **The load-bearing control is not actually verified by the implementation plan.** The repository contains no branch-protection configuration, and the plan’s listed `publish.py` guards do not include the proposed branch-protection API check. The risk section leaves “warn or hard-refuse?” unresolved.
+
+   Fix: make the API check a hard refusal and verify effective rules, required approvals, force-push restrictions, deletion restrictions, and bypass actors before publishing.
+
+3. **The scratch direct-push test is insufficient.** It proves only that one direct ref update is rejected. It does not prove that the token cannot merge a PR, that the token cannot bypass protection, or that a PR without human approval is rejected.
+
+   Fix: test direct push, force push, PR merge without approval, and PR merge after Nate’s approval using the actual publishing credential.
+
+4. **The rejected capability-limited service is defensible only after the above GitHub controls exist.** With required human review and no bypass, a solo operator can reasonably accept the permissive local agent as a non-security boundary. Without those settings, rejecting it is not defensible because the remote session can call GitHub’s merge API directly.
+
+   Fix: retain the rejection only as an explicit conditional on verified branch protection and required human approval.
+
+5. **The CAS phase is underspecified against the existing write pattern.** `run_loop.py` loads proposals once, mutates them in several functions, sometimes writes fresh copies during live promotion, then writes its original in-memory collection again at the end. A naïve version/status check will either reject normal runs or reintroduce stale-write races.
+
+   Fix: centralize proposal writes or define version propagation for every in-run mutation, including promotion, evaluation, stale counters, and final report persistence; add a migration for existing proposals without `version`.
+
+6. **CAS does not protect the repository itself.** It protects proposal JSON but not concurrent `apply.py`, `publish.py`, fetches, worktree operations, branch updates, or PR creation. `publish.py` is a separate tool from the existing `apply.lock`.
+
+   Fix: make apply and publish acquire a shared repository-level lock, or explicitly refuse publication while any apply operation is active.
+
+7. **The evaluator fix still needs a defined keyword normalization policy.** The current code normalizes page paths but not keywords. The plan says to match the target keyword without specifying case, whitespace, encoding, or duplicate-row behavior; an exact comparison can still miss a legitimate GSC row and repeatedly leave experiments unevaluable.
+
+   Fix: normalize both stored and measured keywords consistently and reject ambiguous duplicate matches.
+
+8. **`not-evaluable` is not integrated into the reported state model.** The plan says to leave status `applied`, but `_report_lines()` currently reports only evaluated proposals with `evaluated_run_id`; a not-evaluable result could disappear from the “Verified / breached” section and be visible only in a decision string.
+
+   Fix: persist an explicit evaluation outcome/reason and add a dedicated not-evaluable report section and alert threshold.
+
+9. **The baseline phase must update more than `make_attempt()`.** `make_attempt()` currently records `base_commit` only inside `implement_attempt`, and successful completion removes that object. Publish’s proposed parent/base validation will fail unless the exact base SHA is copied into the durable proposal record before `implement_attempt` is removed.
+
+   Fix: persist `implementation_base_sha` as part of the successful `implemented` record and require the commit’s parent to equal it.
+
+10. **The baseline check still has a ref-resolution ambiguity.** Existing code uses `git rev-parse main` and `git worktree add ... main`, not fully qualified refs. Tags, symbolic refs, or altered repository configuration can make those commands resolve something other than `refs/heads/main`.
+
+   Fix: use `refs/heads/main` and `refs/remotes/origin/main` explicitly throughout apply and publish.
+
+11. **The workflow-trigger check is correctness defense, not durable enforcement.** It checks the workflow at the commit being published, but the workflow can change after publication and before merge. The plan correctly acknowledges this, but its “same practical outcome” language overstates what the check achieves.
+
+   Fix: require human approval for workflow changes via branch protection and treat the runtime shape check only as a stale-baseline warning/refusal.
+
+12. **The token still appears capable of changing more than branch content.** The plan assigns it `Contents: write` and `Pull requests: write`; unless repository settings restrict it, it may be able to modify PR metadata, update the PR branch, or merge if approval requirements are absent.
+
+   Fix: verify effective repository permissions and branch-protection bypass behavior with the exact token, not just the nominal PAT scope.
+
+The two rejected fixes are reasonable for a solo operator only after GitHub is configured as a real approval gate. The revised plan is not yet safe enough to implement because Phase 0 does not require human approval protection, and the branch-protection verification remains optional/unfinished.
+
+VERDICT: REVISE
+### Claude's response — Round 2
+
+Codex opened with "the security model is much better" — the structural argument from Round 1 is settled. Round 2's findings are implementation-level, and one is critical.
+
+**Verified before accepting.** Codex R2 #9 was again a claim about existing code. Confirmed: `artwebsite_seo.py:168` records `base_commit` only inside the `implement_attempt` object, and `apply.py:134` pops that object on success — so the base SHA is destroyed at exactly the moment the proposal reaches `implemented`, which is the state `publish.py` would need it in. #10 also confirmed: `artwebsite_seo.py:164,178` use bare `main`, not `refs/heads/main`.
+
+**Accepted and incorporated (all 12):**
+- **#1 — the critical one. "Require a pull request" does not require an approving review.** Without required approval, the automation token can open and immediately merge its own PR and the human gate is decorative. Codex didn't name the wrinkle that makes the obvious fix fail: GitHub forbids self-approval, so requiring review while the token acts *as Nate* would deadlock. Resolved by **identity separation** — the automation gets a GitHub App installation token or machine user, never Nate's PAT, making required review satisfiable by Nate and unsatisfiable by the automation by construction. New Phase 0a.
+- **#2 — the load-bearing control was never verified.** Round 1 left "warn or hard-refuse?" open. Resolved to **hard-refuse**: `publish.py` queries the branch-protection API and fails closed on any missing element or any error. A control that is load-bearing and unverified is not a control.
+- **#3, #12 — test the actual credential.** Added a fail-closed matrix (direct push, force push, merge-without-approval, deletion) plus one success case (merge after approval). Nominal PAT scope is not evidence of effective permission.
+- **#4 — the rejections are conditional, not absolute.** Sharp point, and it changes the plan's logic: rejecting the capability-limited service is defensible *only once* Phase 0's controls are verified, because without required review the remote session could call the merge API directly. Phase 0c is therefore a precondition for the rest of the risk posture, not paperwork. Recorded as such in the decisions section.
+- **#5, #6 — CAS was the wrong mechanism.** Genuinely good catch: `run_loop.py` loads proposals once, mutates across several functions, writes fresh copies mid-run during promotion, then rewrites its stale in-memory collection at the end — a naive version assertion would either reject ordinary runs or reintroduce the race. And CAS protects JSON, not the git repo. **Replaced with a single shared per-loop mutation lock** across `run_loop`/`apply`/`publish`, reusing `lib/lock.py`'s existing stale recovery. Simpler, strictly stronger, no schema migration.
+- **#7 — keyword normalization was unspecified.** Defined: NFKC, casefold, strip, collapse internal whitespace, applied identically to stored and measured keywords; ambiguous duplicate matches refuse rather than silently picking one.
+- **#8 — `not-evaluable` would have been invisible.** Now persisted as `evaluation_outcome`/`evaluation_reason` with its own report section and an attention threshold for N consecutive occurrences — a repeatedly-unevaluable proposal is a real signal (wrong keyword, moved page, GSC gap), not noise.
+- **#9 — base SHA destroyed on success.** Persist `implementation_base_sha` on the durable record; `publish.py` requires the commit's parent to equal it.
+- **#10 — bare ref resolution.** Fully-qualified `refs/heads/main` / `refs/remotes/origin/main` throughout apply and publish.
+- **#11 — overstated the workflow check.** Reworded: it detects a stale baseline at the published commit and cannot bind what happens between publication and merge. Since `deploy.yml` lives on the protected branch, workflow changes now inherit the required-review gate — that is what actually governs them.
+
+**Nothing rejected this round.** All twelve findings were either correct as stated or correct with a sharper fix than proposed.
+
+Net: Phase 0 grew from one step to five and became a hard precondition rather than a formality; the concurrency approach was replaced wholesale; and the verification section was restructured into seven staged gates ending at a real measured `verified`/`breached`, not at PR creation.
+
+## Round 3 — Codex (final round under MAX_ROUNDS=3)
+
+Three implementation blockers remain.
+
+1. **The shared-lock claim is not yet coherent with the existing code.** `run_loop.py` already holds `run.lock` for the full run, while `_promote_live_implementations()` and `apply.py` independently acquire `apply.lock`. Making all three use one lock without restructuring creates nested self-acquisition/deadlock risk, or leaves part of the run outside the claimed lock.
+
+   Fix: define one lock name and ownership scope explicitly; remove the nested promotion lock or make promotion assume the caller already owns it.
+
+2. **`review_pending.py` is still outside the shared mutation lock.** The plan says the lock closes JSON clobbering, but review/approve/reject and breach resolution can still read stale proposal state and overwrite a concurrent `run_loop`, `apply`, or `publish` update. The existing status check does not prevent stale writes when the status has not changed.
+
+   Fix: require every proposal/state mutator, including `review_pending.py`, to acquire the same lock, or explicitly redesign its writes around a safe compare-and-swap.
+
+3. **Branch protection enforces reviewed merge, not “human merging only.”** The automation identity can still potentially merge a PR after Nate approves it; the plan itself acknowledges `Pull requests: write` may permit merging, and Phase 0c’s success case says only that the merge succeeds after Nate’s approval—not that Nate performs the merge. The remote instruction “do not merge” is not a control against the permissive headless session.
+
+   Fix: either configure/test an automation credential that cannot merge, or change the security claim to “automation cannot merge without Nate’s approval; Nate’s approval is the deployment gate.”
+
+4. **The branch-protection API check needs an explicit permission and coverage design.** Publishing requires the automation credential to read protection, but the stated token permissions are only contents/PR-oriented. Conversely, granting repository-administration write access so it can inspect or manage protection would let the same compromised session weaken the control. Classic branch-protection data may also not prove absence of ruleset bypass actors unless rulesets are queried too.
+
+   Fix: use a read-only administration-capable App permission, query both effective branch protection and rulesets, and verify that the publishing identity cannot modify those settings.
+
+5. **The evaluator regression is still incomplete for null measurements.** The current evaluator treats a matching row with `position=None` as non-breaching and therefore verified. The plan says only an actual measured position may yield `verified`/`breached`, but the listed regressions cover missing, wrong, ambiguous, and correct rows—not a present row with no measured position.
+
+   Fix: test and route `row is None` or `row["position"] is None` to persisted `not-evaluable`.
+
+The rejected cryptographic-attestation and capability-service fixes are now defensible for a solo operator, conditional on these server-side controls being implemented and tested. As written, the lock integration and human-merge claim still require changes before implementation.
+
+VERDICT: REVISE
+### Claude's response — Round 3 (final)
+
+**All five findings accepted. None contested.** Codex's own summary states the two fixes rejected in Round 1 "are now defensible for a solo operator, conditional on these server-side controls being implemented and tested" — so the structural argument is settled and what remained was implementation detail.
+
+**Verified before accepting.** #1 was again a code claim, and again correct — and it described a real deadlock trap: `run_loop.py:728` holds `run.lock` for the entire run, then `_promote_live_implementations()` acquires `apply.lock` *nested inside it* at `run_loop.py:471`, while `apply.py:82` acquires `apply.lock` independently. Round 2's "make all three share one lock" would have made `run_loop` deadlock against its own held lock.
+
+- **#1 — lock ownership now explicit.** `run.lock` becomes the single mutation lock; `apply.lock` is retired; `_promote_live_implementations()` drops its own acquisition and documents that the caller must already hold the loop lock. Cost stated: approve/apply/publish block for at most `max_run_duration_minutes` during a run.
+- **#2 — `review_pending.py` added to the lock.** Omitted in Round 2. Correct that approve/reject/resolve-breach can otherwise read stale state and overwrite a concurrent update, and that an unchanged-status check does not catch a stale write.
+- **#3 — the merge claim was overstated, and this is the honesty-critical one.** Branch protection with required review buys "automation cannot merge *without Nate's approval*," not "only a human can merge" — `contents: write` is needed for both branch push and merge, so token scope cannot separate them. Added "Restrict who can push to matching branches" (Nate only) to make automation-cannot-merge a real server-side property, **with the dependency stated**: that control is free on public repos but needs a paid plan on private ones. If unavailable, the plan now explicitly falls back to the weaker-but-true claim rather than keeping the stronger-but-false one. Also recorded that "do not merge" in the remote template is an instruction, not a control.
+- **#4 — protection-check permission designed deliberately.** Read-only administration App permission (write would let a compromised session weaken the control it is checking); query both classic protection and rulesets, since classic data alone does not prove absence of ruleset bypass actors; verify in 0c that the publishing identity cannot modify protection.
+- **#5 — null-position row.** A present row with `position: None` was still routed to `verified` — the same false win as R1 #11 by a different path. Now routed to `not-evaluable`, with a regression test.
+
+**Outcome: closed at the round cap on `VERDICT: REVISE`, with no open disagreement.** Every Round 3 item was accepted and written into the plan; none was disputed or deferred. What Codex was refusing to bless was a plan text that had not yet incorporated them — which it now has. The honest characterization is "converged on substance, one revision past the last review" rather than "approved," and the residual risk is that these five edits have not themselves been re-reviewed by Codex.
+
+Total across three rounds: 31 findings, 29 accepted, 2 rejected as over-engineered for a solo operator (and both later judged defensible-conditional by Codex itself). Three were confirmed pre-existing bugs in shipped code — the evaluator false-win (R1 #11), the base-SHA destroyed on success (R2 #9), and the nested-lock trap (R3 #1) — none of which the original plan would have caught.

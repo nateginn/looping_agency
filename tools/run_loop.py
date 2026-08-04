@@ -18,6 +18,7 @@ try:
     from .connector_registry import get_connector
     from .lib.credentials import resolve_credential
     from .lib.errors import ConnectorError
+    from .lib.event_log import append_event
     from .lib.github_compare import compare_commit_to_main
     from .lib.gsc_auth import bearer_for_secret
     from .lib.lock import acquire_lock, release_lock, log_refusal
@@ -34,6 +35,7 @@ except ImportError:
     from connector_registry import get_connector
     from lib.credentials import resolve_credential
     from lib.errors import ConnectorError
+    from lib.event_log import append_event
     from lib.github_compare import compare_commit_to_main
     from lib.gsc_auth import bearer_for_secret
     from lib.lock import acquire_lock, release_lock, log_refusal
@@ -52,6 +54,13 @@ MIN_LOCK_TTL_MINUTES = 1
 MAX_LOCK_TTL_MINUTES = 24 * 60
 LIVE_COMPARE_TARGETS = {"art": {"owner": "nateginn", "repo": "artwebsite"}}
 LOCATION_DIFF_FILENAME = "locations-detected.json"
+# Phase 7 (PLAN-PHASE7-CODEX-REVIEW.md item 16): cooldown widened from a
+# fixed status list to "everything except a genuine terminal outcome" - the
+# new, longer-lived review-subsystem intermediate states (review-pending,
+# review-revision-needed, review-approved, review-held, approved-for-
+# implementation) must also block a duplicate proposal on the same page,
+# same as draft/reviewed/approved/implemented/applied already do.
+TERMINAL_PROPOSAL_STATUSES = {"rejected", "review-rejected", "verified", "breached"}
 
 
 def _now_iso(now=None):
@@ -474,13 +483,27 @@ def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
     return decisions, breach, still_cooling_down
 
 
-def _promote_live_implementations(project_slug, pending_dir, proposals, requester=None, now=None, compare_target=None):
+def _promote_live_implementations(project_slug, pending_dir, proposals, requester=None, now=None, compare_target=None, on_promoted=None):
     """Promotes implemented -> applied once GitHub confirms a proposal is live
     on main. Caller (run_loop()) must already hold the loop's single run.lock
     for the whole run - this function acquires no lock of its own (Phase 3:
     one shared mutation lock; a nested acquisition of that same lock here
     would self-refuse against the caller's own held lock and either deadlock
-    the check or silently skip every promotion)."""
+    the check or silently skip every promotion).
+
+    `on_promoted`, if given, is called once per promoted proposal (the
+    fresh, now-`applied` proposal dict - which already carries
+    `implemented_commit_sha` as the new live SHA and
+    `implementation_base_sha` as the previous known-good SHA) - this is
+    the Phase 6a integration point for recording an automatic deploy-
+    verification entry (tools/deploy_verify.py's record_deployment()),
+    left as an explicit caller-supplied hook rather than a hardcoded
+    import so run_loop.py stays decoupled from deploy_verify.py and every
+    other caller/test is unaffected by default (None = no-op, unchanged
+    behavior). A callback failure is caught and folded into `decisions`
+    rather than ever crashing or blocking the core SEO loop run - deploy
+    verification is a side effect of promotion, never a precondition for
+    it."""
     now_iso = _now_iso(now)
     decisions = []
     awaiting_ids = []
@@ -530,12 +553,33 @@ def _promote_live_implementations(project_slug, pending_dir, proposals, requeste
         fresh.pop("live_check_error", None)
         fresh["implemented_run_cycles_seen"] = fresh.get("implemented_run_cycles_seen", 0)
         atomic_write_json(fresh_path, fresh)
+        try:
+            loop_dir = os.path.dirname(pending_dir)
+            loop_name = os.path.basename(loop_dir)
+            deadline = None
+            if fresh.get("applied_at") and fresh.get("observation_window_days"):
+                applied_dt = datetime.fromisoformat(fresh["applied_at"].replace("Z", "+00:00"))
+                deadline = (applied_dt + timedelta(days=fresh["observation_window_days"])).isoformat().replace("+00:00", "Z")
+            append_event(
+                loop_dir, "proposal_applied", project=project_slug, loop=loop_name, proposal_id=proposal_id,
+                action_type=fresh.get("action_type"), target_page=(fresh.get("target") or {}).get("page"),
+                keyword=(fresh.get("target") or {}).get("keyword"), resulting_proposal_status="applied",
+                implementation_commit=fresh.get("implemented_commit_sha"), implementation_branch=fresh.get("implemented_branch"),
+                observation_deadline=deadline, source_run_id=fresh.get("created_run_id"),
+            )
+        except Exception:
+            pass  # observability, never blocks a live promotion that already succeeded
         for proposal in proposals:
             if proposal["id"] == proposal_id:
                 proposal.clear()
                 proposal.update(fresh)
                 break
         decisions.append(f'proposal {proposal_id}: live on GitHub main - transitioned implemented -> applied at {now_iso}')
+        if on_promoted is not None:
+            try:
+                on_promoted(fresh)
+            except Exception as err:
+                decisions.append(f'proposal {proposal_id}: on_promoted deploy-verification hook failed (non-fatal, promotion stands): {err}')
 
     return decisions, awaiting_ids, stuck_ids
 
@@ -760,7 +804,7 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
     return report_lines
 
 
-def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve_credential=None, _http_post=None, _http_get=None, _github_requester=None, _github_compare_target=None):
+def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve_credential=None, _http_post=None, _http_get=None, _github_requester=None, _github_compare_target=None, _on_promoted=None):
     project_dir = os.path.join(PROJECTS_ROOT, project_slug)
     assert_within(PROJECTS_ROOT, project_dir, "project directory")
     loop_dir = os.path.join(project_dir, "loops", loop_name)
@@ -843,7 +887,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
                 secret_map.update(section.get("secretMap") or {})
         snapshot_path = write_snapshot(run_dir, snapshot, secret_map)
 
-        live_decisions, awaiting_ids, stuck_ids = _promote_live_implementations(project_slug, pending_dir, proposals, requester=_github_requester, now=now, compare_target=_github_compare_target)
+        live_decisions, awaiting_ids, stuck_ids = _promote_live_implementations(project_slug, pending_dir, proposals, requester=_github_requester, now=now, compare_target=_github_compare_target, on_promoted=_on_promoted)
 
         eval_decisions = list(live_decisions)
         breach = None
@@ -854,7 +898,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
             eval_decisions.extend(extra_decisions)
 
         for proposal in proposals:
-            if proposal.get("status") in ("applied", "approved", "implemented", "implement-failed"):
+            if proposal.get("status") not in TERMINAL_PROPOSAL_STATUSES:
                 still_cooling_down.add(_cooldown_key_from_target(proposal["target"]))
 
         new_state = state
@@ -903,6 +947,33 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
             proposal.pop("_file", None)
             atomic_write_json(proposal_path(pending_dir, proposal["id"]), proposal)
         atomic_write_json(state_path, new_state)
+
+        # Durable event history (Phase 7 - PLAN-PHASE7-CODEX-REVIEW.md item 6):
+        # best-effort observability layered onto this already-shipped state
+        # machine, emitted only after the corresponding disk write above.
+        for proposal in new_proposals:
+            try:
+                append_event(
+                    loop_dir, "proposal_created", project=project_slug, loop=loop_name, proposal_id=proposal["id"],
+                    action_type=proposal.get("action_type"), target_page=(proposal.get("target") or {}).get("page"),
+                    keyword=(proposal.get("target") or {}).get("keyword"), resulting_proposal_status="draft",
+                    source_run_id=run_id,
+                )
+            except Exception:
+                pass
+        for proposal in proposals:
+            if proposal.get("evaluated_run_id") != run_id or proposal.get("evaluation_outcome") not in ("verified", "breached"):
+                continue
+            try:
+                append_event(
+                    loop_dir, "proposal_verified" if proposal["evaluation_outcome"] == "verified" else "guardrail_breached",
+                    project=project_slug, loop=loop_name, proposal_id=proposal["id"],
+                    action_type=proposal.get("action_type"), target_page=(proposal.get("target") or {}).get("page"),
+                    keyword=(proposal.get("target") or {}).get("keyword"), resulting_proposal_status=proposal["status"],
+                    source_run_id=run_id, note=(proposal.get("evaluation_reason") or "")[:500] or None,
+                )
+            except Exception:
+                pass
 
         updated_sections = set(pulled["sections"].keys())
         attention_findings = _evaluate_attention(spec, run_id, runs_dir, snapshot, updated_sections)

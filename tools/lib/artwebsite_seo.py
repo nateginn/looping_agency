@@ -360,9 +360,19 @@ def create_worktree(repo_path, attempt, git_runner=None):
     return attempt
 
 
-def finalize_worktree(repo_path, proposal, attempt, git_runner=None, now=None):
+def finalize_worktree(repo_path, proposal, attempt, git_runner=None, now=None, pre_commit_check=None):
+    """pre_commit_check, if given, is called as pre_commit_check(worktree_path)
+    after apply_rewrite() writes the file in the worktree but strictly before
+    `git add`/`git commit` - raising from it aborts the commit (the caller's
+    exception handler is responsible for worktree cleanup, same as any other
+    finalize_worktree failure). Used by apply.py's codex-review auto-implement
+    path to re-validate spec.md gates immediately before the commit, narrowing
+    (not eliminating) the TOCTOU window between authorization and the actual
+    write (Phase 7 - PLAN-PHASE7-CODEX-REVIEW.md item 17a)."""
     git_runner = git_runner or _default_git_runner
     apply_rewrite(attempt["worktree_path"], proposal)
+    if pre_commit_check is not None:
+        pre_commit_check(attempt["worktree_path"])
     git_runner(["git", "add", "-A"], cwd=attempt["worktree_path"])
     git_runner(
         ["git", "commit", "-m", f'SEO auto-implement {proposal["id"]}: {proposal["action_type"]} {proposal["target"]["page"]}'],
@@ -449,6 +459,62 @@ def _self_test():
         }
         apply_rewrite(repo_dir, fresh_proposal)
         checks.append(("apply_rewrite proceeds when previous_value matches the source", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "New title"))
+
+        pre_commit_calls = []
+
+        def _fake_finalize_runner(add_commit_responses):
+            def runner(args, cwd):
+                if args[:2] == ["git", "add"]:
+                    return ""
+                if args[:2] == ["git", "commit"]:
+                    return ""
+                if args == ["git", "rev-parse", "HEAD"]:
+                    return "committed-sha"
+                if args[:3] == ["git", "worktree", "remove"]:
+                    return ""
+                raise AssertionError(f"unexpected git command in finalize test: {args}")
+            return runner
+
+        pre_commit_proposal = {
+            "id": "prop-pre-commit-test",
+            "action_type": "title-tag-rewrite",
+            "target": {"page": "/services/"},
+            "implementation": {"previous_value": "New title", "new_value": "Newer title"},
+        }
+        # worktree_parent must be a real, disposable directory distinct from
+        # repo_dir - cleanup_worktree() rmtree's it, and repo_dir is reused
+        # across every check in this self-test (a None/derived-from-repo_dir
+        # parent would make cleanup_worktree delete the shared fixture).
+        pre_commit_parent = tempfile.mkdtemp(prefix="artwebsite-implementer-pretest-parent-")
+        pre_commit_attempt = {"worktree_path": repo_dir, "branch": "seo/prop-pre-commit-test", "base_commit": "base-sha", "worktree_parent": pre_commit_parent}
+        result = finalize_worktree(repo_dir, pre_commit_proposal, pre_commit_attempt, git_runner=_fake_finalize_runner({}), pre_commit_check=lambda wt: pre_commit_calls.append(wt))
+        checks.append(("finalize_worktree calls pre_commit_check exactly once with the worktree path", pre_commit_calls == [repo_dir]))
+        checks.append(("finalize_worktree still returns the expected implementation record when pre_commit_check passes", result["implemented_commit_sha"] == "committed-sha"))
+        checks.append(("finalize_worktree's rewrite happened before the (passing) pre_commit_check", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "Newer title"))
+
+        pre_commit_refused_proposal = {
+            "id": "prop-pre-commit-refuse-test",
+            "action_type": "title-tag-rewrite",
+            "target": {"page": "/services/"},
+            "implementation": {"previous_value": "Newer title", "new_value": "Should never commit"},
+        }
+        pre_commit_refused_attempt = {"worktree_path": repo_dir, "branch": "seo/prop-pre-commit-refuse-test", "base_commit": "base-sha", "worktree_parent": None}
+
+        def _refusing_check(worktree_path):
+            raise ValueError("pre_commit_check refused")
+
+        def _commit_should_not_run(args, cwd):
+            if args[:2] == ["git", "commit"]:
+                raise AssertionError("git commit ran despite pre_commit_check refusing")
+            return ""
+
+        pre_commit_refused = False
+        try:
+            finalize_worktree(repo_dir, pre_commit_refused_proposal, pre_commit_refused_attempt, git_runner=_commit_should_not_run, pre_commit_check=_refusing_check)
+        except ValueError as e:
+            pre_commit_refused = "pre_commit_check refused" in str(e)
+        checks.append(("finalize_worktree propagates a pre_commit_check refusal and never calls git commit", pre_commit_refused))
+        checks.append(("the rewrite from a refused pre_commit_check is still on disk (finalize_worktree does not roll back the working-tree edit itself - the caller's exception handling/worktree cleanup owns that)", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "Should never commit"))
 
         no_previous_value_proposal = {
             "id": "prop-no-previous-value-test",

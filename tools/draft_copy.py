@@ -15,12 +15,14 @@ import yaml
 
 try:
     from .lib.artwebsite_seo import read_current_value
+    from .lib.event_log import append_event, build_secret_map, sync_proposal_projection
     from .lib.lock import acquire_lock, release_lock
     from .lib.proposals import atomic_write_json, load_json, loop_dir_for, pending_dir_for, proposal_path
     from .run_loop import _read_lock_ttl_minutes_unsafe
     from .spec_validate import extract_frontmatter
 except ImportError:
     from lib.artwebsite_seo import read_current_value
+    from lib.event_log import append_event, build_secret_map, sync_proposal_projection
     from lib.lock import acquire_lock, release_lock
     from lib.proposals import atomic_write_json, load_json, loop_dir_for, pending_dir_for, proposal_path
     from run_loop import _read_lock_ttl_minutes_unsafe
@@ -76,13 +78,14 @@ def draft_copy(project, loop, proposal_id, new_value, drafted_by, repo_path=None
 
     try:
         proposal = load_json(proposal_pathname)
+        is_revision = proposal.get("status") == "review-revision-needed"
 
-        if proposal.get("status") != "draft":
+        if proposal.get("status") not in ("draft", "review-revision-needed"):
             raise ValueError(
-                f'draft_copy.py: proposal {proposal_id} has status "{proposal.get("status")}", not "draft" - '
-                "only a fresh draft proposal may receive new implementation copy; drafting refuses to overwrite "
-                "implementation data once a proposal has moved past the draft stage (reviewed, approved, implemented, "
-                "applied, verified, breached, rejected, or implement-failed)"
+                f'draft_copy.py: proposal {proposal_id} has status "{proposal.get("status")}", not "draft" or '
+                '"review-revision-needed" - only a fresh draft, or a proposal a Codex review round flagged for a '
+                "correctable revision, may receive new implementation copy; drafting refuses to overwrite "
+                "implementation data at any other point in the pipeline"
             )
 
         action_type = proposal.get("action_type")
@@ -96,12 +99,36 @@ def draft_copy(project, loop, proposal_id, new_value, drafted_by, repo_path=None
 
         validate_copy(action_type, new_value, previous_value)
 
-        proposal["implementation"] = {
+        implementation_before = proposal.get("implementation")
+        implementation_after = {
             "previous_value": previous_value,
             "new_value": new_value,
             "drafted_at": _now_iso(now),
             "drafted_by": drafted_by,
         }
+
+        if not is_revision:
+            proposal["implementation"] = implementation_after
+            atomic_write_json(proposal_pathname, proposal)
+            return proposal
+
+        # Revision path (Phase 7 - PLAN-PHASE7-CODEX-REVIEW.md item 10):
+        # event-sourced - the proposal_revised event IS the commit point,
+        # carrying the full before/after implementation (not just a hash),
+        # and the on-disk proposal is a projection synced from it afterward.
+        spec = yaml.safe_load(extract_frontmatter(open(os.path.join(loop_dir, "spec.md"), "r", encoding="utf-8").read())) or {}
+        secret_map = build_secret_map(repo_path, spec.get("credential_aliases"))
+        append_event(
+            loop_dir, "proposal_revised", project=project, loop=loop, proposal_id=proposal_id,
+            action_type=action_type, target_page=proposal["target"]["page"], keyword=proposal.get("target", {}).get("keyword"),
+            implementation_before=implementation_before, implementation_after=implementation_after,
+            resulting_proposal_status="review-pending", secret_map=secret_map,
+        )
+        projected = sync_proposal_projection(loop_dir, proposal_id, fail_closed=False)
+        if projected.get("status"):
+            proposal["status"] = projected["status"]
+        proposal["implementation"] = implementation_after
+        proposal["review"] = projected["review"]
         atomic_write_json(proposal_pathname, proposal)
         return proposal
     finally:
@@ -145,6 +172,8 @@ def _self_test():
     pending_dir = os.path.join(project_dir, "loops", loop, "pending")
     shutil.rmtree(project_dir, ignore_errors=True)
     os.makedirs(pending_dir, exist_ok=True)
+    with open(os.path.join(project_dir, "loops", loop, "spec.md"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("---\nversion: 1\nloop: seo\n---\n")
 
     def _seed(proposal_id, action_type, page, status="draft"):
         write_proposal(pending_dir, {"id": proposal_id, "action_type": action_type, "target": {"page": page}, "status": status})
@@ -223,6 +252,11 @@ def _self_test():
         except ValueError as e:
             threw_missing = "no title edit location found" in str(e)
         checks.append(("unresolved edit location is rejected, not silently guessed", threw_missing))
+
+        _seed("prop-revision", "title-tag-rewrite", "/services/", status="review-revision-needed")
+        revised = draft_copy(project, loop, "prop-revision", "Revised Services Title", "claude-test", repo_path=repo_dir)
+        checks.append(("a review-revision-needed proposal can be redrafted", revised["implementation"]["new_value"] == "Revised Services Title"))
+        checks.append(("a redraft syncs status from the (empty, in this fixture) event log rather than crashing", "status" in revised))
 
         for status in ("reviewed", "approved", "implemented", "applied", "verified", "breached", "rejected", "implement-failed"):
             proposal_id = f"prop-past-draft-{status}"

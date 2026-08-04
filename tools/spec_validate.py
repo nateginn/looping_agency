@@ -186,6 +186,39 @@ def _validate_connector_requirements(spec, inputs, errors, path_prefix=""):
         if spec.get("device") is not None and spec.get("device") not in DEVICES:
             errors.append(f"{path_prefix}device must be one of {', '.join(DEVICES)} if present")
 
+    if "dataforseo-local-rank" in inputs:
+        targets = spec.get("targets")
+        locations = spec.get("locations")
+        location_names = {loc.get("name") for loc in locations} if isinstance(locations, list) else set()
+        if isinstance(targets, list):
+            for t_idx, t in enumerate(targets):
+                if not isinstance(t, dict):
+                    continue
+                target_location = t.get("location")
+                if target_location is not None and (not is_non_empty_string(target_location) or target_location not in location_names):
+                    errors.append(
+                        f'{path_prefix}targets[{t_idx}].location "{target_location}" must be a non-empty string matching one of locations[].name'
+                    )
+
+
+def _validate_auto_implementation_enabled(value, errors):
+    # Phase 7 (PLAN-PHASE7-CODEX-REVIEW.md item 18): optional, defaults to
+    # false/absent - existing specs (including art's) remain valid and
+    # unchanged. One of three independent, explicit gates a loop must set
+    # before any action can reach codex-review auto-implementation - see
+    # apply.py/review_protocol.py.
+    if value is None:
+        return
+    if not isinstance(value, bool):
+        errors.append("auto_implementation_enabled must be a boolean if present")
+
+
+def _validate_noindex_destination_pages(value, errors):
+    if value is None:
+        return
+    if not isinstance(value, list) or not all(is_non_empty_string(v) for v in value):
+        errors.append("noindex_destination_pages must be an array of non-empty strings if present")
+
 
 def _validate_schedule_entry(schedule, idx, spec_inputs, spec, errors):
     p = f"additional_schedules[{idx}]"
@@ -284,6 +317,8 @@ def validate_spec_object(spec):
     _validate_priority_pages(spec.get("priority_pages"), errors)
     _validate_locations(spec.get("locations"), errors)
     _validate_attention_thresholds(spec.get("attention_thresholds"), errors)
+    _validate_auto_implementation_enabled(spec.get("auto_implementation_enabled"), errors)
+    _validate_noindex_destination_pages(spec.get("noindex_destination_pages"), errors)
 
     additional_schedules = spec.get("additional_schedules")
     if additional_schedules is not None:
@@ -424,6 +459,11 @@ guardrail_metrics: []
     typo_input = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "inputs": ["gscc", "dataforseo"]})
     good_exclusions = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "keyword_exclusions": ["accelerate health"]})
     bad_exclusions = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "keyword_exclusions": ["ok", ""]})
+    good_auto_impl = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "auto_implementation_enabled": True})
+    bad_auto_impl = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "auto_implementation_enabled": "yes"})
+    absent_auto_impl = validate_spec_object(yaml.safe_load(extract_frontmatter(good)))
+    good_noindex = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "noindex_destination_pages": ["https://example.com/ads/landing/"]})
+    bad_noindex = validate_spec_object({**yaml.safe_load(extract_frontmatter(good)), "noindex_destination_pages": ["ok", ""]})
     mock_only = yaml.safe_load(extract_frontmatter(good))
     mock_only["inputs"] = ["mock"]
     for key in ("site_url", "metrics_window_days", "targets", "locations", "priority_pages", "domain", "additional_schedules"):
@@ -452,6 +492,11 @@ guardrail_metrics: []
         ("mock-only spec needs none of the connector fields", mock_only_result["valid"] is True),
         ("valid keyword_exclusions list is accepted", good_exclusions["valid"] is True),
         ("keyword_exclusions with an empty string is rejected", any("keyword_exclusions" in e for e in bad_exclusions["errors"])),
+        ("auto_implementation_enabled: true is accepted", good_auto_impl["valid"] is True),
+        ("auto_implementation_enabled with a non-boolean value is rejected", any("auto_implementation_enabled" in e for e in bad_auto_impl["errors"])),
+        ("a spec with auto_implementation_enabled absent is still valid (default false)", absent_auto_impl["valid"] is True),
+        ("valid noindex_destination_pages list is accepted", good_noindex["valid"] is True),
+        ("noindex_destination_pages with an empty string is rejected", any("noindex_destination_pages" in e for e in bad_noindex["errors"])),
     ]
 
     shutil.rmtree(tmp, ignore_errors=True)
