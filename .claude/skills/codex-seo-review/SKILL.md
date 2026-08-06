@@ -14,7 +14,7 @@ This is the **dormant-by-default capability** described in `PLAN-PHASE7-CODEX-RE
 - Codex CLI installed and recent: `codex --version` (need ≥ 0.130).
 - Codex authenticated (a prior `codex login`). If a run returns an auth/model error, surface it and stop - do not silently retry.
 - The target loop's `spec.md` has **all three** independent gates set: `approval_mode: tier1-enabled`, `auto_implementation_enabled: true`, and the action's `manual_approval_only` absent or `false`. If any is missing, proposals will still go through review (harmless), but `--adjudicate` will report `eligible: false` and nothing will auto-implement - report this plainly rather than treating it as an error.
-- If this skill is invoked for `art`: **stop and tell the user.** `art`'s spec is deliberately left at `propose-only`/`manual_approval_only: true` on every action (see `HANDOFF.md`) - this is not an accident this skill should route around.
+- **`art` opted in on 2026-08-03** (see `HANDOFF.md`, `projects/art/loops/seo/spec.md`): `approval_mode: tier1-enabled`, `auto_implementation_enabled: true`, and `manual_approval_only: false` on `title-tag-rewrite`/`meta-description-rewrite` only. `internal-link-addition` remains `manual_approval_only: true` and can never auto-implement regardless (see "Internal links never auto-implement" below) - always run this skill's review for it anyway when asked, it just always ends at a human decision. There is no longer a blanket "stop for `art`" rule; the three-gate check above is the only gate that matters, for `art` or any other project. Always re-verify the current `spec.md` yourself before starting - do not rely on this note staying current.
 
 ## Step 0 - list eligible proposals
 
@@ -24,23 +24,25 @@ This is the **dormant-by-default capability** described in `PLAN-PHASE7-CODEX-RE
 
 Filter to `status=draft` proposals whose `action_type` is in the allowlist passed to this skill (default `title-tag-rewrite`, `meta-description-rewrite`; include `internal-link-addition` only if the caller explicitly asked for review-only visibility on it - it can never auto-implement, see "Internal links" below). Process one proposal at a time, fully, before moving to the next.
 
-## Step 1 - start review and draft copy
+## Step 1 - draft copy, then start review
 
-```
-./.venv/Scripts/python.exe tools/codex_review_proposal.py <project> <loop> <id> --start-review
-```
+**Order matters and is the reverse of how this used to read here** (found live during the 2026-08-03 `art` activation: `--start-review` moves a `draft` proposal to `review-pending`, but `draft_copy.py`/`draft_link.py` only ever accept status `draft` or `review-revision-needed` - calling `--start-review` first leaves the proposal correctly, safely stuck at `review-held` for missing evidence, but with no way back to `draft` short of a human `/review-pending --reject`. Always draft first.):
 
-Refuses unless the proposal is `draft`. If the proposal has no `implementation` yet (or the skill was asked to draft fresh copy):
-
-- **title-tag-rewrite / meta-description-rewrite**: Claude authors the proposed copy (same authorship model as the existing `PLAN.md` Phase 2 design - Claude writes the words, the tool only validates and stores them) and calls:
+- **title-tag-rewrite / meta-description-rewrite**: while the proposal is still `draft`, Claude authors the proposed copy (same authorship model as the existing `PLAN.md` Phase 2 design - Claude writes the words, the tool only validates and stores them) and calls:
   ```
   ./.venv/Scripts/python.exe tools/draft_copy.py <project> <loop> <id> "<new value>" --by claude-codex-review
   ```
-- **internal-link-addition**: Claude reads the actual source and destination page content (the real live pages, via whatever read access this session already has) and only drafts a link if it finds a genuine, evidenced, contextually-relevant opportunity - never invent one to fill the slot:
+- **internal-link-addition**: while the proposal is still `draft`, Claude reads the actual source and destination page content (the real live pages, via whatever read access this session already has) and only drafts a link if it finds a genuine, evidenced, contextually-relevant opportunity - never invent one to fill the slot:
   ```
   ./.venv/Scripts/python.exe tools/draft_link.py <project> <loop> <id> "<source_page>" "<destination_page>" "<anchor text>" --by claude-codex-review
   ```
   If no genuine opportunity exists, leave it undrafted - the next step will correctly move it to `review-held` for missing evidence rather than force a bad proposal through.
+
+Only after drafting (or deliberately skipping, for a no-opportunity internal link) succeeds, start the review:
+```
+./.venv/Scripts/python.exe tools/codex_review_proposal.py <project> <loop> <id> --start-review
+```
+Refuses unless the proposal is still `draft`.
 
 ## Step 2 - build the evidence packet
 

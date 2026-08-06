@@ -131,13 +131,13 @@ allowed_actions:
   - type: title-tag-rewrite
     tier: 1
     rollback: 'local branch/commit only — Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand'
-    manual_approval_only: true
+    manual_approval_only: false
     observation_window_days: 14
     min_sample_size: 100
   - type: meta-description-rewrite
     tier: 1
     rollback: 'local branch/commit only — Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand'
-    manual_approval_only: true
+    manual_approval_only: false
     observation_window_days: 14
     min_sample_size: 100
   - type: internal-link-addition
@@ -146,7 +146,8 @@ allowed_actions:
     manual_approval_only: true
     observation_window_days: 21
     min_sample_size: 150
-approval_mode: propose-only
+approval_mode: tier1-enabled
+auto_implementation_enabled: true
 max_run_duration_minutes: 30
 schedule: "0 6 * * 1"
 stop_condition: "human sets loops_enabled.seo to false in project.md"
@@ -169,7 +170,7 @@ Validated with:
 
 - Starts `inputs: [gsc]` only. GSC is the primary metrics source (clicks/impressions/sample size). No seed keyword/page list constrains what the loop proposes - it discovers ranking pages from live GSC data on its first run and proposes changes on the ones with the most traffic. `project.md`'s "Priority reference pages" section lists the lead-intent pages/queries Nate should judge the first report's proposals against; it's a review aid only, not a spec-level filter. `dataforseo` may be enabled later for independent `serp_position` verification, once the first GSC-only reports look right.
 - Repo `D:\Dev\artwebsite` auto-deploys on push with no staging gate - every push is Tier 2, human-only (see `project.md` and `RISK-REGISTER.md` R6). This loop's tooling may create a local branch/worktree and commit there for approved Tier 1 proposals, but it never pushes, merges, fetches, or updates remote-tracking branches in that repo.
-- `approval_mode: propose-only` - the safe default; not switched to `tier1-enabled` until Nate has reviewed the first two reports. Even then, each action's `manual_approval_only` flag is the real apply-time gate. For `art` today, all three actions remain `manual_approval_only: true`, so any real apply/rollback is still a manual, human action even though the codebase now supports local commit/branch creation for opted-in actions.
+- **2026-08-03: Phase 7 activated for `art`** (`PLAN-PHASE7-CODEX-REVIEW.md`, `HANDOFF.md`). `approval_mode: tier1-enabled` and `auto_implementation_enabled: true` are now both set; `title-tag-rewrite`/`meta-description-rewrite` have `manual_approval_only: false`, so those two action types can reach a **local, unpushed git commit** via `/codex-seo-review` once two independent rounds of Codex adversarial review agree — no push, merge, or deploy is possible either way (Tier 2, human-only, unconditionally). `internal-link-addition` stays `manual_approval_only: true` deliberately — no code mutates a live Django template to insert a link, so it can never auto-implement regardless of this flag; it always lands at human review. `apply.py` re-reads this file fresh at commit time, so flipping any of these three gates back off genuinely disables the path for anything not already committed.
 - `project.md`'s Goals and "Priority reference pages" sections also note Answer Engine Optimization (AEO) as a review consideration for these lead-intent pages. No new guardrail, metric, or connector exists for AEO in this loop - so this is documentation/reviewer guidance only, not something `run_loop.py` measures, filters, or acts on differently. Update 2026-07-23: DataForSEO's published API catalog now lists an `AI Optimization API` (LLM Mentions, AI Keyword Search Volume), so the "no data source exists" premise behind this note is stale - see `PLAN.md`'s Out of Scope section. AEO connector work stays a separate, unstarted effort, not part of this expansion.
 - `keyword_exclusions: ["accelerate health"]` - the first real run (2026-07-18) surfaced GSC query rows for "Accelerate Health," an unrelated Denver business, alongside this domain's own data (GSC's domain-property report has no relevance filter; it includes every query with even one impression, however tangential). All 3 draft proposals from that run were built on this branded noise and were rejected. This filter drops any keyword candidate containing the term (case-insensitive substring) before proposal picking - see `tools/run_loop.py`'s `_pick_new_actions`.
 - **2026-07-23 expansion** (`PLAN.md`, grilled + 6 rounds of Codex review): added machine-readable `priority_pages`, `locations`, `attention_thresholds`, and `additional_schedules` to this frontmatter. `project.md` remains human context only and is still not parsed.
