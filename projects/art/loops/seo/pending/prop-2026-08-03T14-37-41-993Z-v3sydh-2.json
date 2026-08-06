@@ -13,10 +13,15 @@
   "manual_approval_only": true,
   "observation_window_days": 21,
   "min_sample_size": 150,
-  "status": "draft",
+  "status": "rejected",
   "created_run_id": "2026-08-03T14-37-41-993Z-v3sydh",
   "created_at": "2026-08-03T14:37:41.993100Z",
-  "run_cycles_seen": 0,
-  "decision": null,
+  "run_cycles_seen": 5,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Non-executability cleanup, not a content-quality judgment. internal-link-addition is excluded from apply.py's IMPLEMENTABLE_ACTIONS by deliberate design - no code mutates a live Django template to insert a link - so this proposal has no terminal state tooling can ever reach; approving it would park it in 'approved' indefinitely. 5 run cycles old (STALE), 0 clicks. Codex advisory review 2026-08-06 recommended rejecting rather than approving un-appliable proposals. The underlying SEO opportunity is not being judged bad; if it persists it will be re-proposed.",
+    "at": "2026-08-06T23:39:50.306787Z"
+  },
   "applied_at": null
 }

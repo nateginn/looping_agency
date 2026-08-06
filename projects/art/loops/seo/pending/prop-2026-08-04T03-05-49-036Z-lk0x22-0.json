@@ -1,0 +1,31 @@
+{
+  "id": "prop-2026-08-04T03-05-49-036Z-lk0x22-0",
+  "loop": "seo",
+  "action_type": "title-tag-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/contact/",
+    "keyword": "accelerated pt"
+  },
+  "baseline_position": 11,
+  "rationale": "keyword \"accelerated pt\" at position 11 on https://acceleratedrehabtherapy.com/contact/ with 0 clicks - candidate for title-tag-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "rejected",
+  "created_run_id": "2026-08-04T03-05-49-036Z-lk0x22",
+  "created_at": "2026-08-04T03:05:49.036692Z",
+  "run_cycles_seen": 0,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Process error during Phase 7 activation test: /codex-seo-review's SKILL.md documents calling --start-review before draft_copy.py, but draft_copy.py only accepts status draft/review-revision-needed, so this proposal was moved to review-held (missing implementation) before any Codex round ran. Rejecting to keep pending/ clean and re-attempting with the corrected order on a fresh proposal. Not a content-quality judgment.",
+    "at": "2026-08-04T03:13:22.974697Z"
+  },
+  "applied_at": null,
+  "review": {
+    "rounds": [],
+    "final_adjudication": "hold"
+  }
+}

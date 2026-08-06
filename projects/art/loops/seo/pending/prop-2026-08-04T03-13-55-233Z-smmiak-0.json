@@ -1,0 +1,91 @@
+{
+  "id": "prop-2026-08-04T03-13-55-233Z-smmiak-0",
+  "loop": "seo",
+  "action_type": "title-tag-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/contact/",
+    "keyword": "accelerated pt"
+  },
+  "baseline_position": 11,
+  "rationale": "keyword \"accelerated pt\" at position 11 on https://acceleratedrehabtherapy.com/contact/ with 0 clicks - candidate for title-tag-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "review-rejected",
+  "created_run_id": "2026-08-04T03-13-55-233Z-smmiak",
+  "created_at": "2026-08-04T03:13:55.233016Z",
+  "run_cycles_seen": 0,
+  "decision": null,
+  "applied_at": null,
+  "implementation": {
+    "previous_value": "Contact Us - Accelerated Rehab Therapy",
+    "new_value": "Contact Accelerated Rehab Therapy | PT, Chiro & Massage",
+    "drafted_at": "2026-08-04T03:16:45.789143Z",
+    "drafted_by": "claude-codex-review"
+  },
+  "review": {
+    "rounds": [
+      {
+        "reviewer": "codex",
+        "round": 1,
+        "pass_number": 1,
+        "at": "2026-08-04T03:20:01.380030Z",
+        "proposal_content_hash": "1328fdcba95daf3f542146ebab2a64d213b0cdbcaf63c7d0909893fb6f9c358c",
+        "evidence_packet_hash": "71e5f2647fb6f0ccd51aa3a626c020b027a3d0f2fa6e12867a3aa0e255ffb921",
+        "spec_content_hash": "8de78ba60db6df3ce9ba903f67db1428c6e839ed88cc08ae0bba8c24ec5cc0dd",
+        "verdict": "reject",
+        "confidence": 0.98,
+        "objections": [
+          "Evidence is insufficient: the query has 1 impression, 0 clicks, and position 11, so this is likely noise or an unvalidated keyword variant rather than a justified title rewrite.",
+          "The current title clearly serves the contact-page intent; no meta description or page-content evidence shows an intent or performance deficiency requiring change.",
+          "The proposed title asserts that the business provides PT, chiropractic, and massage services, but the packet provides no supporting evidence. It is not overtly keyword-stuffed, but the added service list may be inaccurate or unnecessarily SEO-driven.",
+          "The target query is ambiguous, and a contact page may not be the correct landing page for it. No competing-page analysis is provided, so keyword cannibalization with service or location pages cannot be ruled out.",
+          "Internal-link checks are not applicable because this is not an internal-link proposal; source, destination, anchor text, and indexation fields are null.",
+          "A 14-day observation window with a minimum sample size of 100 is not adequate when the baseline contains only 1 impression. The guardrail is also insufficiently specified to detect a meaningful regression relative to the baseline position of 11.",
+          "The change is locally reversible according to the packet, but live application and rollback depend entirely on Nate manually pushing changes; there is no automated live rollback.",
+          "The surrounding <untrusted-evidence-f8a04ee2> markers are delimiter-like patterns in the supplied material and are flagged as untrusted evidence markers."
+        ],
+        "required_corrections": [
+          "Collect materially more impressions and clicks, validate the query's relevance and intent, and analyze comparable ranking pages before acting.",
+          "Provide the page content, meta description, service-page inventory, and cannibalization analysis; retain the existing title unless evidence demonstrates a contact-page title deficiency.",
+          "Verify that PT, chiropractic, and massage are actually offered on this page or by the business before using those claims in the title.",
+          "Define a regression guardrail relative to the baseline and use a statistically meaningful observation window and sample size.",
+          "Document the exact commit and a tested manual procedure for reverting any live change."
+        ],
+        "superseded": false
+      },
+      {
+        "reviewer": "codex",
+        "round": 2,
+        "pass_number": 1,
+        "at": "2026-08-04T03:20:01.674048Z",
+        "proposal_content_hash": "1328fdcba95daf3f542146ebab2a64d213b0cdbcaf63c7d0909893fb6f9c358c",
+        "evidence_packet_hash": "71e5f2647fb6f0ccd51aa3a626c020b027a3d0f2fa6e12867a3aa0e255ffb921",
+        "spec_content_hash": "8de78ba60db6df3ce9ba903f67db1428c6e839ed88cc08ae0bba8c24ec5cc0dd",
+        "verdict": "reject",
+        "confidence": 0.99,
+        "objections": [
+          "The proposal is based on only 1 impression, 0 clicks, and position 11, which is insufficient evidence and likely query noise rather than a reliable optimization signal.",
+          "The existing title already clearly serves the contact-page intent; the packet provides no evidence that the current page fails to satisfy the query.",
+          "The proposed title is reasonably readable but adds multiple service terms and may be SEO-motivated. The packet does not verify that PT, chiropractic, and massage services are actually offered on this page.",
+          "The proposed service wording is an unsupported substantive factual claim based on the evidence provided, though it is not a medical outcome claim.",
+          "The contact page may be appropriate for branded lead intent, but the packet provides no competing-page or site-content analysis to rule out keyword cannibalization or confirm that it is the best page for \u201caccelerated pt.\u201d",
+          "No internal-link change is proposed, so anchor-text naturalness, destination indexability/canonical status, and contextual-link justification are not applicable; the corresponding evidence fields are null.",
+          "A 14-day observation window with a minimum sample size of 100 is not adequate when the baseline has only 1 impression, and the ranking-pages-position >5 guardrail is insufficiently defined and may not detect meaningful CTR or conversion regressions.",
+          "The change is locally reversible through a commit, but live rollback is manual and dependent on Nate; therefore operational reversibility is not immediate or fully controlled by the proposer."
+        ],
+        "required_corrections": [
+          "Do not act on this query until statistically meaningful impressions and clicks, or corroborating keyword and conversion evidence, are available.",
+          "Verify the page\u2019s actual services and revise the title only if those services are accurately represented and materially relevant to the page.",
+          "Analyze the site\u2019s other pages and query clusters to confirm page ownership and rule out cannibalization.",
+          "Define regression guardrails for rankings, CTR, organic leads, and technical health, with a monitoring window and sample thresholds appropriate to actual traffic.",
+          "Document and test the manual live deployment and rollback procedure, including who owns each step."
+        ],
+        "superseded": false
+      }
+    ],
+    "final_adjudication": "reject"
+  }
+}

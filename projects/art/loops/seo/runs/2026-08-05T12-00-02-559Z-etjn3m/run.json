@@ -1,0 +1,104 @@
+{
+  "run_id": "2026-08-05T12-00-02-559Z-etjn3m",
+  "project": "art",
+  "loop": "seo",
+  "mode": "technical-only",
+  "run_name": "daily-rank-check",
+  "start": "2026-08-05T12:00:02.559135Z",
+  "end": "2026-08-05T12:00:59.712017Z",
+  "status": "ok",
+  "tool_calls": [
+    {
+      "tool": "dataforseo-local-rank",
+      "args": {
+        "locations": [
+          "Greeley",
+          "Denver",
+          "UNC Campus"
+        ],
+        "targets": [
+          {
+            "keyword": "physical therapy greeley",
+            "page": "/physical-therapy/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "physical therapy denver",
+            "page": "/physical-therapy/",
+            "location": "Denver"
+          },
+          {
+            "keyword": "chiropractor greeley",
+            "page": "/chiropractor/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "chiropractor denver",
+            "page": "/chiropractor/",
+            "location": "Denver"
+          },
+          {
+            "keyword": "auto injury treatment greeley",
+            "page": "/auto-injury/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "auto injury treatment denver",
+            "page": "/auto-injury/",
+            "location": "Denver"
+          },
+          {
+            "keyword": "work comp injury care greeley",
+            "page": "/work-comp/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "work comp injury care denver",
+            "page": "/work-comp/",
+            "location": "Denver"
+          },
+          {
+            "keyword": "massage therapy greeley",
+            "page": "/massage/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "massage therapy denver",
+            "page": "/massage/",
+            "location": "Denver"
+          },
+          {
+            "keyword": "acupuncture greeley",
+            "page": "/acupuncture/",
+            "location": "Greeley"
+          },
+          {
+            "keyword": "acupuncture denver",
+            "page": "/acupuncture/",
+            "location": "Denver"
+          }
+        ]
+      },
+      "at": "2026-08-05T12:00:59.684934Z",
+      "ok": true
+    }
+  ],
+  "credential_alias_used": {
+    "dataforseo-local-rank": "art-dataforseo-readonly"
+  },
+  "decisions": [],
+  "proposals_created": [],
+  "proposals_evaluated": [],
+  "proposals_not_evaluable": [],
+  "stale_proposals": [
+    "prop-2026-08-03T14-37-41-993Z-v3sydh-0",
+    "prop-2026-08-03T14-37-41-993Z-v3sydh-1",
+    "prop-2026-08-03T14-37-41-993Z-v3sydh-2",
+    "prop-2026-08-04T03-05-49-036Z-lk0x22-2"
+  ],
+  "awaiting_live_confirmation": [],
+  "stuck_implemented": [],
+  "attention_flags": [],
+  "snapshot": "runs\\2026-08-05T12-00-02-559Z-etjn3m\\snapshot.json",
+  "final_status": "ok"
+}

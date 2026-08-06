@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-04T03-13-55-233Z-smmiak-2",
+  "loop": "seo",
+  "action_type": "internal-link-addition",
+  "tier": 1,
+  "target": {
+    "page": "http://acceleratedrehabtherapy.com/",
+    "keyword": "accelerated rehab center"
+  },
+  "baseline_position": 5.333333333333333,
+  "rationale": "keyword \"accelerated rehab center\" at position 5.333333333333333 on http://acceleratedrehabtherapy.com/ with 0 clicks - candidate for internal-link-addition",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": true,
+  "observation_window_days": 21,
+  "min_sample_size": 150,
+  "status": "rejected",
+  "created_run_id": "2026-08-04T03-13-55-233Z-smmiak",
+  "created_at": "2026-08-04T03:13:55.233016Z",
+  "run_cycles_seen": 3,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Non-executability cleanup plus a bad target. internal-link-addition can never auto-implement (excluded from apply.py's IMPLEMENTABLE_ACTIONS by design). Independently, this proposal targets http://acceleratedrehabtherapy.com/ - the non-HTTPS protocol variant, which carried 3 impressions for 'accelerated rehab center' while the https:// homepage carried 19 for the same keyword in the same snapshot. The target is a protocol-variant artifact, not the real ranking page. 3 run cycles old (STALE), 0 clicks. Codex advisory review 2026-08-06.",
+    "at": "2026-08-06T23:40:04.167209Z"
+  },
+  "applied_at": null
+}

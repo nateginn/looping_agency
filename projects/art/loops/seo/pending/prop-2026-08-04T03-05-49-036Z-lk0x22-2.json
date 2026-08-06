@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-04T03-05-49-036Z-lk0x22-2",
+  "loop": "seo",
+  "action_type": "internal-link-addition",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+    "keyword": "accelerated rehab"
+  },
+  "baseline_position": 5.5,
+  "rationale": "keyword \"accelerated rehab\" at position 5.5 on https://acceleratedrehabtherapy.com/physical-therapy/ with 0 clicks - candidate for internal-link-addition",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": true,
+  "observation_window_days": 21,
+  "min_sample_size": 150,
+  "status": "rejected",
+  "created_run_id": "2026-08-04T03-05-49-036Z-lk0x22",
+  "created_at": "2026-08-04T03:05:49.036692Z",
+  "run_cycles_seen": 4,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Non-executability cleanup, not a content-quality judgment. Same rationale as prop-2026-08-03T14-37-41-993Z-v3sydh-2: internal-link-addition can never auto-implement (excluded from apply.py's IMPLEMENTABLE_ACTIONS by design). 4 run cycles old (STALE), 0 clicks on /physical-therapy/. Codex advisory review 2026-08-06. Opportunity not judged bad; re-proposable.",
+    "at": "2026-08-06T23:39:56.720736Z"
+  },
+  "applied_at": null
+}
