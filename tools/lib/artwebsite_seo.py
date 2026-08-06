@@ -1,3 +1,4 @@
+import ast
 import glob
 import os
 import re
@@ -13,6 +14,31 @@ import yaml
 
 TITLE_BLOCK_RE = re.compile(r"({%\s*block\s+title\s*%})(.*?)(({%\s*endblock\s*%}))", re.DOTALL)
 META_BLOCK_RE = re.compile(r"({%\s*block\s+meta_description\s*%})(.*?)(({%\s*endblock\s*%}))", re.DOTALL)
+
+# Directories that are never this project's own editable source, but which do
+# contain .html/views.py files that collide with real template basenames.
+# Without this, resolve_edit_location() for "/" (candidates home/index) matched
+# Django's and jazzmin's admin_doc/index.html inside venv/ - two matches, so it
+# raised "multiple title block matches" rather than editing one of them. That
+# error was luck, not a guard: a single match would have resolved to a
+# site-packages file and apply_rewrite() would have rewritten it. venv/ is
+# untracked so it never reaches an apply worktree, but drafting reads the main
+# checkout, so draft and apply resolved against differently-shaped trees.
+# node_modules IS tracked here (~6k files, including @tailwindcss/forms/
+# index.html) and does reach a worktree; staticfiles/ is collectstatic output,
+# where an edit silently does nothing.
+EXCLUDED_DIR_NAMES = frozenset(
+    {".git", "venv", ".venv", "env", "node_modules", "site-packages", "__pycache__", "staticfiles", ".tox"}
+)
+
+# The context keys this Django app actually uses, in precedence order. base.html
+# renders `{% block title %}{{ meta_title|default:"..." }}{% endblock %}`, so a
+# view's title lives under `meta_title`, not `title` - looking only for "title"
+# (as this module originally did) never matched anything in the real repo.
+VIEW_CONTEXT_KEYS = {
+    "title": ("meta_title", "title"),
+    "meta_description": ("meta_description",),
+}
 
 
 def _now_iso(now=None):
@@ -36,7 +62,11 @@ def _candidate_names(page):
 
 
 def _walk_files(repo_path, suffix):
-    for root, _dirs, files in os.walk(repo_path):
+    for root, dirs, files in os.walk(repo_path):
+        # Prune in place so os.walk never descends - this is both the
+        # correctness guard (see EXCLUDED_DIR_NAMES) and what keeps a resolve
+        # from walking ~6k vendored files on every call.
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIR_NAMES]
         for name in files:
             if name.endswith(suffix):
                 yield os.path.join(root, name)
@@ -57,28 +87,117 @@ def _template_block_matches(repo_path, page, block_name):
     return matches
 
 
-def _render_calls(source):
-    render_re = re.compile(r"render\(\s*request\s*,\s*['\"](?P<template>[^'\"]+)['\"]\s*,\s*\{(?P<context>.*?)\}\s*\)", re.DOTALL)
-    return list(render_re.finditer(source))
+# `render(request, "x.html", <arg>)` where <arg> is either an inline dict
+# literal or a bare name bound to one earlier in the view.
+RENDER_CALL_RE = re.compile(
+    r"render\(\s*request\s*,\s*['\"](?P<template>[^'\"]+)['\"]\s*,\s*(?P<arg>\{|[A-Za-z_][A-Za-z0-9_]*)",
+    re.DOTALL,
+)
+
+
+def _dict_body_span(source, brace_index):
+    """Offsets of a dict literal's body, given the index of its opening brace.
+
+    Brace-counting rather than a regex because the original
+    `\\{(?P<context>.*?)\\}` stopped at the first `}` - fine for a flat dict,
+    wrong for any nested one. String- and comment-aware so a brace inside a
+    copy string cannot unbalance the count."""
+    depth = 0
+    i = brace_index
+    n = len(source)
+    while i < n:
+        ch = source[i]
+        if ch in "\"'":
+            quote = next((q for q in ('"""', "'''") if source.startswith(q, i)), ch)
+            i += len(quote)
+            while i < n:
+                if source[i] == "\\":
+                    i += 2
+                    continue
+                if source.startswith(quote, i):
+                    i += len(quote)
+                    break
+                i += 1
+            continue
+        if ch == "#":
+            newline = source.find("\n", i)
+            i = n if newline == -1 else newline
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return brace_index + 1, i
+        i += 1
+    raise ValueError("unbalanced braces in a render() context dict")
+
+
+def _context_spans(source):
+    """(template_name, body_start, body_end) for every render() call, resolving
+    a context passed by name back to its assignment.
+
+    Every view in this repo is written `context = {...}` / `ctx = {...}` then
+    `render(request, "t.html", context)`, so the inline-dict-only match this
+    module started with resolved nothing at all against the real source."""
+    spans = []
+    for call in RENDER_CALL_RE.finditer(source):
+        template_name = os.path.splitext(os.path.basename(call.group("template")))[0]
+        arg = call.group("arg")
+        if arg == "{":
+            brace_index = call.start("arg")
+        else:
+            # Nearest *preceding* `name = {` - i.e. the binding in this same
+            # function. Views in this file all reuse the name `context`, so
+            # scanning forward, or taking the first match, would pick up a
+            # different view's dict entirely.
+            assign_re = re.compile(rf"^[ \t]*{re.escape(arg)}\s*=\s*\{{", re.MULTILINE)
+            prior = [m for m in assign_re.finditer(source) if m.end() <= call.start()]
+            if not prior:
+                continue
+            brace_index = prior[-1].end() - 1
+        try:
+            body_start, body_end = _dict_body_span(source, brace_index)
+        except ValueError:
+            continue
+        spans.append((template_name, body_start, body_end))
+    return spans
+
+
+def _string_value_re(key_name):
+    # The value group deliberately understands backslash escapes instead of
+    # `.*?`: a single-quoted literal containing \' would otherwise be cut short
+    # at the escaped quote, handing back a truncated "current value".
+    return re.compile(
+        rf"(?P<kq>[\"']){re.escape(key_name)}(?P=kq)\s*:\s*(?P<q>[\"'])(?P<value>(?:\\.|(?!(?P=q))[^\\])*)(?P=q)",
+        re.DOTALL,
+    )
 
 
 def _views_matches(repo_path, page, key_name):
     matches = []
     candidates = set(_candidate_names(page))
-    key_re = re.compile(rf"([\"']){re.escape(key_name)}\1\s*:\s*([\"'])(?P<value>.*?)\2", re.DOTALL)
+    key_names = VIEW_CONTEXT_KEYS.get(key_name, (key_name,))
     for path in _walk_files(repo_path, "views.py"):
         with open(path, "r", encoding="utf-8") as f:
             source = f.read()
-        for render_match in _render_calls(source):
-            template_name = os.path.splitext(os.path.basename(render_match.group("template")))[0]
+        for template_name, body_start, body_end in _context_spans(source):
             if template_name not in candidates:
                 continue
-            context = render_match.group("context")
-            value_match = key_re.search(context)
-            if value_match:
-                absolute_start = render_match.start("context") + value_match.start("value")
-                absolute_end = render_match.start("context") + value_match.end("value")
-                matches.append({"path": path, "start": absolute_start, "end": absolute_end})
+            body = source[body_start:body_end]
+            for candidate_key in key_names:
+                value_match = _string_value_re(candidate_key).search(body)
+                if not value_match:
+                    continue
+                matches.append(
+                    {
+                        "path": path,
+                        "start": body_start + value_match.start("value"),
+                        "end": body_start + value_match.end("value"),
+                        "quote": value_match.group("q"),
+                    }
+                )
+                break  # first key in precedence order wins
     return matches
 
 
@@ -91,7 +210,13 @@ def resolve_edit_location(repo_path, page, action_type):
             raise ValueError(f"multiple title block matches found for {page}")
         view_matches = _views_matches(repo_path, page, "title")
         if len(view_matches) == 1:
-            return {"kind": "views-context", "path": view_matches[0]["path"], "start": view_matches[0]["start"], "end": view_matches[0]["end"]}
+            return {
+                "kind": "views-context",
+                "path": view_matches[0]["path"],
+                "start": view_matches[0]["start"],
+                "end": view_matches[0]["end"],
+                "quote": view_matches[0]["quote"],
+            }
         if len(view_matches) > 1:
             raise ValueError(f"multiple views.py title matches found for {page}")
         raise ValueError(f"no title edit location found for {page}")
@@ -104,7 +229,13 @@ def resolve_edit_location(repo_path, page, action_type):
             raise ValueError(f"multiple meta_description block matches found for {page}")
         view_matches = _views_matches(repo_path, page, "meta_description")
         if len(view_matches) == 1:
-            return {"kind": "views-context", "path": view_matches[0]["path"], "start": view_matches[0]["start"], "end": view_matches[0]["end"]}
+            return {
+                "kind": "views-context",
+                "path": view_matches[0]["path"],
+                "start": view_matches[0]["start"],
+                "end": view_matches[0]["end"],
+                "quote": view_matches[0]["quote"],
+            }
         if len(view_matches) > 1:
             raise ValueError(f"multiple views.py meta_description matches found for {page}")
         raise ValueError(f"no meta_description edit location found for {page}")
@@ -122,16 +253,35 @@ def _read_block_value(path, block_name):
     return match.group(2).strip()
 
 
-def _read_views_value(path, start, end):
+def _read_views_value(path, start, end, quote="'"):
+    """Return the *decoded* Python string, not the raw source slice.
+
+    The slice is an escaped literal body; handing that straight back would
+    report a live value of "Greeley\\'s clinic" and then length-check and
+    diff against the escaped form. ast.literal_eval parses, never executes."""
     with open(path, "r", encoding="utf-8") as f:
         source = f.read()
-    return source[start:end]
+    raw = source[start:end]
+    try:
+        return ast.literal_eval(f"{quote}{raw}{quote}")
+    except (ValueError, SyntaxError) as err:
+        raise ValueError(f"could not parse the string literal at {path}[{start}:{end}] - {err}")
+
+
+def _encode_views_value(value, quote):
+    """Escape a value for insertion into a `quote`-delimited Python literal.
+
+    Without this, `_rewrite_views_context` spliced raw text between quotes, so
+    an approved meta description containing an apostrophe would have written a
+    syntactically invalid views.py - a Django app that fails to boot. The path
+    was unreachable before (see _context_spans) so it never fired."""
+    return value.replace("\\", "\\\\").replace(quote, "\\" + quote)
 
 
 def _read_value_at_location(location):
     if location["kind"] == "template-block":
         return _read_block_value(location["path"], location["block"])
-    return _read_views_value(location["path"], location["start"], location["end"])
+    return _read_views_value(location["path"], location["start"], location["end"], location.get("quote", "'"))
 
 
 def read_current_value(repo_path, page, action_type):
@@ -153,10 +303,10 @@ def _rewrite_template_block(path, block_name, new_value):
         f.write(rewritten)
 
 
-def _rewrite_views_context(path, start, end, new_value):
+def _rewrite_views_context(path, start, end, new_value, quote="'"):
     with open(path, "r", encoding="utf-8") as f:
         source = f.read()
-    rewritten = source[:start] + new_value + source[end:]
+    rewritten = source[:start] + _encode_views_value(new_value, quote) + source[end:]
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(rewritten)
 
@@ -183,7 +333,7 @@ def apply_rewrite(repo_path, proposal):
     if location["kind"] == "template-block":
         _rewrite_template_block(location["path"], location["block"], new_value)
     else:
-        _rewrite_views_context(location["path"], location["start"], location["end"], new_value)
+        _rewrite_views_context(location["path"], location["start"], location["end"], new_value, location.get("quote", "'"))
     return location
 
 
@@ -416,6 +566,16 @@ def cleanup_worktree(repo_path, attempt, git_runner=None, delete_branch=True):
         shutil.rmtree(parent_dir, ignore_errors=True)
 
 
+def _reapply_refused(repo_dir, proposal):
+    """Re-running an already-applied rewrite must trip the previous_value
+    staleness guard rather than silently writing again."""
+    try:
+        apply_rewrite(repo_dir, proposal)
+    except ValueError as err:
+        return "no longer matches the approved previous_value" in str(err)
+    return False
+
+
 def _self_test():
     repo_dir = tempfile.mkdtemp(prefix="artwebsite-implementer-")
     try:
@@ -430,13 +590,112 @@ def _self_test():
                 "        'title': 'Old title',\n"
                 "        'meta_description': 'Old desc',\n"
                 "    })\n"
+                "\n"
+                "def contact(request):\n"
+                "    context = {\n"
+                "        'nested': {'a': 1},\n"
+                "        'meta_title': 'Old contact title',\n"
+                # writes the source text: 'meta_description': 'Greeley\'s old contact desc',
+                "        'meta_description': 'Greeley\\'s old contact desc',\n"
+                "    }\n"
+                "    return render(request, 'main/contact.html', context)\n"
+                "\n"
+                "def team(request):\n"
+                "    context = {\n"
+                "        'meta_description': \"A team desc with an ' apostrophe\",\n"
+                "    }\n"
+                "    return render(request, 'main/team.html', context)\n"
             )
+        # Decoys that only a scoped walk excludes. Both are real collisions in
+        # artwebsite: venv ships admin_doc/index.html with a title block, and
+        # node_modules/@tailwindcss/forms/index.html is git-tracked, so it
+        # reaches an apply worktree. "/" resolves candidates home + index.
+        for decoy in (
+            os.path.join(repo_dir, "venv", "Lib", "site-packages", "jazzmin", "templates", "admin_doc"),
+            os.path.join(repo_dir, "node_modules", "@tailwindcss", "forms"),
+            os.path.join(repo_dir, "staticfiles", "main"),
+        ):
+            os.makedirs(decoy, exist_ok=True)
+            with open(os.path.join(decoy, "index.html"), "w", encoding="utf-8", newline="\n") as f:
+                f.write("{% block title %}Decoy library title{% endblock %}\n")
+
         checks = [
             ("template title resolves", resolve_edit_location(repo_dir, "/services/", "title-tag-rewrite")["kind"] == "template-block"),
             ("views home meta resolves", resolve_edit_location(repo_dir, "/", "meta-description-rewrite")["kind"] == "views-context"),
             ("read_current_value reads a template block", read_current_value(repo_dir, "/services/", "title-tag-rewrite") == "Old"),
             ("read_current_value reads a views-context string", read_current_value(repo_dir, "/", "meta-description-rewrite") == "Old desc"),
         ]
+
+        # --- scoped walk (EXCLUDED_DIR_NAMES) ---
+        # Without pruning, "/" matches the venv/node_modules/staticfiles decoys
+        # above and resolve_edit_location either raises "multiple title block
+        # matches" or, with a single decoy, hands back a library file to edit.
+        checks.append(
+            (
+                "resolve_edit_location ignores title blocks under venv/node_modules/staticfiles",
+                resolve_edit_location(repo_dir, "/", "title-tag-rewrite")["kind"] == "views-context",
+            )
+        )
+        checks.append(
+            (
+                "_walk_files yields no file inside an excluded directory",
+                not [p for p in _walk_files(repo_dir, ".html") if any(part in EXCLUDED_DIR_NAMES for part in p.split(os.sep))],
+            )
+        )
+
+        # --- context-as-variable + meta_title key ---
+        contact_title_loc = resolve_edit_location(repo_dir, "/contact/", "title-tag-rewrite")
+        checks.append(("a context passed by name (context = {...}) resolves, not just an inline dict", contact_title_loc["kind"] == "views-context"))
+        checks.append(("title-tag-rewrite reads the meta_title context key", read_current_value(repo_dir, "/contact/", "title-tag-rewrite") == "Old contact title"))
+        checks.append(
+            (
+                "a nested dict earlier in the context does not truncate the body scan",
+                read_current_value(repo_dir, "/contact/", "meta-description-rewrite") == "Greeley's old contact desc",
+            )
+        )
+        checks.append(
+            (
+                "an escaped quote is decoded, not returned in its raw escaped form",
+                "\\" not in read_current_value(repo_dir, "/contact/", "meta-description-rewrite"),
+            )
+        )
+        checks.append(
+            (
+                "a double-quoted literal containing an apostrophe reads back intact",
+                read_current_value(repo_dir, "/team/", "meta-description-rewrite") == "A team desc with an ' apostrophe",
+            )
+        )
+
+        # --- writing a value containing the delimiter quote ---
+        # The bug this covers: _rewrite_views_context used to splice raw text
+        # between quotes, so an approved description containing an apostrophe
+        # produced a views.py that will not parse - a Django app that cannot boot.
+        apostrophe_proposal = {
+            "id": "prop-apostrophe-test",
+            "action_type": "meta-description-rewrite",
+            "target": {"page": "/contact/"},
+            "implementation": {"previous_value": "Greeley's old contact desc", "new_value": "Denver's new contact desc"},
+        }
+        apply_rewrite(repo_dir, apostrophe_proposal)
+        views_source = open(os.path.join(repo_dir, "app", "views.py"), "r", encoding="utf-8").read()
+        parses = True
+        try:
+            ast.parse(views_source)
+        except SyntaxError:
+            parses = False
+        checks.append(("writing a value containing the delimiter quote leaves views.py parseable", parses))
+        checks.append(
+            (
+                "the round-tripped value with an apostrophe reads back exactly",
+                read_current_value(repo_dir, "/contact/", "meta-description-rewrite") == "Denver's new contact desc",
+            )
+        )
+        checks.append(
+            (
+                "the staleness check compares decoded values, so a re-apply of the same edit is refused",
+                _reapply_refused(repo_dir, apostrophe_proposal),
+            )
+        )
 
         stale_proposal = {
             "id": "prop-stale-test",
