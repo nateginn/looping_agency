@@ -1,3 +1,29 @@
+# ============================================================================
+# DORMANT BY DECISION - THIS IMPLEMENTS THE OPERATING MODEL THAT WAS NOT CHOSEN
+# ============================================================================
+# PLAN.md's "SELECTED OPERATING MODEL" section selects Path B: after the
+# Codex-reviewed auto-approval, the loop pushes the approved commit DIRECTLY to
+# the deployment branch, then verifies the live site and rolls back on failure.
+#
+# This file implements Path A: side branch -> pull request -> GitHub auto-merge,
+# whose entire safety argument rests on server-side branch protection. The two
+# are opposites, not variants. Path A's premise is that nothing may push to
+# `main`; Path B's premise is that this loop does. Note
+# FORBIDDEN_DESTINATION_BRANCHES below: asked to do what Path B requires, this
+# module refuses by construction. There is no flag that converts it - Path B
+# needs a different component.
+#
+# Keep this file. It is complete and fully offline-tested (32 self-test checks
+# plus real-git integration tests), and if the direction is ever revisited it
+# is ready. It is also unreachable today: no project references it, no
+# `<project>-github-token` alias is stored, no skill or scheduled task calls
+# it, and its live branch-protection verification hard-refuses because
+# PLAN.md Phase 0 was never performed (RISK-REGISTER.md R11, still Open).
+#
+# Do not build on this module or extend it without first re-reading PLAN.md's
+# SELECTED OPERATING MODEL section.
+# ============================================================================
+#
 # Phase 6 (PLAN.md) - the only component in this workspace permitted to
 # touch a remote GitHub repository. Pushes a validated, already-implemented
 # proposal's commit to a fully-qualified `seo/<id>` ref, opens a PR against

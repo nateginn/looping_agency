@@ -57,6 +57,18 @@ def compare_commit_to_main(owner, repo, commit_sha, requester=None, token=None):
     }
 
 
+# ---------------------------------------------------------------------------
+# DORMANT BY DECISION - everything from here to the end of enable_auto_merge()
+# below serves Path A (side branch -> PR -> branch-protection-gated auto-merge),
+# which PLAN.md's "SELECTED OPERATING MODEL" section did NOT select. It is
+# reached only from tools/publish.py, itself dormant; see that file's header.
+#
+# compare_commit_to_main() ABOVE is NOT dormant - run_loop.py calls it every
+# run to promote implemented -> applied once a commit is live on `main`, and it
+# stays load-bearing under Path B. Do not remove it while pruning this block.
+# ---------------------------------------------------------------------------
+
+
 def get_branch_protection(owner, repo, branch, token, requester=None):
     """Read-only GET of GitHub's classic branch-protection API. Raises
     ValueError on any non-200 response (including 404 - unprotected), never

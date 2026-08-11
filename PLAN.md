@@ -1,8 +1,57 @@
-# Plan: Remote + local SEO change pipeline for `art` (draft → human approve → apply → validate → auto-merge → verify/rollback)
+# Plan: SEO change pipeline for `art` (draft → Codex-reviewed auto-approve → apply → **direct push** → verify/rollback → notify)
 
 _Round 2 revision by Claude, after two rounds of Codex adversarial review. Supersedes the prior SEO-monitoring-expansion plan in this file's history (shipped 2026-07-23/24, commits `e282780` / `3626644`) — see git log. That work remains live and unaffected._
 
-> **Operational direction amendment (2026-07-30):** Nate selected the original local-approval/direct-push operating model for `art`: after explicit proposal approval, the local agent may eventually apply, commit, and push directly to the deployment branch, followed by health verification. The autonomous PR/auto-merge path described below is not selected and must not be activated. Phase 0 branch-protection/automation-identity work is therefore not a prerequisite for that selected model; it remains historical design context until explicitly revisited. The direct-push path is still disabled for `art` pending explicit activation and live operational review.
+---
+
+## SELECTED OPERATING MODEL — read this before anything below it
+
+**Path B (direct push + post-deploy health verification + notification) is the selected model. Path A (side branch → PR → GitHub auto-merge, gated by branch protection) is NOT selected and is dormant by decision.** Direction chosen 2026-07-30, restated and expanded with explicit requirements 2026-08-10.
+
+Most of this document below this section was written for Path A. It is retained as design history and as the record of six rounds of Codex adversarial review — **not** as the plan of record. Every Path-A-only section is marked `[HISTORICAL — PATH A]`. Where the two conflict, this section wins.
+
+### What Nate actually wants (stated 2026-08-10)
+
+1. **The loop adjusts the website on its own.** No per-change human approval. Nate is not the gate.
+2. **He is notified when a change is made**, through the MMC daily briefing — not through a separate channel he has to remember to check.
+3. **He gets positive confirmation that the change did not damage the site**, i.e. an explicit "deployed, verified healthy, no rollback" statement — silence is not confirmation.
+4. **If a rollback did fire, he is told that too**, with enough detail to troubleshoot what went wrong.
+
+### How much of that already exists (2026-08-10)
+
+| Requirement | Status |
+|---|---|
+| Autonomous draft → adjudication → **local commit**, no human approval | **Built and active for `art`.** `/codex-seo-review` + `apply.py`; three spec gates all opted in (`tier1-enabled`, `auto_implementation_enabled: true`, `manual_approval_only: false` on `title-tag-rewrite`/`meta-description-rewrite`). See `PLAN-PHASE7-CODEX-REVIEW.md` and R14. |
+| Post-deploy health checks + rollback orchestration | **Built, offline-tested, unwired.** `tools/deploy_verify.py`, `tools/lib/deploy_health.py`. Its default redeploy hook *refuses*; no project is wired to it. See R12. |
+| MMC briefing section fed by the loop's event log | **Built.** `MMC/collector/sources/looping_events.py` + `advance_looping_cursor.py`, backed by `events.jsonl`. Cursor advances only after send-acceptance, so events are never lost or repeated. |
+| **Push the local commit to the deployment branch** | **Not built.** This is the entire remaining gap. No code in this workspace pushes anything. |
+| Deploy/health/rollback events reaching the MMC briefing | **Not built.** `deploy_verify.py` persists results but emits no `events.jsonl` entries, so nothing carries them into the briefing. |
+
+So the missing work is genuinely narrow: **the push, the deploy/rollback event emission, and the wiring between them.** Everything on either side of that gap exists and is tested.
+
+### What Path B requires before it can be switched on
+
+This is the honest gate list. None of it is done, and none of it should be inferred as done.
+
+- **R6 must be formally amended, not quietly contradicted.** R6/R10 currently classify *every* push to `D:\Dev\artwebsite` as Tier 2, human-only, **unconditionally** — because that repo auto-deploys on push with no staging gate. Path B moves that line. That is Nate's call to make, but it must be recorded as a dated amendment row with its reasoning, exactly as R10 amended R6 before it. Until that row exists, no push tooling may be built or run.
+- **A push component with the same refusal discipline `apply.py` already has**: re-read the spec's gates fresh at push time, re-verify the commit's ancestry and single-file diff from the commit's own git objects, confirm the local ref hasn't moved, and refuse on any drift.
+- **Bounded blast radius.** Only `title-tag-rewrite` and `meta-description-rewrite`, only on `priority_pages`, only one change in flight at a time. `internal-link-addition` remains excluded (no HTML-mutation engine exists, by design).
+- **`deploy_verify.py` wired to a real redeploy hook**, replacing the default refusing stub — and that hook is itself a push, so it inherits every constraint above.
+- **Event emission for `deployed`, `health_verified`, `rollback_started`, `rollback_succeeded`, `rollback_failed`**, so the MMC briefing can state requirements 3 and 4 rather than inferring them from absence.
+- **An escalation path when rollback itself fails.** Health-check-failed-and-rollback-failed is the one state the automation cannot resolve, and it must reach Nate loudly, not as a line in a daily digest.
+
+### Why the security argument changes shape under Path B
+
+Path A's boundary was server-side: GitHub branch protection, which survives a fully compromised local agent. Path B has no server-side boundary — the loop pushes to production directly. Its safety properties are different in kind, and should be stated plainly rather than dressed up as equivalent:
+
+- **Bounded change class.** A title tag or meta description is text in a template. It cannot execute, cannot alter routing, cannot touch data.
+- **Independent adversarial review before the commit exists.** Two Codex rounds that must agree, bounded at one revision / two passes / four calls, any disagreement holds. That review happens *before* anything is committed, let alone pushed.
+- **Detection and reversal after the fact.** Bounded public-site checks, automatic redeploy of the previous known-good SHA, and escalation if that fails.
+- **A complete audit trail.** Append-only, redacted `events.jsonl` is the source of truth for the review subsystem, and the same log feeds the briefing.
+
+What Path B does **not** have, and must not be claimed to have: any control that survives a compromised local agent. Anything with filesystem access to this repo could forge the review verdicts. This matches the project's existing, already-documented position on `publish.py`'s guards ("Where the security boundary actually is", below) — it is an accountability and recovery model, not a security boundary.
+
+---
 
 ## Goal
 
@@ -46,7 +95,8 @@ The required human action is proposal approval, not PR merge. The older Phase 0 
 - `deploy.yml` must record the previous known-good SHA, deploy the new SHA, run bounded HTTP/TLS/canonical/representative-page smoke tests, and automatically redeploy the previous SHA on failure. It must persist the failure, both SHAs, health results, and rollback result, notify the reporting path, and create an automated revert PR. If rollback or revert validation fails, the system stops and escalates to Nate.
 - This is an accountable autonomous workflow, not a cryptographic guarantee against a fully compromised local agent holding the automation credential. The server-side controls protect `main`; the approval record, audit trail, health checks, and rollback make normal autonomous operation reviewable and recoverable.
 
-**Phase 0 — Enforcement prerequisites + honest register amendment (human sign-off; blocks everything remote).**
+**Phase 0 `[HISTORICAL — PATH A]` — Enforcement prerequisites + honest register amendment (human sign-off; blocks everything remote).**
+_Not a prerequisite for the selected Path B: there is no PR, no auto-merge, and no automation identity to separate. Retained as the design record for what Path A would have required, and as the reason `publish.py` refuses to run today. R11 remains Open for `publish.py` specifically._
 - **0a. Separate the automation identity from Nate's identity** (Codex R2 #1, the round's critical finding). "Require a pull request" alone does **not** require an approving review — a token with PR write can open and immediately merge its own PR, making the human gate decorative. But requiring approval while the token acts *as Nate* deadlocks, because GitHub forbids approving your own PR. So the automation credential must be a **distinct identity** — a GitHub App installation token (preferred) or a machine user — never Nate's personal PAT. Then "require 1 approving review" is satisfiable by Nate and unsatisfiable by the automation, by construction.
 - **0b. Enable GitHub branch protection on `nateginn/artwebsite` `main`**: require a PR before merging; **require ≥1 approving review**; dismiss stale approvals on new commits; block force pushes; block deletions; **"do not allow bypassing the above settings"** (applies to admins); confirm no actor/app is on a bypass list. Load-bearing, and must exist *before* any push-capable token.
   - **Also set "Restrict who can push to matching branches" to Nate only** (Codex R3 #3). Merging writes to `main`, so excluding the automation identity from that list makes "automation cannot merge" a real, server-side property rather than a promise — and it does not impede `seo/*` pushes, since the restriction applies only to the matching pattern. **Dependency:** this control is free on public repos but requires a paid plan on private ones. If `artwebsite` is private on the free tier and this is unavailable, **the security claim must be weakened honestly** to: *"the automation cannot merge without Nate's approval; Nate's approval is the deployment gate"* — because `contents: write` is required for both branch push and merge and cannot be separated by token scope. The instruction "do not merge" in the remote template is an instruction, not a control.
@@ -90,7 +140,8 @@ Before `git worktree add`: `git fetch origin`, verify `refs/heads/main == refs/r
 - **Persist the base SHA on the durable record** (Codex R2 #9, confirmed in code): `make_attempt()` records `base_commit` only inside `implement_attempt` (`artwebsite_seo.py:168`), and `apply.py:134` pops that object on success — destroying the base SHA at exactly the moment the proposal reaches `implemented`, the state `publish.py` needs it in. Write `implementation_base_sha` onto the proposal itself as part of the `implemented` record, and have `publish.py` require the commit's parent to equal it.
 - **Use fully-qualified refs throughout** (Codex R2 #10): `refs/heads/main` and `refs/remotes/origin/main`, never bare `main` (current code uses `git rev-parse main` and `git worktree add ... main` at `artwebsite_seo.py:164,178`), so a tag or symbolic ref named `main` cannot resolve to something unintended.
 
-**Phase 6 — `tools/publish.py` (new): push branch + open PR.**
+**Phase 6 `[HISTORICAL — PATH A]` — `tools/publish.py` (new): push branch + open PR.**
+_Built and offline-tested; dormant by decision. `publish.py` hard-refuses a `main`/`master` destination by construction (`FORBIDDEN_DESTINATION_BRANCHES`), so it structurally cannot perform Path B's push — Path B needs a different component, not a flag on this one. Do not delete: if the direction is ever revisited, this is a complete, tested implementation._
 The only component permitted to touch a remote. Guards — reframed as correctness controls, with branch protection as the actual backstop:
 - Proposal `status: implemented`, with `implemented_branch` and `implemented_commit_sha` recorded.
 - **Strict identifier validation** (Codex #4): proposal ID must match `^prop-[0-9T:.Z-]+-[a-z0-9]+-\d+$`; refuse any `:`, `?`, `*`, `~`, `^`, whitespace, or `refs/` substring. (Practical severity is low — IDs are generated as `prop-{run_id}-{i}` from a timestamp plus random suffix, not attacker-supplied — but the check is nearly free.)
@@ -104,13 +155,15 @@ PR creation extends `github_compare.py` with `create_pull_request()` (same `urll
 
 **Phase 7 — Local path.** Extend `.claude/skills/review-pending/SKILL.md`: list → draft copy → show **current vs proposed** → `AskUserQuestion` explicit decision → `--approve` → `apply.py` → offer `publish.py` → report PR link.
 
-**Phase 8 — Remote path.** No code change in `dual-agent-core`. Add `REMOTE-APPROVAL.md` documenting the dispatch block template (`Scope: D:/Dev/Looping _agency/`, steps = draft → approve → apply → publish → report PR URL → **do not merge**). Optional hardening only, explicitly *not* claimed as a control: add `main`-push denies to `dual-agent-core/.claude/settings.json` (Codex #3 is right that these are bypassable; they raise the bar against accident, not intent).
+**Phase 8 `[HISTORICAL — PATH A]` — Remote path.** _The "do not merge" instruction it documents is meaningless under Path B, which has no PR to merge. A remote-dispatch document for Path B would be a different document._ No code change in `dual-agent-core`. Add `REMOTE-APPROVAL.md` documenting the dispatch block template (`Scope: D:/Dev/Looping _agency/`, steps = draft → approve → apply → publish → report PR URL → **do not merge**). Optional hardening only, explicitly *not* claimed as a control: add `main`-push denies to `dual-agent-core/.claude/settings.json` (Codex #3 is right that these are bypassable; they raise the bar against accident, not intent).
 
 **Phase 9 — Briefing detail.** Extend `MMC/collector/sources/looping.py`'s existing pending-proposal loop to carry `action_type`, `target.page`, `target.keyword`, `rationale`, `baseline_position`, and when present `implementation.previous_value`/`new_value` and `pr_url`. Bounded fields, no raw blobs. MMC stays Tier 0 and still never writes `TASK_COORDINATION.md`.
 
 **Sequencing.** 0a (branch protection) is a hard gate on everything remote. Then 1 (fix the evaluator) → 2 → 3 → 4 → 5 → 7, proving one real change locally end-to-end. Then 0b/0c → 6 → 8 → 9.
 
-### Autonomous merge and deployment safety (supersedes manual-merge wording in Phases 6-8)
+### Autonomous merge and deployment safety `[HISTORICAL — PATH A]` (supersedes manual-merge wording in Phases 6-8)
+
+_Superseded in turn by "SELECTED OPERATING MODEL" at the top of this file. The deployment-safety half of this section — record the pre-deploy SHA, bounded smoke tests, automatic redeploy of the previous known-good SHA, persist both SHAs and all results, notify, escalate if rollback fails — carries over to Path B essentially unchanged and is what `deploy_verify.py`/`deploy_health.py` implement. The merge half does not carry over: there is no PR._
 
 - After the recorded proposal approval, `publish.py` may push the validated immutable SHA to `seo/<id>`, open the PR, and request auto-merge. No second Nate action is required.
 - The PR body must include the proposal ID, approval event, implementation SHA, exact changed path/value, validation results, and rollback target. Any mismatch, stale base, extra changed file, or missing approval refuses auto-merge.
