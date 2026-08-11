@@ -99,7 +99,37 @@ agreed in principle and then sequenced GBP work fifth. **That was Round 0's bigg
 The document's own priority ordering was right, and the site's data points the same way —
 though P1 below is defensible on Appendix A's reasoning even if the hypothesis fails.
 
-### Three defects this investigation found that were not previously recorded
+### P0-b RESULT — run live 2026-08-11 16:35Z, 10 paid DataForSEO tasks
+
+**The hypothesis is substantially confirmed, with one important refinement.**
+
+All ten SERPs — five queries × Greeley and Denver — **open with a three-entry local pack at
+rank 1, and ART is in none of them.** Not one.
+
+| Query | Greeley: ART organic | Denver: ART organic | Local pack | ART in pack |
+|---|---|---|---|---|
+| auto injury chiropractor | **#2** | not in top 100 | rank 1 | no |
+| sports chiropractic near me | **#8** | not in top 100 | rank 1 | no |
+| sports chiropractor near me | **#12** | not in top 100 | rank 1 | no |
+| chiropractor near me | not in top 100 | not in top 100 | rank 1 | no |
+| chiropractor | not in top 100 | not in top 100 | rank 1 | no |
+
+Refinement that matters: it is **not** simply that GSC's "position 1" was a local-pack
+artifact. ART genuinely ranks **#2 organically in Greeley for "auto injury chiropractor"**
+and still takes zero clicks — because a three-entry local pack sits above it and absorbs
+the intent. Ranking #2 under a pack you are absent from is worth approximately nothing.
+
+- **Greeley is competitive organically** (#2, #8, #12 on three of five) and losing to the
+  pack, not to the organic competition.
+- **Denver is not competitive at all** — absent from the top 100 on all five.
+- **AI Overviews are not a factor here.** Zero of ten SERPs contained one. A clean negative
+  result: whatever is suppressing clicks, it is not AI Overviews on these queries today.
+
+**Consequence for the plan:** P1 (GBP / local entity) is confirmed as the highest-value
+work, and its justification is now measured rather than inferred. The GBP checklist half
+should start immediately.
+
+### Four defects this investigation found that were not previously recorded
 
 - **D1 (High) — `dataforseo.py` matches SERP results by URL path substring, with no domain
   check.** `tools/dataforseo.py:165` and `:261`:
@@ -115,6 +145,28 @@ though P1 below is defensible on Appendix A's reasoning even if the hypothesis f
   `item.get("type") == "organic"` and drop everything else. The same response already
   carries the SERP's composition — `local_pack`, `ai_overview`, `people_also_ask`, `map`.
   Capturing it costs **zero additional API spend**.
+- **D4 (Critical, found during P0-b on 2026-08-11) — `pull_local_rank` has only ever
+  checked ONE keyword per city. The other five were never checked, and were silently
+  reported as "not found".**
+  `dataforseo.py:242-248` builds one task per target and POSTs them **as a single array**.
+  DataForSEO's `live/advanced` endpoint accepts **one task per request** — every additional
+  task comes back `status_code: 40000, "You can set only one task at a time"`, with
+  `result: None` and `cost: 0`. Verified directly: a two-task POST returned 113 items for
+  the first keyword and that error for the second.
+  Downstream, `result = task.get("result") or []` turns that error into an empty item list,
+  which yields `match = None`, which is written as `organic_rank_position: null` —
+  indistinguishable from a genuine "not ranking".
+  This explains the data exactly: across 14 runs the only keyword ever producing a result
+  in Greeley is `physical therapy greeley` and in Denver `physical therapy denver` — the
+  **first entry for each city** in `spec.md`'s `targets`. It also means the 2026-07-26
+  "36 checks → 12 checks" cost optimization was moot: only 2 tasks per run were ever
+  actually billed.
+  `pull_metrics`'s SERP path (`dataforseo.py:142-148`) batches identically and has the same
+  defect; it is not enabled for `art`.
+  **Combined with D1, essentially the entire `local_rank` history is invalid** — 10 of 12
+  rows were never measured, and the 2 that were are frequently attributed to a competitor.
+  Fixing this is now the top item in P0.1, ahead of the domain-match fix, because no amount
+  of correct matching helps a request that was never sent.
 - **D3 (High) — "verified winner" is currently vacuous on this site.** `run_loop.py:518`
   computes `sample_ok = metrics["sample_size"] >= p["min_sample_size"]`, where `sample_size`
   is the run's **total** GSC sample (10,308), not the target row's impressions. With
@@ -236,7 +288,18 @@ Each stage completes before the next begins:
   materially change candidate ordering, and the row-set change must not go live in the same
   run as a selector-behaviour change.
 
-### P0.1 — Fix the SERP matching defect (D1) and report domain presence
+### P0.1 — Fix the SERP connector: one task per request (D4) first, then domain matching (D1)
+
+**D4 comes first.** `pull_local_rank` (and `pull_metrics`'s SERP path) must issue **one
+POST per task**. Batching silently drops every task after the first, at zero cost, in a way
+that is indistinguishable downstream from "not ranking". Add a `--verify` case that asserts
+a multi-target pull issues one request per target, and treat any non-`20000` task status as
+a **connector error**, never as an empty result — the current `task.get("result") or []`
+pattern is what converts an API rejection into a false negative.
+
+Expect the real cost of the daily rank check to rise from 2 billed tasks to 12 once this is
+fixed. At DataForSEO's observed `$0.02`/task that is ~`$0.24`/run rather than ~`$0.04` —
+still trivial, but it should be a known change rather than a surprise on the invoice.
 
 A shared URL-normalization/matching helper with an **explicit `domain` parameter**, used by
 both call sites. This is more than a one-line fix (Codex Round 2 #4, verified): neither

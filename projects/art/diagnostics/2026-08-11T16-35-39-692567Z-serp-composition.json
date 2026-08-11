@@ -1,0 +1,3821 @@
+{
+  "at": "2026-08-11T16:35:39.692586Z",
+  "diagnostic": "serp-composition",
+  "domain": "acceleratedrehabtherapy.com",
+  "manifest_path": "projects\\art\\diagnostics\\p0b-serp-composition.manifest.json",
+  "paid_tasks_spent": 10,
+  "plan_reference": "PLAN-SEO-PROGRAM-INTEGRATION.md P0-b",
+  "project": "art",
+  "results": [
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": 2,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [
+        {
+          "organic_position": 2,
+          "rank_absolute": 5,
+          "title": "Chiropractor Greeley & Denver | Auto Injury & Pain Relief",
+          "url": "https://acceleratedrehabtherapy.com/chiropractor/"
+        },
+        {
+          "organic_position": 60,
+          "rank_absolute": 70,
+          "title": "Auto Injury",
+          "url": "https://acceleratedrehabtherapy.com/auto-injury/"
+        }
+      ],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Well Adjusted Chiropractic - Greeley (formerly Gateway Family Chiropractic)",
+          "Rocky Mountain Chiropractic & Sports Injury Centers",
+          "Cornerstone Chiropractic"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 1014529,
+      "location_name": "Greeley",
+      "organic_results_seen": 99,
+      "query": "auto injury chiropractor",
+      "resolved_location": "Greeley,Colorado,United States",
+      "se_results_count": 187,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "organic",
+        "organic",
+        "organic",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": true,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "www.chiropracticrev.com",
+          "organic_position": 1,
+          "url": "https://www.chiropracticrev.com/auto-injury/"
+        },
+        {
+          "host": "www.ftcollinschiropractic.com",
+          "organic_position": 3,
+          "url": "https://www.ftcollinschiropractic.com/auto-injury"
+        },
+        {
+          "host": "alisonbremner.com",
+          "organic_position": 4,
+          "url": "https://alisonbremner.com/auto-injury/complete-guide-to-auto-injury-chiropractic-care-in-boulder-colorado/"
+        },
+        {
+          "host": "www.philwillner.com",
+          "organic_position": 5,
+          "url": "https://www.philwillner.com/auto-injury"
+        },
+        {
+          "host": "www.duluthchiropractic.com",
+          "organic_position": 6,
+          "url": "https://www.duluthchiropractic.com/blog/posts/what-does-an-auto-injury-chiropractor-do"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": 8,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 1,
+          "type": "google_reviews"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 32,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [
+        {
+          "organic_position": 8,
+          "rank_absolute": 12,
+          "title": "Chiropractor Greeley & Denver | Auto Injury & Pain Relief",
+          "url": "https://acceleratedrehabtherapy.com/chiropractor/"
+        }
+      ],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Cornerstone Chiropractic",
+          "Rocky Mountain Chiropractic & Sports Injury Centers",
+          "Well Adjusted Chiropractic - Greeley (formerly Gateway Family Chiropractic)"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 1014529,
+      "location_name": "Greeley",
+      "organic_results_seen": 99,
+      "query": "sports chiropractic near me",
+      "resolved_location": "Greeley,Colorado,United States",
+      "se_results_count": 18400000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "organic",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "google_reviews",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": true,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "weldfamilyclinic.com",
+          "organic_position": 1,
+          "url": "https://weldfamilyclinic.com/sports-therapy/"
+        },
+        {
+          "host": "www.yelp.com",
+          "organic_position": 2,
+          "url": "https://www.yelp.com/search?cflt=chiropractors&find_loc=Greeley%2C+CO"
+        },
+        {
+          "host": "www.chiropracticrev.com",
+          "organic_position": 3,
+          "url": "https://www.chiropracticrev.com/"
+        },
+        {
+          "host": "www.thejoint.com",
+          "organic_position": 4,
+          "url": "https://www.thejoint.com/colorado/greeley/greeley-38031/"
+        },
+        {
+          "host": "www.cornerstone-chiropractic.com",
+          "organic_position": 5,
+          "url": "https://www.cornerstone-chiropractic.com/"
+        }
+      ],
+      "total_serp_items": 114,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": 12,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [
+        {
+          "organic_position": 12,
+          "rank_absolute": 17,
+          "title": "Chiropractor Greeley & Denver | Auto Injury & Pain Relief",
+          "url": "https://acceleratedrehabtherapy.com/chiropractor/"
+        }
+      ],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Cornerstone Chiropractic",
+          "Weld Family Clinic of Chiropractic",
+          "Rocky Mountain Chiropractic & Sports Injury Centers"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 1014529,
+      "location_name": "Greeley",
+      "organic_results_seen": 99,
+      "query": "sports chiropractor near me",
+      "resolved_location": "Greeley,Colorado,United States",
+      "se_results_count": 178,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": true,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "weldfamilyclinic.com",
+          "organic_position": 1,
+          "url": "https://weldfamilyclinic.com/sports-therapy/"
+        },
+        {
+          "host": "www.yelp.com",
+          "organic_position": 2,
+          "url": "https://www.yelp.com/search?cflt=chiropractors&find_loc=Greeley%2C+CO"
+        },
+        {
+          "host": "www.chiropracticrev.com",
+          "organic_position": 3,
+          "url": "https://www.chiropracticrev.com/athlete-chiropractor-greeley/"
+        },
+        {
+          "host": "www.thejoint.com",
+          "organic_position": 4,
+          "url": "https://www.thejoint.com/colorado/greeley/greeley-38031/"
+        },
+        {
+          "host": "www.mayedatotalwellness.com",
+          "organic_position": 5,
+          "url": "https://www.mayedatotalwellness.com/services/athlete-care/"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "The Joint Chiropractic",
+          "Cornerstone Chiropractic",
+          "Weld Family Clinic of Chiropractic"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 1014529,
+      "location_name": "Greeley",
+      "organic_results_seen": 99,
+      "query": "chiropractor near me",
+      "resolved_location": "Greeley,Colorado,United States",
+      "se_results_count": 29100000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "acupuncturechiropracticcenter.com",
+          "organic_position": 1,
+          "url": "https://acupuncturechiropracticcenter.com/"
+        },
+        {
+          "host": "www.chiropracticrev.com",
+          "organic_position": 2,
+          "url": "https://www.chiropracticrev.com/"
+        },
+        {
+          "host": "www.thejoint.com",
+          "organic_position": 3,
+          "url": "https://www.thejoint.com/colorado/greeley/greeley-38031/"
+        },
+        {
+          "host": "www.yelp.com",
+          "organic_position": 4,
+          "url": "https://www.yelp.com/search?cflt=chiropractors&find_loc=Greeley%2C+CO"
+        },
+        {
+          "host": "www.smithchiropracticoffices.com",
+          "organic_position": 5,
+          "url": "https://www.smithchiropracticoffices.com/"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "product_considerations"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 32,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "The Joint Chiropractic",
+          "Weld Family Clinic of Chiropractic",
+          "Cornerstone Chiropractic"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 1014529,
+      "location_name": "Greeley",
+      "organic_results_seen": 96,
+      "query": "chiropractor",
+      "resolved_location": "Greeley,Colorado,United States",
+      "se_results_count": 48200000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "product_considerations",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "www.chiropracticrev.com",
+          "organic_position": 1,
+          "url": "https://www.chiropracticrev.com/"
+        },
+        {
+          "host": "www.thejoint.com",
+          "organic_position": 2,
+          "url": "https://www.thejoint.com/colorado/greeley/greeley-38031/"
+        },
+        {
+          "host": "en.wikipedia.org",
+          "organic_position": 3,
+          "url": "https://en.wikipedia.org/wiki/Chiropractic"
+        },
+        {
+          "host": "weldfamilyclinic.com",
+          "organic_position": 4,
+          "url": "https://weldfamilyclinic.com/greeley-chiropractor/"
+        },
+        {
+          "host": "www.yelp.com",
+          "organic_position": 5,
+          "url": "https://www.yelp.com/search?cflt=chiropractors&find_loc=Greeley%2C+CO"
+        }
+      ],
+      "total_serp_items": 114,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Littleton Family Chiropractic & Auto Injury Center",
+          "Colorado Injury & Pain Center",
+          "Metro Denver Accident & Injury Centers"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 200751,
+      "location_name": "Denver",
+      "organic_results_seen": 99,
+      "query": "auto injury chiropractor",
+      "resolved_location": "Denver, CO,Colorado,United States",
+      "se_results_count": 162,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "autoinjurychiropractic.com",
+          "organic_position": 1,
+          "url": "https://autoinjurychiropractic.com/most-common-chiropractic-techniques-for-auto-injuries/"
+        },
+        {
+          "host": "www.southsidechiropracticcarinjuryclinic.com",
+          "organic_position": 2,
+          "url": "https://www.southsidechiropracticcarinjuryclinic.com/how-do-chiropractors-treat-an-auto-injury"
+        },
+        {
+          "host": "www.oklahomacityautoinjuryclinic.com",
+          "organic_position": 3,
+          "url": "https://www.oklahomacityautoinjuryclinic.com/"
+        },
+        {
+          "host": "www.duluthchiropractic.com",
+          "organic_position": 4,
+          "url": "https://www.duluthchiropractic.com/blog/posts/what-does-an-auto-injury-chiropractor-do"
+        },
+        {
+          "host": "alliedmedicalcenters.com",
+          "organic_position": 5,
+          "url": "https://alliedmedicalcenters.com/techniques-for-relieving-auto-accident-injury-pain/"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Denver Sports Docs",
+          "Highlands Sport and Spine",
+          "Denver Sports Medicine"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 200751,
+      "location_name": "Denver",
+      "organic_results_seen": 99,
+      "query": "sports chiropractic near me",
+      "resolved_location": "Denver, CO,Colorado,United States",
+      "se_results_count": 18400000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "organic",
+        "organic",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "www.alliedspineandsports.com",
+          "organic_position": 1,
+          "url": "https://www.alliedspineandsports.com/"
+        },
+        {
+          "host": "www.tsfchiropractic.com",
+          "organic_position": 2,
+          "url": "https://www.tsfchiropractic.com/"
+        },
+        {
+          "host": "www.bouldersportsclinic.com",
+          "organic_position": 3,
+          "url": "https://www.bouldersportsclinic.com/"
+        },
+        {
+          "host": "www.rmsportschiro.com",
+          "organic_position": 4,
+          "url": "https://www.rmsportschiro.com/"
+        },
+        {
+          "host": "carolinasportsclinic.com",
+          "organic_position": 5,
+          "url": "https://carolinasportsclinic.com/"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "Mile High Sports Chiropractic",
+          "Denver Sports Docs",
+          "Denver Sports Medicine"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 200751,
+      "location_name": "Denver",
+      "organic_results_seen": 99,
+      "query": "sports chiropractor near me",
+      "resolved_location": "Denver, CO,Colorado,United States",
+      "se_results_count": 193,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "spineandsportcenter.com",
+          "organic_position": 1,
+          "url": "https://spineandsportcenter.com/"
+        },
+        {
+          "host": "www.bouldersportsclinic.com",
+          "organic_position": 2,
+          "url": "https://www.bouldersportsclinic.com/"
+        },
+        {
+          "host": "lexingtonspinalcare.com",
+          "organic_position": 3,
+          "url": "https://lexingtonspinalcare.com/services/athlete-care/"
+        },
+        {
+          "host": "www.yelp.com",
+          "organic_position": 4,
+          "url": "https://www.yelp.com/search?find_desc=Sports+Chiropractor&find_loc=Jacksonville%2C+FL"
+        },
+        {
+          "host": "www.ihcare.com",
+          "organic_position": 5,
+          "url": "https://www.ihcare.com/blog/sports-chiropractor-near-me/"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 32,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 33,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "The Joint Chiropractic",
+          "Denver Chiropractic LLC",
+          "The Joint Chiropractic"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 200751,
+      "location_name": "Denver",
+      "organic_results_seen": 99,
+      "query": "chiropractor near me",
+      "resolved_location": "Denver, CO,Colorado,United States",
+      "se_results_count": 70900000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "www.littleton-chiropractic-co.com",
+          "organic_position": 1,
+          "url": "https://www.littleton-chiropractic-co.com/"
+        },
+        {
+          "host": "infinitywellnesscenter.com",
+          "organic_position": 2,
+          "url": "https://infinitywellnesscenter.com/"
+        },
+        {
+          "host": "www.chiroone.com",
+          "organic_position": 3,
+          "url": "https://www.chiroone.com/locations/"
+        },
+        {
+          "host": "coloradochiropracticclinic.com",
+          "organic_position": 4,
+          "url": "https://coloradochiropracticclinic.com/"
+        },
+        {
+          "host": "www.slhn.org",
+          "organic_position": 5,
+          "url": "https://www.slhn.org/chiropractic-care"
+        }
+      ],
+      "total_serp_items": 113,
+      "usable": true
+    },
+    {
+      "ai_overview": {
+        "citations": [],
+        "present": false,
+        "site_cited": false
+      },
+      "best_organic_position": null,
+      "composition_detail": [
+        {
+          "rank_absolute": 1,
+          "rank_group": 1,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 2,
+          "rank_group": 2,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 3,
+          "rank_group": 3,
+          "type": "local_pack"
+        },
+        {
+          "rank_absolute": 4,
+          "rank_group": 1,
+          "type": "people_also_ask"
+        },
+        {
+          "rank_absolute": 5,
+          "rank_group": 1,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 6,
+          "rank_group": 2,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 7,
+          "rank_group": 3,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 8,
+          "rank_group": 4,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 9,
+          "rank_group": 5,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 10,
+          "rank_group": 6,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 11,
+          "rank_group": 7,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 12,
+          "rank_group": 8,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 13,
+          "rank_group": 9,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 14,
+          "rank_group": 1,
+          "type": "product_considerations"
+        },
+        {
+          "rank_absolute": 15,
+          "rank_group": 1,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 16,
+          "rank_group": 10,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 17,
+          "rank_group": 11,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 18,
+          "rank_group": 12,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 19,
+          "rank_group": 13,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 20,
+          "rank_group": 14,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 21,
+          "rank_group": 15,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 22,
+          "rank_group": 16,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 23,
+          "rank_group": 17,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 24,
+          "rank_group": 18,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 25,
+          "rank_group": 19,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 26,
+          "rank_group": 2,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 27,
+          "rank_group": 20,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 28,
+          "rank_group": 21,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 29,
+          "rank_group": 22,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 30,
+          "rank_group": 23,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 31,
+          "rank_group": 24,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 32,
+          "rank_group": 25,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 33,
+          "rank_group": 26,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 34,
+          "rank_group": 27,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 35,
+          "rank_group": 28,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 36,
+          "rank_group": 29,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 37,
+          "rank_group": 3,
+          "type": "related_searches"
+        },
+        {
+          "rank_absolute": 38,
+          "rank_group": 30,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 39,
+          "rank_group": 31,
+          "type": "organic"
+        },
+        {
+          "rank_absolute": 40,
+          "rank_group": 32,
+          "type": "organic"
+        }
+      ],
+      "device": "desktop",
+      "domain_presence_top100": [],
+      "local_pack": {
+        "block_rank": 1,
+        "entries": 3,
+        "names": [
+          "The Joint Chiropractic",
+          "Castle Rock Chiropractic",
+          "The Joint Chiropractic"
+        ],
+        "present": true,
+        "site_entry": null,
+        "site_in_pack": false
+      },
+      "location_code": 200751,
+      "location_name": "Denver",
+      "organic_results_seen": 94,
+      "query": "chiropractor",
+      "resolved_location": "Denver, CO,Colorado,United States",
+      "se_results_count": 48200000,
+      "serp_composition": [
+        "local_pack",
+        "local_pack",
+        "local_pack",
+        "people_also_ask",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "product_considerations",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "images",
+        "organic",
+        "related_searches",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "organic",
+        "related_searches"
+      ],
+      "site_ranks_organically": false,
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "task_cost": 0.02,
+      "top_competitors": [
+        {
+          "host": "en.wikipedia.org",
+          "organic_position": 1,
+          "url": "https://en.wikipedia.org/wiki/Chiropractic"
+        },
+        {
+          "host": "www.nccih.nih.gov",
+          "organic_position": 2,
+          "url": "https://www.nccih.nih.gov/health/chiropractic-in-depth"
+        },
+        {
+          "host": "www.webmd.com",
+          "organic_position": 3,
+          "url": "https://www.webmd.com/a-to-z-guides/chiropractor"
+        },
+        {
+          "host": "www.acatoday.org",
+          "organic_position": 4,
+          "url": "https://www.acatoday.org/news-publications/newsroom/key-facts/"
+        },
+        {
+          "host": "www.bls.gov",
+          "organic_position": 5,
+          "url": "https://www.bls.gov/ooh/healthcare/chiropractors.htm"
+        }
+      ],
+      "total_serp_items": 114,
+      "usable": true
+    }
+  ]
+}
