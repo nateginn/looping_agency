@@ -14,3 +14,8 @@ One line appended per run by `tools/run_loop.py`. This is a derived view; `runs/
 - 2026-08-04T12:00:51.359006Z run 2026-08-04T12-00-02-121Z-mowhla: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 3 stale, 0 awaiting-live
 - 2026-08-05T12:00:59.713468Z run 2026-08-05T12-00-02-559Z-etjn3m: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 4 stale, 0 awaiting-live
 - 2026-08-06T12:02:50.143594Z run 2026-08-06T12-00-01-176Z-31at0f: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 5 stale, 0 awaiting-live
+- 2026-08-07T12:01:00.788601Z run 2026-08-07T12-00-02-524Z-cp1nme: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- 2026-08-08T12:00:59.624357Z run 2026-08-08T12-00-01-886Z-s83efq: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- 2026-08-09T12:00:45.501686Z run 2026-08-09T12-00-02-538Z-0rf04s: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- 2026-08-10T12:00:02.978882Z run 2026-08-10T12-00-01-321Z-2qbkux: partial-failure (connector error, redacted)
+- 2026-08-11T05:20:39.028477Z run 2026-08-11T05-18-25-362Z-u5z1dd: ok, mode full, 3 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live

@@ -1,0 +1,41 @@
+{
+  "proposal_id": "prop-2026-08-11T05-18-25-362Z-u5z1dd-1",
+  "action_type": "meta-description-rewrite",
+  "target_page": "https://acceleratedrehabtherapy.com/",
+  "target_keyword": "accelerate rehab",
+  "gsc_date_window": "2026-08-11T05:18:26.348651Z",
+  "clicks": 0,
+  "impressions": 1,
+  "avg_position": 10,
+  "ctr": 0.0,
+  "local_rank_data": null,
+  "current_value": "Accelerated Rehab Therapy offers chiropractic care, physical therapy, massage, and acupuncture in Greeley and Denver, CO. Auto injury, work comp, and chronic pain specialists. Schedule your appointment today.",
+  "proposed_value": "Chiropractic, physical therapy, massage and acupuncture in Greeley and Denver, CO. Auto injury and work comp specialists. Book your appointment today.",
+  "source_page": null,
+  "destination_page": null,
+  "anchor_text": null,
+  "destination_indexation_status": null,
+  "source_snippet": null,
+  "project_objective": "Improve GSC position/clicks on lead-intent pages (services, locations) for acceleratedrehabtherapy.com without regressing currently-ranking pages, while monitoring local rank, backlinks, and technical/indexation health",
+  "keyword_exclusions": [
+    "accelerate health",
+    "accelerated health",
+    "accelerated healing",
+    "accelerated recovery",
+    "accelerated performance"
+  ],
+  "prior_changes_same_page": [],
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "guardrail": {
+    "metric": "ranking_pages_position",
+    "comparator": ">",
+    "value": 5
+  },
+  "rollback_plan": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "baseline_position": 10,
+  "rationale": "keyword \"accelerate rehab\" at position 10 on https://acceleratedrehabtherapy.com/ with 0 clicks - candidate for meta-description-rewrite",
+  "spec_content_hash": "8de78ba60db6df3ce9ba903f67db1428c6e839ed88cc08ae0bba8c24ec5cc0dd",
+  "pass_number": 1,
+  "evidence_packet_hash": "f576387161617ce9f3dcf4e03ad52791ca402c24d64d485b55140a39f934f9d6"
+}

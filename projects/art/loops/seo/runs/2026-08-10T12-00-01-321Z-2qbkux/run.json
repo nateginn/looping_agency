@@ -1,0 +1,37 @@
+{
+  "run_id": "2026-08-10T12-00-01-321Z-2qbkux",
+  "project": "art",
+  "loop": "seo",
+  "mode": "full",
+  "run_name": "full",
+  "start": "2026-08-10T12:00:01.321378Z",
+  "end": "2026-08-10T12:00:02.977475Z",
+  "status": "partial-failure",
+  "tool_calls": [
+    {
+      "tool": "pagespeed",
+      "args": {
+        "run_name": "full"
+      },
+      "at": "2026-08-10T12:00:02.977481Z",
+      "ok": false,
+      "error": "pagespeed connector failed: pagespeed.py: PSI API returned 500 Internal Server Error: {\n  \"error\": {\n    \"code\": 500,\n    \"message\": \"Lighthouse returned error: Something went wrong.\",\n    \"errors\": [\n      {\n        \"message\": \"Lighthouse returned error: Something went wrong.\",\n        \"domain\": \"lighthouse\",\n        \"reason\": \"lighthouseError\"\n      }\n    ]\n  }\n}\n"
+    }
+  ],
+  "credential_alias_used": {
+    "gsc": "art-gsc-readonly",
+    "pagespeed": "art-pagespeed-key",
+    "gsc-indexation": "art-gsc-readonly",
+    "dataforseo-local-rank": "art-dataforseo-readonly",
+    "dataforseo-backlinks": "art-dataforseo-readonly"
+  },
+  "decisions": [
+    "connector failed; no proposals generated this run; prior state left untouched"
+  ],
+  "proposals_created": [],
+  "proposals_evaluated": [],
+  "stale_proposals": [],
+  "awaiting_live_confirmation": [],
+  "stuck_implemented": [],
+  "final_status": "partial-failure"
+}
