@@ -5,6 +5,7 @@
 # injected resolver is still supported for API-key usage.
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -17,6 +18,20 @@ except ImportError:
 
 REQUIRED_SCOPE = "read-only (PageSpeed Insights API)"
 PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+
+# PSI runs a live Lighthouse render per call and returns a 500
+# ("Lighthouse returned error: Something went wrong") on its own transient
+# internal failures - observed 2026-08-10, where a single 500 aborted the whole
+# weekly art/seo run. The call is a read-only idempotent GET against a free
+# API, so retrying is safe and costs nothing but wall-clock.
+MAX_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = (2, 5)
+
+
+def _is_retryable_status(status):
+    """5xx only. A 4xx is a real answer - 403 (bad/absent key), 429 (quota
+    exhausted), 400 (bad URL) - and retrying it just burns quota and time."""
+    return isinstance(status, int) and 500 <= status < 600
 
 
 def _default_http_get(url, headers):
@@ -79,6 +94,8 @@ def pull_pagespeed(
     strategy="MOBILE",
     category="performance",
     http_get=_default_http_get,
+    max_attempts=MAX_ATTEMPTS,
+    sleep=time.sleep,
 ):
     if pages is None or not isinstance(pages, list) or len(pages) < 1:
         raise ValueError("pagespeed.py: pages is required (non-empty list of absolute URLs)")
@@ -97,13 +114,27 @@ def pull_pagespeed(
         if api_key:
             query["key"] = api_key
         url = f"{PSI_ENDPOINT}?{urllib.parse.urlencode(query)}"
-        try:
-            status, reason, raw = http_get(url, {})
-        except Exception as e:
-            raise RuntimeError(redact_text(f"pagespeed.py: request to PSI API failed: {e}", secret_map)) from None
-        if status < 200 or status >= 300:
+        attempts = max(1, int(max_attempts or 1))
+        raw = None
+        for attempt in range(1, attempts + 1):
+            last_attempt = attempt == attempts
+            try:
+                status, reason, raw = http_get(url, {})
+            except Exception as e:
+                # Transport-level failure (timeout, reset, DNS). Retryable for
+                # the same reason a 5xx is: nothing was answered.
+                if last_attempt:
+                    raise RuntimeError(redact_text(f"pagespeed.py: request to PSI API failed after {attempt} attempt(s): {e}", secret_map)) from None
+                sleep(RETRY_BACKOFF_SECONDS[min(attempt - 1, len(RETRY_BACKOFF_SECONDS) - 1)])
+                continue
+            if 200 <= status < 300:
+                break
             body_text = raw.decode("utf-8", errors="replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
-            raise RuntimeError(redact_text(f"pagespeed.py: PSI API returned {status} {reason}: {body_text}", secret_map))
+            if _is_retryable_status(status) and not last_attempt:
+                sleep(RETRY_BACKOFF_SECONDS[min(attempt - 1, len(RETRY_BACKOFF_SECONDS) - 1)])
+                continue
+            suffix = f" after {attempt} attempt(s)" if attempt > 1 else ""
+            raise RuntimeError(redact_text(f"pagespeed.py: PSI API returned {status} {reason}{suffix}: {body_text}", secret_map))
 
         body = json.loads(raw)
         metrics = (((body.get("loadingExperience") or {}).get("metrics")) or {})
@@ -205,6 +236,63 @@ def _self_test():
         api_error_message = str(e)
     checks.append(("API error surfaces status", "403" in api_error_message))
     checks.append(("key echoed in PSI error body is redacted before throwing", fake_key not in api_error_message))
+
+    # Retry behaviour - the 2026-08-10 failure mode: a transient Lighthouse 500
+    # aborting the whole run. Sleeps are injected so the tests stay instant.
+    slept = []
+    calls = {"n": 0}
+
+    def fake_http_500_then_ok(url, headers):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            return 500, "Internal Server Error", b'{"error":{"message":"Lighthouse returned error: Something went wrong."}}'
+        return fake_http_ok(url, headers)
+
+    recovered = pull_pagespeed(
+        pages=["https://example.com/"],
+        http_get=fake_http_500_then_ok,
+        sleep=slept.append,
+    )
+    checks.append(("a transient PSI 500 is retried and the run recovers", recovered["rows"][0]["performance_score"] == 91))
+    checks.append(("retries back off rather than hammering the API", slept == [2, 5]))
+
+    calls_always_500 = {"n": 0}
+
+    def fake_http_always_500(url, headers):
+        calls_always_500["n"] += 1
+        return 500, "Internal Server Error", b"persistent lighthouse failure"
+
+    gave_up_message = ""
+    try:
+        pull_pagespeed(pages=["https://example.com/"], http_get=fake_http_always_500, sleep=lambda s: None)
+    except RuntimeError as e:
+        gave_up_message = str(e)
+    checks.append(("a persistent 500 gives up after MAX_ATTEMPTS, it does not loop forever", calls_always_500["n"] == MAX_ATTEMPTS))
+    checks.append(("the give-up error says how many attempts were made", "3 attempt(s)" in gave_up_message))
+
+    calls_403 = {"n": 0}
+
+    def fake_http_403_counting(url, headers):
+        calls_403["n"] += 1
+        return 403, "Forbidden", b"bad key"
+
+    try:
+        pull_pagespeed(pages=["https://example.com/"], http_get=fake_http_403_counting, sleep=lambda s: None)
+    except RuntimeError:
+        pass
+    checks.append(("a 4xx is a real answer and is never retried (no quota burn on 403/429)", calls_403["n"] == 1))
+
+    transport_calls = {"n": 0}
+
+    def fake_http_transport_error(url, headers):
+        transport_calls["n"] += 1
+        raise OSError("connection reset")
+
+    try:
+        pull_pagespeed(pages=["https://example.com/"], http_get=fake_http_transport_error, sleep=lambda s: None)
+    except RuntimeError:
+        pass
+    checks.append(("a transport failure is retried too, then reported", transport_calls["n"] == MAX_ATTEMPTS))
 
     failed = 0
     for name, ok in checks:

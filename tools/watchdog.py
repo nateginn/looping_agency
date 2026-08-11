@@ -75,6 +75,38 @@ def _read_loop_spec(spec_path):
     return yaml.safe_load(fm)
 
 
+def _loop_is_enabled(project_path, loop_name):
+    """Honor `loops_enabled` in projects/<slug>/project.md - the field every
+    spec's `stop_condition` already names as the off switch, but which until
+    now nothing actually read.
+
+    The watchdog is the right (and only) place to enforce it: monitoring is
+    exactly the thing that should stop for a disabled loop. Running a loop
+    deliberately by hand stays possible, so fixture projects like `_demo`
+    remain runnable while no longer producing a daily false alarm.
+
+    Absent project.md, absent key, or an unparseable one all mean "enabled" -
+    a monitoring gap must never be introduced by a missing file."""
+    project_md = os.path.join(project_path, "project.md")
+    if not os.path.exists(project_md):
+        return True
+    try:
+        with open(project_md, "r", encoding="utf-8") as f:
+            fm = extract_frontmatter(f.read())
+        if fm is None:
+            return True
+        declared = (yaml.safe_load(fm) or {}).get("loops_enabled")
+    except Exception:
+        return True
+    if declared is None:
+        return True
+    if isinstance(declared, dict):  # loops_enabled: {seo: false}
+        return bool(declared.get(loop_name, False))
+    if isinstance(declared, (list, tuple, set)):
+        return loop_name in declared
+    return True
+
+
 def _read_state(loop_dir):
     import json
 
@@ -129,7 +161,7 @@ def _discover_loops(projects_root):
             spec_path = os.path.join(loop_dir, "spec.md")
             if not os.path.exists(spec_path):
                 continue
-            loops.append({"project": project_entry, "loop": loop_entry, "spec_path": spec_path, "loop_dir": loop_dir})
+            loops.append({"project": project_entry, "loop": loop_entry, "spec_path": spec_path, "loop_dir": loop_dir, "project_path": project_path})
     return loops
 
 
@@ -145,6 +177,13 @@ def check_all(projects_root=None, now=None):
     for entry in _discover_loops(projects_root):
         project, loop, spec_path, loop_dir = entry["project"], entry["loop"], entry["spec_path"], entry["loop_dir"]
         try:
+            if not _loop_is_enabled(entry["project_path"], loop):
+                # Not an alert and not a failure: the project says this loop
+                # isn't running. A watchdog that alerts on something nobody
+                # scheduled is a watchdog nobody reads.
+                checked.append({"project": project, "loop": loop, "status": "not-enabled"})
+                continue
+
             spec = _read_loop_spec(spec_path)
             if not spec or not spec.get("schedule"):
                 checked.append({"project": project, "loop": loop, "status": "no-schedule"})
@@ -222,9 +261,12 @@ def _self_test():
     def iso(dt):
         return dt.isoformat().replace("+00:00", "Z")
 
-    def make_loop(project, loop, schedule, runs=None, state_status=None, spec_mtime_ms_ago=None):
+    def make_loop(project, loop, schedule, runs=None, state_status=None, spec_mtime_ms_ago=None, loops_enabled=None):
         loop_dir = os.path.join(projects_root, project, "loops", loop)
         os.makedirs(loop_dir, exist_ok=True)
+        if loops_enabled is not None:
+            with open(os.path.join(projects_root, project, "project.md"), "w", encoding="utf-8", newline="\n") as f:
+                f.write("---\nslug: " + project + "\nloops_enabled:" + ("\n" + "\n".join(f"  - {n}" for n in loops_enabled) if loops_enabled else " []") + "\n---\n\n# fixture\n")
         spec_path = os.path.join(loop_dir, "spec.md")
         with open(spec_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(f'---\nschedule: "{schedule}"\n---\n\n# spec\n')
@@ -250,9 +292,12 @@ def _self_test():
     make_loop("proj-c", "seo", "0 * * * *", state_status="paused-breach", runs=[{"id": "r1", "start": iso(now - timedelta(hours=5))}])
     make_loop("proj-d", "seo", "0 * * * *", spec_mtime_ms_ago=5 * 60 * 60 * 1000)
     make_loop("proj-e", "seo", "0 * * * *", spec_mtime_ms_ago=60 * 1000)
+    make_loop("proj-f", "seo", "0 * * * *", runs=[{"id": "r1", "start": iso(now - timedelta(hours=5))}], loops_enabled=[])
+    make_loop("proj-g", "seo", "0 * * * *", runs=[{"id": "r1", "start": iso(now - timedelta(hours=5))}], loops_enabled=["seo"])
 
     result = check_all(projects_root=projects_root, now=now)
     alert_keys = [f'{a["project"]}/{a["loop"]}' for a in result["alerts"]]
+    status_by_key = {f'{c["project"]}/{c["loop"]}': c["status"] for c in result["checked"]}
 
     checks.append(("healthy recent-run loop produces no alert", "proj-a/seo" not in alert_keys))
     checks.append(("stale loop past cadence+grace produces an alert", "proj-b/seo" in alert_keys))
@@ -260,6 +305,10 @@ def _self_test():
     checks.append(("never-run loop past one cadence window produces an alert", "proj-d/seo" in alert_keys))
     checks.append(("brand-new never-run loop within its first cadence window produces no alert", "proj-e/seo" not in alert_keys))
     checks.append(("check_all only reads the given projects_root, never the real workspace projects/ dir", projects_root != PROJECTS_ROOT))
+    checks.append(("a stale loop the project has disabled produces no alert", "proj-f/seo" not in alert_keys))
+    checks.append(("a disabled loop is reported as not-enabled, not silently dropped from the sweep", status_by_key.get("proj-f/seo") == "not-enabled"))
+    checks.append(("a stale loop the project still declares enabled is alerted normally", "proj-g/seo" in alert_keys))
+    checks.append(("a project with no project.md at all is still monitored (missing file never creates a blind spot)", "proj-b/seo" in alert_keys))
 
     shutil.rmtree(tmp, ignore_errors=True)
 

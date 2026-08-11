@@ -15,7 +15,7 @@ import yaml
 
 try:
     from . import dataforseo, gsc, pagespeed
-    from .connector_registry import get_connector
+    from .connector_registry import get_connector, is_critical
     from .lib.credentials import resolve_credential
     from .lib.errors import ConnectorError
     from .lib.event_log import append_event
@@ -32,7 +32,7 @@ except ImportError:
     import dataforseo
     import gsc
     import pagespeed
-    from connector_registry import get_connector
+    from connector_registry import get_connector, is_critical
     from lib.credentials import resolve_credential
     from lib.errors import ConnectorError
     from lib.event_log import append_event
@@ -250,7 +250,186 @@ def _absolute_pages(spec):
     return out
 
 
+def _local_stamp(iso_utc, short=False):
+    """Render a UTC ISO-8601 stamp in this machine's local time, for humans.
+
+    Storage stays UTC everywhere on purpose and must not be "fixed" to local:
+    run IDs are used as lexicographic sort keys (`_latest_snapshot_sections`,
+    `_section_history`) and lock staleness is age arithmetic. At the autumn DST
+    rollback local time repeats an hour, so a local-stamped run ID would sort a
+    later run before an earlier one - silently selecting the wrong previous
+    snapshot - and an hour-shifted age could read a live lock as stale and let
+    two runs proceed at once. Only the human-facing surfaces are localized."""
+    if not iso_utc:
+        return "n/a"
+    try:
+        dt = datetime.fromisoformat(str(iso_utc).replace("Z", "+00:00")).astimezone()
+    except (ValueError, TypeError):
+        return str(iso_utc)
+    offset = dt.strftime("%z") or "+0000"
+    pattern = "%a %Y-%m-%d %H:%M" if short else "%a %Y-%m-%d %H:%M:%S"
+    return f"{dt.strftime(pattern)} local (UTC{offset[:3]}:{offset[3:]})"
+
+
+def _previous_technical_health(previous_snapshot):
+    """The last snapshot's technical_health, used to seed this run's section so
+    that a *partial* refresh (pagespeed succeeded, indexation degraded, or vice
+    versa) carries the other half forward instead of blanking it. Without this,
+    degrading one of the two would silently replace real rows with []."""
+    section = (previous_snapshot or {}).get("technical_health")
+    return section if isinstance(section, dict) else {}
+
+
+def _technical_health_section(current, pagespeed_as_of=None, pagespeed_rows=None, indexation_as_of=None, indexation_rows=None, sitemaps=None, secret_map=None):
+    """Merge one half of technical_health onto whatever is already there.
+    The section-level `as_of` is the *newest* of the two sub-stamps: it is what
+    `_section_history` de-duplicates snapshots by, so pinning it to the older
+    (possibly carried-forward) half would make successive refreshes look like
+    the same reading and drop them from history."""
+    pagespeed_as_of = pagespeed_as_of or current.get("pagespeed_as_of")
+    indexation_as_of = indexation_as_of or current.get("indexation_as_of")
+    stamps = [s for s in (pagespeed_as_of, indexation_as_of) if s]
+    return {
+        "as_of": max(stamps) if stamps else None,
+        "pagespeed_as_of": pagespeed_as_of,
+        "indexation_as_of": indexation_as_of,
+        "pagespeed_rows": (pagespeed_rows if pagespeed_rows is not None else current.get("pagespeed_rows")) or [],
+        "indexation_rows": (indexation_rows if indexation_rows is not None else current.get("indexation_rows")) or [],
+        "sitemaps": (sitemaps if sitemaps is not None else current.get("sitemaps")) or [],
+        "secretMap": {**(current.get("secretMap") or {}), **(secret_map or {})},
+    }
+
+
+def _dispatch_connector(input_name, handler, spec, aliases, resolver, http_get, http_post, now, scenario, previous_snapshot, fetched_sections, analytics_results, tool_calls):
+    """Run one connector, appending its results to the shared accumulators.
+    Raises ConnectorError on failure; the caller decides whether that aborts
+    the run or merely degrades it (see CONNECTOR_REGISTRY's `critical`)."""
+    if handler == "mock":
+        metrics = pull_mock_metrics(scenario=scenario, credential_alias=aliases["mock"])
+        analytics_results.append(("mock-metrics", aliases["mock"], metrics))
+        tool_calls.append({"tool": "mock-metrics", "args": {"scenario": scenario}, "at": _now_iso(), "ok": True})
+    elif handler == "gsc-search-analytics":
+        window_days = spec.get("metrics_window_days") or 28
+        end_date = now.date()
+        start_date = end_date - timedelta(days=window_days - 1)
+        args = {"site_url": spec.get("site_url"), "start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+        try:
+            metrics = gsc.pull_metrics(
+                credential_alias=aliases[input_name],
+                resolve_credential=lambda a: bearer_for_secret(resolver(a)),
+                dimensions=["query", "page"],
+                http_post=http_post or gsc._default_http_post,
+                **args,
+            )
+        except Exception as e:
+            raise ConnectorError(f"gsc connector failed: {e}", raw_secrets={}, tool_name="gsc") from None
+        analytics_results.append(("gsc", aliases[input_name], metrics))
+        tool_calls.append({"tool": "gsc", "args": args, "at": _now_iso(), "ok": True})
+    elif handler == "dataforseo-serp":
+        args = {
+            "targets": spec.get("targets"),
+            "location_code": spec.get("location_code") or 2840,
+            "language_code": spec.get("language_code") or "en",
+            "device": spec.get("device") or "desktop",
+        }
+        try:
+            metrics = dataforseo.pull_metrics(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver,
+                http_post=http_post or dataforseo._default_http_post,
+                **args,
+            )
+        except Exception as e:
+            raise ConnectorError(f"dataforseo connector failed: {e}", raw_secrets={}, tool_name="dataforseo") from None
+        analytics_results.append(("dataforseo", aliases[input_name], metrics))
+        tool_calls.append({"tool": "dataforseo", "args": {"targets": args["targets"]}, "at": _now_iso(), "ok": True})
+    elif handler == "dataforseo-local-rank":
+        try:
+            fetched_sections["local_rank"] = dataforseo.pull_local_rank(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver,
+                targets=spec.get("targets"),
+                locations=spec.get("locations"),
+                language_code=spec.get("language_code") or "en",
+                device=spec.get("device") or "desktop",
+                http_post=http_post or dataforseo._default_http_post,
+                http_get=http_get or dataforseo._default_http_get,
+            )
+        except Exception as e:
+            raise ConnectorError(f"dataforseo-local-rank connector failed: {e}", raw_secrets={}, tool_name="dataforseo-local-rank") from None
+        tool_calls.append({"tool": "dataforseo-local-rank", "args": {"locations": [l.get("name") for l in spec.get("locations") or []], "targets": spec.get("targets")}, "at": _now_iso(), "ok": True})
+    elif handler == "dataforseo-backlinks":
+        previous_backlinks = (previous_snapshot or {}).get("backlinks") if previous_snapshot else None
+        date_from = None
+        if isinstance(previous_backlinks, dict) and previous_backlinks.get("as_of"):
+            date_from = previous_backlinks["as_of"][:10]
+        try:
+            fetched_sections["backlinks"] = dataforseo.pull_backlinks(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver,
+                target=spec.get("domain"),
+                date_from=date_from,
+                date_to=now.date().isoformat(),
+                http_post=http_post or dataforseo._default_http_post,
+            )
+        except Exception as e:
+            raise ConnectorError(f"dataforseo-backlinks connector failed: {e}", raw_secrets={}, tool_name="dataforseo-backlinks") from None
+        tool_calls.append({"tool": "dataforseo-backlinks", "args": {"target": spec.get("domain"), "date_from": date_from}, "at": _now_iso(), "ok": True})
+    elif handler == "pagespeed":
+        try:
+            fetched_pagespeed = pagespeed.pull_pagespeed(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver if aliases[input_name] else None,
+                pages=_absolute_pages(spec),
+                http_get=http_get or pagespeed._default_http_get,
+            )
+        except Exception as e:
+            raise ConnectorError(f"pagespeed connector failed: {e}", raw_secrets={}, tool_name="pagespeed") from None
+        fetched_sections["technical_health"] = _technical_health_section(
+            fetched_sections.get("technical_health") or _previous_technical_health(previous_snapshot),
+            pagespeed_as_of=fetched_pagespeed["as_of"],
+            pagespeed_rows=fetched_pagespeed["rows"],
+            secret_map=fetched_pagespeed.get("secretMap"),
+        )
+        tool_calls.append({"tool": "pagespeed", "args": {"pages": _absolute_pages(spec)}, "at": _now_iso(), "ok": True})
+    elif handler == "gsc-indexation":
+        try:
+            sitemaps = gsc.pull_sitemaps(
+                credential_alias=aliases[input_name],
+                resolve_credential=lambda a: bearer_for_secret(resolver(a)),
+                site_url=spec.get("site_url"),
+                http_get=http_get or gsc._default_http_get,
+            )
+            inspections = gsc.inspect_urls(
+                credential_alias=aliases[input_name],
+                resolve_credential=lambda a: bearer_for_secret(resolver(a)),
+                site_url=spec.get("site_url"),
+                urls=_absolute_pages(spec),
+                http_post=http_post or gsc._default_http_post,
+            )
+        except Exception as e:
+            raise ConnectorError(f"gsc-indexation connector failed: {e}", raw_secrets={}, tool_name="gsc-indexation") from None
+        fetched_sections["technical_health"] = _technical_health_section(
+            fetched_sections.get("technical_health") or _previous_technical_health(previous_snapshot),
+            indexation_as_of=inspections["as_of"],
+            indexation_rows=inspections["rows"],
+            sitemaps=sitemaps["rows"],
+            secret_map={**(sitemaps.get("secretMap") or {}), **(inspections.get("secretMap") or {})},
+        )
+        tool_calls.append({"tool": "gsc-indexation", "args": {"pages": _absolute_pages(spec), "site_url": spec.get("site_url")}, "at": _now_iso(), "ok": True})
+    else:
+        raise ConnectorError(f'run_loop.py: no connector wired for spec input "{input_name}"', raw_secrets={}, tool_name=input_name)
+
+
 def _fetch_metrics(spec, run_mode, scenario, previous_snapshot=None, project_dir=None, resolve_credential_fn=None, http_post=None, http_get=None):
+    """Pull every connector this run mode declares.
+
+    A *critical* connector's failure propagates as ConnectorError and aborts
+    the run (the caller writes a partial-failure run and touches no state). A
+    *degradable* connector's failure is recorded as a failed tool_call and the
+    run continues on the sections that did come back - one flaky third-party
+    enrichment API must not cost a whole cycle's evaluation and proposals.
+    See CONNECTOR_REGISTRY for which is which and why."""
     aliases = _aliases_used(spec, run_mode["inputs"])
     resolver = resolve_credential_fn or (lambda alias: resolve_credential(alias, project_dir=project_dir))
     http_get = http_get or gsc._default_http_get
@@ -258,132 +437,34 @@ def _fetch_metrics(spec, run_mode, scenario, previous_snapshot=None, project_dir
     fetched_sections = {}
     tool_calls = []
     analytics_results = []
+    degraded = []
 
     for input_name in run_mode["inputs"]:
         handler = (get_connector(input_name) or {}).get("handler")
-        if handler == "mock":
-            metrics = pull_mock_metrics(scenario=scenario, credential_alias=aliases["mock"])
-            analytics_results.append(("mock-metrics", aliases["mock"], metrics))
-            tool_calls.append({"tool": "mock-metrics", "args": {"scenario": scenario}, "at": _now_iso(), "ok": True})
-        elif handler == "gsc-search-analytics":
-            window_days = spec.get("metrics_window_days") or 28
-            end_date = now.date()
-            start_date = end_date - timedelta(days=window_days - 1)
-            args = {"site_url": spec.get("site_url"), "start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
-            try:
-                metrics = gsc.pull_metrics(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=lambda a: bearer_for_secret(resolver(a)),
-                    dimensions=["query", "page"],
-                    http_post=http_post or gsc._default_http_post,
-                    **args,
-                )
-            except Exception as e:
-                raise ConnectorError(f"gsc connector failed: {e}", raw_secrets={}, tool_name="gsc") from None
-            analytics_results.append(("gsc", aliases[input_name], metrics))
-            tool_calls.append({"tool": "gsc", "args": args, "at": _now_iso(), "ok": True})
-        elif handler == "dataforseo-serp":
-            args = {
-                "targets": spec.get("targets"),
-                "location_code": spec.get("location_code") or 2840,
-                "language_code": spec.get("language_code") or "en",
-                "device": spec.get("device") or "desktop",
-            }
-            try:
-                metrics = dataforseo.pull_metrics(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=resolver,
-                    http_post=http_post or dataforseo._default_http_post,
-                    **args,
-                )
-            except Exception as e:
-                raise ConnectorError(f"dataforseo connector failed: {e}", raw_secrets={}, tool_name="dataforseo") from None
-            analytics_results.append(("dataforseo", aliases[input_name], metrics))
-            tool_calls.append({"tool": "dataforseo", "args": {"targets": args["targets"]}, "at": _now_iso(), "ok": True})
-        elif handler == "dataforseo-local-rank":
-            try:
-                fetched_sections["local_rank"] = dataforseo.pull_local_rank(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=resolver,
-                    targets=spec.get("targets"),
-                    locations=spec.get("locations"),
-                    language_code=spec.get("language_code") or "en",
-                    device=spec.get("device") or "desktop",
-                    http_post=http_post or dataforseo._default_http_post,
-                    http_get=http_get or dataforseo._default_http_get,
-                )
-            except Exception as e:
-                raise ConnectorError(f"dataforseo-local-rank connector failed: {e}", raw_secrets={}, tool_name="dataforseo-local-rank") from None
-            tool_calls.append({"tool": "dataforseo-local-rank", "args": {"locations": [l.get("name") for l in spec.get("locations") or []], "targets": spec.get("targets")}, "at": _now_iso(), "ok": True})
-        elif handler == "dataforseo-backlinks":
-            previous_backlinks = (previous_snapshot or {}).get("backlinks") if previous_snapshot else None
-            date_from = None
-            if isinstance(previous_backlinks, dict) and previous_backlinks.get("as_of"):
-                date_from = previous_backlinks["as_of"][:10]
-            try:
-                fetched_sections["backlinks"] = dataforseo.pull_backlinks(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=resolver,
-                    target=spec.get("domain"),
-                    date_from=date_from,
-                    date_to=now.date().isoformat(),
-                    http_post=http_post or dataforseo._default_http_post,
-                )
-            except Exception as e:
-                raise ConnectorError(f"dataforseo-backlinks connector failed: {e}", raw_secrets={}, tool_name="dataforseo-backlinks") from None
-            tool_calls.append({"tool": "dataforseo-backlinks", "args": {"target": spec.get("domain"), "date_from": date_from}, "at": _now_iso(), "ok": True})
-        elif handler == "pagespeed":
-            try:
-                fetched_pagespeed = pagespeed.pull_pagespeed(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=resolver if aliases[input_name] else None,
-                    pages=_absolute_pages(spec),
-                    http_get=http_get or pagespeed._default_http_get,
-                )
-            except Exception as e:
-                raise ConnectorError(f"pagespeed connector failed: {e}", raw_secrets={}, tool_name="pagespeed") from None
-            current = fetched_sections.get("technical_health") or {}
-            fetched_sections["technical_health"] = {
-                "as_of": fetched_pagespeed["as_of"],
-                "pagespeed_as_of": fetched_pagespeed["as_of"],
-                "indexation_as_of": current.get("indexation_as_of"),
-                "pagespeed_rows": fetched_pagespeed["rows"],
-                "indexation_rows": current.get("indexation_rows") or [],
-                "sitemaps": current.get("sitemaps") or [],
-                "secretMap": {**(current.get("secretMap") or {}), **(fetched_pagespeed.get("secretMap") or {})},
-            }
-            tool_calls.append({"tool": "pagespeed", "args": {"pages": _absolute_pages(spec)}, "at": _now_iso(), "ok": True})
-        elif handler == "gsc-indexation":
-            try:
-                sitemaps = gsc.pull_sitemaps(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=lambda a: bearer_for_secret(resolver(a)),
-                    site_url=spec.get("site_url"),
-                    http_get=http_get or gsc._default_http_get,
-                )
-                inspections = gsc.inspect_urls(
-                    credential_alias=aliases[input_name],
-                    resolve_credential=lambda a: bearer_for_secret(resolver(a)),
-                    site_url=spec.get("site_url"),
-                    urls=_absolute_pages(spec),
-                    http_post=http_post or gsc._default_http_post,
-                )
-            except Exception as e:
-                raise ConnectorError(f"gsc-indexation connector failed: {e}", raw_secrets={}, tool_name="gsc-indexation") from None
-            current = fetched_sections.get("technical_health") or {}
-            as_of = inspections["as_of"]
-            fetched_sections["technical_health"] = {
-                "as_of": current.get("pagespeed_as_of") or as_of,
-                "pagespeed_as_of": current.get("pagespeed_as_of"),
-                "indexation_as_of": as_of,
-                "pagespeed_rows": current.get("pagespeed_rows") or [],
-                "indexation_rows": inspections["rows"],
-                "sitemaps": sitemaps["rows"],
-                "secretMap": {**(current.get("secretMap") or {}), **(sitemaps.get("secretMap") or {}), **(inspections.get("secretMap") or {})},
-            }
-            tool_calls.append({"tool": "gsc-indexation", "args": {"pages": _absolute_pages(spec), "site_url": spec.get("site_url")}, "at": _now_iso(), "ok": True})
-        else:
-            raise ConnectorError(f'run_loop.py: no connector wired for spec input "{input_name}"', raw_secrets={}, tool_name=input_name)
+        try:
+            _dispatch_connector(
+                input_name,
+                handler,
+                spec,
+                aliases,
+                resolver,
+                http_get,
+                http_post,
+                now,
+                scenario,
+                previous_snapshot,
+                fetched_sections,
+                analytics_results,
+                tool_calls,
+            )
+        except ConnectorError as err:
+            if is_critical(input_name):
+                raise
+            # run.json is redacted wholesale against the run's secret_map
+            # before it is written, so the message is safe to carry here.
+            message = str(err)
+            degraded.append({"tool": getattr(err, "tool_name", None) or input_name, "error": message})
+            tool_calls.append({"tool": getattr(err, "tool_name", None) or input_name, "args": {"input": input_name}, "at": _now_iso(), "ok": False, "error": message})
 
     if analytics_results:
         fetched_sections["search_analytics"] = _merge_metrics(analytics_results)
@@ -392,7 +473,7 @@ def _fetch_metrics(spec, run_mode, scenario, previous_snapshot=None, project_dir
     for section in fetched_sections.values():
         if isinstance(section, dict):
             secret_map.update(section.get("secretMap") or {})
-    return {"sections": fetched_sections, "tool_calls": tool_calls, "secretMap": secret_map}
+    return {"sections": fetched_sections, "tool_calls": tool_calls, "secretMap": secret_map, "degraded": degraded}
 
 
 def _proposal_row_for_page(metrics, proposal):
@@ -718,7 +799,7 @@ def _fetch_footer_location_diff(loop_dir, spec, now):
     return payload
 
 
-def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=None):
+def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=None, started_at=None):
     not_evaluable_now = not_evaluable_now or []
     status_buckets = _status_buckets(proposals)
     report_lines = [
@@ -726,6 +807,9 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
         "",
         f"**Status:** {status}",
         f"**Mode:** {mode}",
+        # Run IDs are UTC by design (sort keys); this line is the local-time
+        # reading of the same instant, so the report matches your wall clock.
+        f"**Started:** {_local_stamp(started_at)}" if started_at else "",
         "",
         f"## Needs Attention ({len(attention_findings)})",
     ]
@@ -736,7 +820,7 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
         report_lines.append(f'- Monthly footer location check failed ({footer_check.get("checked_at")}): {footer_check.get("error")}')
 
     local_rank = snapshot.get("local_rank") or {}
-    report_lines.extend(["", f'## Local Rank By Location (as of {local_rank.get("as_of") or "n/a"})'])
+    report_lines.extend(["", f'## Local Rank By Location (as of {_local_stamp(local_rank.get("as_of"), short=True)})'])
     if local_rank.get("rows"):
         for row in local_rank["rows"]:
             report_lines.append(f'- {row.get("location_name")}: "{row.get("keyword")}" -> {row.get("organic_rank_position")} on {row.get("page")}')
@@ -746,14 +830,14 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
     backlinks = snapshot.get("backlinks") or {}
     summary = backlinks.get("summary") or {}
     history = backlinks.get("history") or {}
-    report_lines.extend(["", f'## Backlinks (as of {backlinks.get("as_of") or "n/a"})'])
+    report_lines.extend(["", f'## Backlinks (as of {_local_stamp(backlinks.get("as_of"), short=True)})'])
     if backlinks:
         report_lines.append(f'- referring domains: {summary.get("referring_domains")}, backlinks: {summary.get("backlinks")}, new/lost backlinks: {history.get("new_backlinks")}/{history.get("lost_backlinks")}, new/lost referring domains: {history.get("new_referring_domains")}/{history.get("lost_referring_domains")}')
     else:
         report_lines.append("- none")
 
     tech = snapshot.get("technical_health") or {}
-    report_lines.extend(["", f'## Technical Health (as of {tech.get("as_of") or "n/a"})'])
+    report_lines.extend(["", f'## Technical Health (as of {_local_stamp(tech.get("as_of"), short=True)})'])
     if tech.get("pagespeed_rows"):
         for row in tech["pagespeed_rows"]:
             report_lines.append(f'- CWV {row.get("page")}: {row.get("cwv_status")} (LCP {row.get("lcp_ms")}, INP {row.get("inp_ms")}, CLS {row.get("cls")}, score {row.get("performance_score")})')
@@ -877,9 +961,10 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
             with open(os.path.join(run_dir, "report.md"), "w", encoding="utf-8", newline="\n") as f:
                 f.write(f"# Run {run_id} ({loop_name} / {project_slug})\n\n**Status:** partial-failure\n\nConnector call failed:\n\n```\n{redacted_message}\n```\n\nNo proposals were generated this run. State left untouched.\n")
             with open(memory_path, "a", encoding="utf-8", newline="\n") as f:
-                f.write(f"- {_now_iso()} run {run_id}: partial-failure (connector error, redacted)\n")
+                f.write(f"- {_local_stamp(_now_iso(), short=True)} / {_now_iso()} run {run_id}: partial-failure (connector error, redacted)\n")
             return {"status": "partial-failure", "run_id": run_id}
 
+        degraded = pulled.get("degraded") or []
         snapshot = _build_snapshot(previous_snapshot, pulled["sections"])
         secret_map = dict(pulled["secretMap"])
         for section in snapshot.values():
@@ -983,6 +1068,14 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         for proposal in not_evaluable_now:
             if proposal.get("not_evaluable_streak", 0) >= 3:
                 attention_findings.append(f'proposal {proposal["id"]}: not-evaluable for {proposal["not_evaluable_streak"]} consecutive runs ({proposal.get("evaluation_reason")})')
+        for failure in degraded:
+            # A degraded connector must never be a silent omission: it means a
+            # section of the snapshot is carried forward from an older run.
+            attention_findings.append(f'connector degraded - {failure["tool"]}: {failure["error"]} (its snapshot section was carried forward, not refreshed)')
+        # "degraded" is distinct from "partial-failure": this run produced a
+        # snapshot, evaluated proposals and may have created new ones, it just
+        # did so with one enrichment section stale.
+        run_status = "paused-breach" if new_state["status"] == "paused-breach" else ("degraded" if degraded else "ok")
         run_json = redact_deep(
             {
                 "run_id": run_id,
@@ -992,8 +1085,9 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
                 "run_name": run_mode["name"],
                 "start": _now_iso(now),
                 "end": _now_iso(),
-                "status": "paused-breach" if new_state["status"] == "paused-breach" else "ok",
+                "status": run_status,
                 "tool_calls": pulled["tool_calls"],
+                "degraded_connectors": [failure["tool"] for failure in degraded],
                 "credential_alias_used": _aliases_used(spec, run_mode["inputs"]),
                 "decisions": list(eval_decisions),
                 "proposals_created": [p["id"] for p in new_proposals],
@@ -1004,18 +1098,19 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
                 "stuck_implemented": stuck_ids,
                 "attention_flags": attention_findings,
                 "snapshot": os.path.relpath(snapshot_path, loop_dir),
-                "final_status": "paused-breach" if new_state["status"] == "paused-breach" else "ok",
+                "final_status": run_status,
             },
             secret_map,
         )
         atomic_write_json(os.path.join(run_dir, "run.json"), run_json)
 
-        report_lines = _report_lines(run_id, project_slug, loop_name, run_mode["mode"], run_json["status"], eval_decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=not_evaluable_now)
+        report_lines = _report_lines(run_id, project_slug, loop_name, run_mode["mode"], run_json["status"], eval_decisions, new_proposals, stale_ids, proposals, awaiting_ids, stuck_ids, evaluated_now, snapshot, attention_findings, footer_check, not_evaluable_now=not_evaluable_now, started_at=_now_iso(now))
         with open(os.path.join(run_dir, "report.md"), "w", encoding="utf-8", newline="\n") as f:
             f.write("\n".join(report_lines) + "\n")
 
         with open(memory_path, "a", encoding="utf-8", newline="\n") as f:
-            f.write(f'- {_now_iso()} run {run_id}: {run_json["status"]}, mode {run_mode["mode"]}, {len(new_proposals)} new proposal(s), {len(run_json["proposals_evaluated"])} evaluated, {len(stale_ids)} stale, {len(awaiting_ids)} awaiting-live\n')
+            degraded_note = f', {len(degraded)} connector(s) degraded ({", ".join(run_json["degraded_connectors"])})' if degraded else ""
+            f.write(f'- {_local_stamp(_now_iso(), short=True)} / {_now_iso()} run {run_id}: {run_json["status"]}, mode {run_mode["mode"]}, {len(new_proposals)} new proposal(s), {len(run_json["proposals_evaluated"])} evaluated, {len(stale_ids)} stale, {len(awaiting_ids)} awaiting-live{degraded_note}\n')
 
         return {"status": run_json["status"], "run_id": run_id, "run_json": run_json}
     finally:

@@ -2,3 +2,6 @@ node_modules/
 __pycache__/
 *.pyc
 .venv/
+# Scheduler transcripts written by tools/scheduled/task.cmd. Machine-local
+# operational noise - runs/<run-id>/run.json is the observability contract.
+logs/

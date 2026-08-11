@@ -9,8 +9,11 @@ caps:
   ads_monthly_cap: null
 credential_aliases:
   mock: demo-gsc-readonly
-loops_enabled:
-  - seo
+loops_enabled: []   # 2026-08-10: emptied deliberately. _demo is an offline fixture, run by hand
+                    # when someone wants to exercise the run contract - it is not on any schedule,
+                    # so the watchdog was alerting on it every single day and drowning out real
+                    # signal. `tools/watchdog.py` reads this field; `run_loop.py` does not, so
+                    # `run_loop.py _demo seo` still works exactly as before.
 ---
 
 # Project: _demo

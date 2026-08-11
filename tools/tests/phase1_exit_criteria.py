@@ -25,7 +25,9 @@ try:
     from tools.draft_link import draft_link  # noqa: E402
     from tools.publish import publish_proposal  # noqa: E402
     from tools.review_pending import decide, list_proposals, resolve_breach  # noqa: E402
-    from tools.run_loop import run_loop, _promote_live_implementations  # noqa: E402
+    from tools.run_loop import run_loop, _promote_live_implementations, _previous_technical_health, _technical_health_section  # noqa: E402
+    from tools import pagespeed  # noqa: E402
+    from tools.connector_registry import is_critical  # noqa: E402
     from tools.lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
     from tools.lib.event_log import read_events, reconcile as event_log_reconcile  # noqa: E402
 except ImportError:
@@ -37,7 +39,9 @@ except ImportError:
     from draft_link import draft_link  # noqa: E402
     from publish import publish_proposal  # noqa: E402
     from review_pending import decide, list_proposals, resolve_breach  # noqa: E402
-    from run_loop import run_loop, _promote_live_implementations  # noqa: E402
+    from run_loop import run_loop, _promote_live_implementations, _previous_technical_health, _technical_health_section  # noqa: E402
+    import pagespeed  # noqa: E402
+    from connector_registry import is_critical  # noqa: E402
     from lib.artwebsite_seo import cleanup_worktree, create_worktree, make_attempt, proposal_branch_name  # noqa: E402
     from lib.event_log import read_events, reconcile as event_log_reconcile  # noqa: E402
 
@@ -1609,6 +1613,94 @@ def test_gsc_connector_failure_clean_partial():
     check("gsc failure: lock released", not os.path.exists(os.path.join(loop_dir, "run.lock")))
 
 
+def test_degradable_connector_failure_degrades_instead_of_killing_the_run():
+    """2026-08-10 regression: a transient PSI 500 aborted the entire weekly
+    art/seo run - no snapshot, no evaluation, no proposals - because every
+    connector error was fatal. An enrichment connector must not be able to
+    cost a whole cycle."""
+    reset_fixture()
+    degradable_spec = GOOD_SPEC.replace(
+        "inputs:\n  - mock\n",
+        "inputs:\n  - mock\n  - pagespeed\npriority_pages:\n  - https://example.invalid/\n",
+    )
+    _write_spec(degradable_spec)
+
+    original_backoff = pagespeed.RETRY_BACKOFF_SECONDS
+    pagespeed.RETRY_BACKOFF_SECONDS = (0, 0)  # keep the retry path instant under test
+    attempts = {"n": 0}
+
+    def fake_psi_500(url, headers):
+        attempts["n"] += 1
+        return 500, "Internal Server Error", b'{"error":{"message":"Lighthouse returned error: Something went wrong."}}'
+
+    try:
+        result = run_loop(PROJECT, LOOP, scenario="normal", _http_get=fake_psi_500)
+    finally:
+        pagespeed.RETRY_BACKOFF_SECONDS = original_backoff
+
+    check("degraded connector: the run completes instead of aborting", result["status"] == "degraded")
+    check("degraded connector: PSI was retried before being given up on", attempts["n"] == pagespeed.MAX_ATTEMPTS)
+
+    run_dir = os.path.join(loop_dir, "runs", result["run_id"])
+    run_json = _read_json(os.path.join(run_dir, "run.json"))
+    check("degraded connector: run.json names which connector degraded", run_json["degraded_connectors"] == ["pagespeed"])
+    check("degraded connector: the failure is recorded as a failed tool_call", any(c["tool"] == "pagespeed" and c["ok"] is False for c in run_json["tool_calls"]))
+    check("degraded connector: the healthy connector's tool_call still succeeded", any(c["tool"] == "mock-metrics" and c["ok"] is True for c in run_json["tool_calls"]))
+    check("degraded connector: it is surfaced in Needs Attention, never silently dropped", any("connector degraded - pagespeed" in f for f in run_json["attention_flags"]))
+
+    check("degraded connector: a snapshot was still written", os.path.exists(os.path.join(run_dir, "snapshot.json")))
+    snapshot = _read_json(os.path.join(run_dir, "snapshot.json"))
+    check("degraded connector: the surviving connector's metrics are in the snapshot", bool((snapshot.get("search_analytics") or {}).get("keywords")))
+    check("degraded connector: the cycle still produced proposals", len(run_json["proposals_created"]) == 1)
+
+    with open(os.path.join(run_dir, "report.md"), "r", encoding="utf-8") as f:
+        report = f.read()
+    check("degraded connector: report.md states the degraded status", "**Status:** degraded" in report)
+    check("degraded connector: report.md names the failure", "connector degraded - pagespeed" in report)
+    with open(os.path.join(loop_dir, "memory.md"), "r", encoding="utf-8") as f:
+        check("degraded connector: the memory line records the degradation", "1 connector(s) degraded (pagespeed)" in f.read())
+
+
+def test_critical_connector_failure_still_aborts_the_whole_run():
+    """The other half of the contract: search_analytics feeds evaluation and
+    proposal selection, so losing it must NOT degrade into a run that scores
+    proposals against a carried-forward, stale snapshot section."""
+    reset_fixture()
+    check("critical classification: search-analytics sources abort the run", is_critical("mock") and is_critical("gsc") and is_critical("dataforseo"))
+    check("critical classification: enrichment sources degrade it", not is_critical("pagespeed") and not is_critical("gsc-indexation") and not is_critical("dataforseo-backlinks"))
+
+    result = run_loop(PROJECT, LOOP, scenario="fail")
+    check("critical connector: the run aborts as partial-failure, not degraded", result["status"] == "partial-failure")
+    run_dir = os.path.join(loop_dir, "runs", result["run_id"])
+    check("critical connector: no snapshot is written, so nothing can be evaluated against stale data", not os.path.exists(os.path.join(run_dir, "snapshot.json")))
+
+
+def test_partial_technical_health_refresh_carries_the_other_half_forward():
+    """pagespeed and gsc-indexation share one snapshot section. When only one
+    of them refreshes, the other's rows must survive rather than being blanked
+    to []."""
+    previous = {
+        "technical_health": {
+            "as_of": "2026-08-01T00:00:00Z",
+            "pagespeed_as_of": "2026-08-01T00:00:00Z",
+            "indexation_as_of": "2026-08-01T00:00:00Z",
+            "pagespeed_rows": [{"page": "https://example.invalid/", "cwv_status": "good"}],
+            "indexation_rows": [{"url": "https://example.invalid/", "coverage_state": "Submitted and indexed"}],
+            "sitemaps": [{"path": "https://example.invalid/sitemap.xml"}],
+        }
+    }
+    merged = _technical_health_section(
+        _previous_technical_health(previous),
+        indexation_as_of="2026-08-10T00:00:00Z",
+        indexation_rows=[{"url": "https://example.invalid/", "coverage_state": "Crawled - currently not indexed"}],
+        sitemaps=[{"path": "https://example.invalid/sitemap.xml"}],
+    )
+    check("partial technical refresh: the refreshed half is updated", merged["indexation_rows"][0]["coverage_state"] == "Crawled - currently not indexed")
+    check("partial technical refresh: the degraded half's rows are carried forward, not blanked", merged["pagespeed_rows"] == previous["technical_health"]["pagespeed_rows"])
+    check("partial technical refresh: the carried-forward half keeps its own older as_of", merged["pagespeed_as_of"] == "2026-08-01T00:00:00Z")
+    check("partial technical refresh: section as_of advances to the newest half, so history de-dup still sees a new reading", merged["as_of"] == "2026-08-10T00:00:00Z")
+
+
 def test_keyword_exclusions_filters_candidates():
     reset_fixture()
     excluded_spec = GOOD_SPEC.replace("inputs:\n  - mock\n", 'inputs:\n  - mock\nkeyword_exclusions:\n  - "ai marketing"\n')
@@ -1924,6 +2016,9 @@ def main():
     test_gsc_dispatch_offline()
     test_gsc_dataforseo_merge()
     test_gsc_connector_failure_clean_partial()
+    test_degradable_connector_failure_degrades_instead_of_killing_the_run()
+    test_critical_connector_failure_still_aborts_the_whole_run()
+    test_partial_technical_health_refresh_carries_the_other_half_forward()
     test_keyword_exclusions_filters_candidates()
     test_codex_review_end_to_end_with_revision_and_auto_implement()
     test_codex_review_missing_evidence_holds()
