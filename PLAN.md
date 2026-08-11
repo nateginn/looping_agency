@@ -4,6 +4,17 @@ _Round 2 revision by Claude, after two rounds of Codex adversarial review. Super
 
 ---
 
+> **2026-08-11 — a separate, converged plan now sits upstream of this one:
+> `PLAN-SEO-PROGRAM-INTEGRATION.md`** (8 rounds of Codex adversarial review,
+> `PLAN-REVIEW-LOG-SEO-PROGRAM.md`). It does not change Path B, and it requires no R6
+> amendment — but it found that `art`'s organic web-search channel produced **23 clicks in
+> 28 days, 20 of them brand**, and three previously unrecorded defects (a DataForSEO
+> domain-match bug returning competitors' ranks, discarded SERP-composition data, and a
+> `min_sample_size` comparison that makes "verified winner" vacuous). It argues Path B
+> should stay unbuilt until candidate selection, measurability and the local/GBP channel are
+> addressed, and it recommends freezing `art`'s auto-implementation first. Read it before
+> resuming any work below.
+
 ## SELECTED OPERATING MODEL — read this before anything below it
 
 **Path B (direct push + post-deploy health verification + notification) is the selected model. Path A (side branch → PR → GitHub auto-merge, gated by branch protection) is NOT selected and is dormant by decision.** Direction chosen 2026-07-30, restated and expanded with explicit requirements 2026-08-10.

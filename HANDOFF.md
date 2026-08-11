@@ -8,7 +8,38 @@
 
 ---
 
-# CURRENT STATE — 2026-08-11 (session ended ~00:30 local, MDT / UTC-06:00)
+# CURRENT STATE — 2026-08-11 (overnight session, ~00:45–02:00 local, MDT / UTC-06:00)
+
+**Read `PLAN-SEO-PROGRAM-INTEGRATION.md` first.** Nate dropped `SEO_PROGRAM.md` (untracked
+reference material) into the repo and asked for a Codex-reviewed assessment of what in it
+should change the Loop Agency process. Eight rounds of adversarial review later
+(`PLAN-REVIEW-LOG-SEO-PROGRAM.md`, `VERDICT: APPROVED` at round 8 of a 10-round budget), the
+answer reordered the roadmap. Documentation only — **no code was changed, no spec was
+edited, no live API was called, and no boundary moved.**
+
+What it found, all measured from `runs/2026-08-11T05-18-25-362Z-u5z1dd/snapshot.json`:
+
+- `art`'s organic web-search channel produced **23 clicks in 28 days**; 20 are brand
+  navigational. The three non-brand clicks are on services the loop does not track. Five
+  commercial queries at ~position 1 with 400–710 impressions each take **zero** clicks.
+- **D1 (High)** — `dataforseo.py:165/:261` match SERP results by path substring with no
+  domain check, so competitors' URLs are reported as this site's rank. It also emerged that
+  ART *does* rank ~33–50 for `physical therapy greeley`, which the defect was obscuring.
+- **D2** — both call sites discard the SERP composition the loop already pays for.
+- **D3 (High)** — `min_sample_size` is compared against the run's *total* sample, so
+  "verified winner" currently means only "position didn't drop 5 places".
+- **The freeze switch is `approval_mode: propose-only`**, not the other two gates:
+  `auto_implementation_enabled` is only checked on the Codex auto path, and
+  `manual_approval_only` is read from the proposal's cached copy, not the spec.
+
+The plan recommends freezing `art`'s auto-implementation before any of it is built. **That
+change was deliberately not made** — it alters the live operating state and is Nate's call.
+Next scheduled proposal-generating run is **Mon 2026-08-17 06:00**; the Thursday and daily
+jobs are `technical-only` and generate nothing.
+
+---
+
+# CURRENT STATE — 2026-08-11 (earlier session, ended ~00:30 local)
 
 **Git: everything is pushed. Nothing is waiting to be published.** `master` and
 `phase6-ruleset-verification` both point at `d960c9d`, and both are level with `origin`.
