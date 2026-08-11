@@ -1,5 +1,121 @@
 # Handoff — read this first in a new session
 
+> **Everything below the "CURRENT STATE" section is historical.** It was accurate when
+> written and is preserved as the record, but do not treat it as the present state of the
+> project without cross-checking `git log` and `RISK-REGISTER.md`. This file had drifted
+> badly enough by 2026-08-10 that it was flagged as untrustworthy; the section immediately
+> below is the fix.
+
+---
+
+# CURRENT STATE — 2026-08-11 (session ended ~00:30 local, MDT / UTC-06:00)
+
+**Git: everything is pushed. Nothing is waiting to be published.** `master` and
+`phase6-ruleset-verification` both point at `d960c9d`, and both are level with `origin`.
+`master` was fast-forwarded 8 commits (`f85dd5c → d960c9d`) on 2026-08-11 — before that it
+predated Phase 7 activation entirely.
+
+`SEO_PROGRAM.md` is untracked **by standing instruction** — do not read, move, commit, or
+delete it. It is the operator's reference material for future work.
+
+## What shipped this session
+
+| Commit | What |
+|---|---|
+| `0c3a01a` | Four operational fixes (see `RISK-REGISTER.md` **R15**) |
+| `9f244f2` | Path B reconciliation; Path A marked dormant (see **R16**) |
+| `d960c9d` | Recovered art/seo cycle + its Codex review outcome |
+
+Test suite: **211/211** (`./.venv/Scripts/python.exe tools/tests/phase1_exit_criteria.py`),
+up from 191. Every module `--verify` passes except `codex_review_proposal.py`, which has
+never had one.
+
+## Operating model: Path B (direct push), decided — and NOT built
+
+Read `PLAN.md`'s **SELECTED OPERATING MODEL** section first; most of the rest of that file
+is Path A and is marked `[HISTORICAL — PATH A]`. Nate's requirements: no per-change
+approval, notification via the MMC briefing, positive confirmation of no damage, and
+explicit notification with troubleshooting detail if a rollback fired.
+
+**Nothing in this workspace pushes, deploys, or rolls back.** The autonomous path is live
+only up to a *local* commit (`/codex-seo-review` → `apply.py`). Before any Path B code is
+written, **R6/R10 must be amended by a dated row of its own** — they currently classify
+every push to `artwebsite` as Tier 2 human-only, unconditionally. R16 records the direction
+but is explicitly *not* that amendment.
+
+`tools/publish.py` and the branch-protection/PR/auto-merge block of `lib/github_compare.py`
+implement Path A, carry DORMANT BY DECISION headers, and cannot be flag-flipped into Path B
+(`publish.py` refuses a `main`/`master` destination by construction). Do not delete or build
+on them. `compare_commit_to_main()` is exempt — `run_loop.py` calls it every run.
+
+## Open state in `art/seo`
+
+Three proposals from run `2026-08-11T05-18-25-362Z-u5z1dd`:
+
+- `...u5z1dd-0` (title-tag, homepage) — **`review-revision-needed`**
+- `...u5z1dd-1` (meta-desc, homepage) — **`review-revision-needed`**
+- `...u5z1dd-2` (internal-link, /work-comp/) — still `draft`, `manual_approval_only`, can
+  never auto-implement
+
+Both homepage proposals held at 0.98 across two independent Codex rounds on *insufficient
+evidence* (2 clicks/15 impressions; 0 clicks/1 impression). They were deliberately **not**
+revised into a pass 2 — the blocking objection is not correctable by rewording, and forcing
+it would game the control. They are non-terminal, so **cooldown blocks new homepage
+proposals** until a human resolves them via `/review-pending`.
+
+`artwebsite` is untouched: HEAD `e5a811c` on `main`, no `seo/*` branch created, no worktree.
+
+## Known defects found but NOT fixed (highest value first)
+
+1. **Candidate selection is the real blocker to autonomy.** `_pick_new_actions` ranks
+   positions 3–20 by clicks, and nearly every `art` candidate has 0 clicks, so ordering is
+   near-arbitrary. This session proved the consequence: a competent reviewer correctly
+   refuses what the loop generates. Building the Path B push first would yield an
+   autonomous pipeline that reliably ships nothing. Fix this before the push.
+2. **The evidence packet misleads reviewers and biases them toward `hold`.** It passes
+   `guardrail: {metric, comparator: ">", value: 5}` without stating it applies to *drift
+   from baseline* (`_evaluate_prior_experiments` computes `metric_value - baseline`), and
+   `min_sample_size: 100` without stating it is compared against the *total* GSC sample
+   (10,308), not the keyword's impressions. Both reviewers misread both fields identically
+   and raised false objections. In an agreement-required system, that manufactures spurious
+   holds. Fix in `lib/review_protocol.py`.
+3. **Hash echo is fragile.** Round 1C corrupted the 64-char `evidence_packet_hash` when
+   echoing it (inserted `f9` → 66 chars); the tool correctly refused it. Verify a short
+   prefix, or have the tool inject the hash rather than trusting an LLM to transcribe it.
+4. **`.claude/skills/codex-seo-review/SKILL.md` contradicts itself** — its "never runs
+   against `art`" bullet cites a Prerequisites section that says the opposite. Stale since
+   the 2026-08-03 activation.
+5. **`search_analytics` stamps freshness as `pulled_at`, not `as_of`** like the other three
+   snapshot sections. Harmless today (`_section_history` is never called on it) but
+   inconsistent for MMC's per-section freshness display.
+
+## Cleanup inventory — identified, awaiting the operator's decision
+
+Nothing here has been deleted. Zero-risk: `.agents/` (empty), `.claude/scheduled_tasks.lock`
+(stale, dead PID). Doc consolidation: `PLAN-REVIEW-LOG-step6.md` (referenced by nothing),
+`PHASE2_READINESS_CHECKLIST.md`. Data hygiene: the 9 terminal proposals still sitting in
+`pending/` — archive rather than delete; their rationale is in `events.jsonl` and git.
+`.review-artifacts/` is now tracked as of `d960c9d`.
+
+## Scheduling (all four tasks re-registered 2026-08-10)
+
+Every job runs through `tools/scheduled/task.cmd` → `logs/<name>.log` (gitignored, rotates
+at 2 MB). Times are **local**; run IDs and `run.json` are **UTC** — a 6-hour offset, so a
+06:00 local run appears as `12:00Z`.
+
+| Task | Schedule | Next |
+|---|---|---|
+| `LoopAgency-Art-SEO` (full) | Mon 06:00 | 8/17 |
+| `LoopAgency-Art-SEO-Technical` | Thu 06:00 | 8/13 |
+| `LoopAgency-Art-SEO-DailyRank` | daily 07:00 (moved off a 06:00 lock collision) | 8/11 |
+| `LoopAgency-Watchdog` | daily 07:30 | 8/11 |
+
+Watchdog now exits 0 (`_demo` reports `not-enabled` via `loops_enabled`).
+
+---
+
+# HISTORICAL RECORD (pre-2026-08-11) — verify before relying on any of it
+
 ## Phase 7 activated for `art/seo` — 2026-08-03 (same day as shipping, per explicit user request)
 
 `projects/art/loops/seo/spec.md` now sets all three gates: `approval_mode: tier1-enabled`, `auto_implementation_enabled: true`, and `manual_approval_only: false` on `title-tag-rewrite`/`meta-description-rewrite` only (`internal-link-addition` stays `manual_approval_only: true` and can never auto-implement regardless — no HTML-mutation engine exists, see Key Decision 3 in `PLAN-PHASE7-CODEX-REVIEW.md`). `.claude/skills/codex-seo-review/SKILL.md` no longer hard-blocks `art` — the three-gate check in `spec.md` is the only gate now, same as for any project.
