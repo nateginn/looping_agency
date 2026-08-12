@@ -176,9 +176,12 @@ insufficient-evidence grounds — correctly, given D3, but the *target* was righ
 
 **One correction back to MMC's plan.** Its Track 3a verification says `physical therapy
 denver` should report `organic_rank_position: null`, "matching the independently verified
-`items_count: 0`". If that `items_count: 0` came from a loop snapshot, **it is a D4 artifact**
-— the task was never sent, so the zero proves nothing. Re-derive it from a single-task call
-before using it as a pass criterion, or the fix will be validated against a bug.
+`items_count: 0`". If that `items_count: 0` came from a loop snapshot, **it is a D4
+artifact**. Stated precisely: the extra task *was* included in the HTTP request, but
+DataForSEO **rejected it and never executed it** (`status_code: 40000`, `result: null`,
+`cost: 0`) — so the empty result is missing data, not evidence of no rankings. Before using
+it as a pass criterion, re-derive it from a **fresh single-task call with a `20000` status
+and raw-task provenance recorded**. Never accept `items_count: 0` on its own.
 
 ### Five defects this investigation found that were not previously recorded
 
@@ -372,7 +375,11 @@ Regression fixtures in the existing `--verify` block, taken from real observed d
 
 **Then D5.** Populate `organic_rank_position` from the true organic index rather than
 `rank_absolute`. **Keep the field name** so MMC's collector keeps parsing; add
-`organic_rank_group` and `matched_domain` beside it.
+`organic_rank_group` and `matched_domain` beside it. Verify the source field against a real
+DataForSEO response rather than assuming a field name — `rank_group` is the likely correct
+source but confirm it on live data. MMC must also be told the new fields exist **and** that
+historical rows are not comparable to them, or the briefing will chart a discontinuity as a
+trend.
 
 **Rebaseline — plan for it, don't be surprised by it.** After this lands, Denver goes
 `6 → null` and the competitor rows vanish, which fires large `numeric_delta` deltas
@@ -431,10 +438,17 @@ matching path appears first in the SERP items. For `physical therapy denver`, **
 non-null result was a competitor** (`occ-ortho.com`, earlier `denverhealth.org`) — ART has
 no host-validated result there in any run; the remaining rows are null.
 
-Correct remedy: snapshots are immutable, so do not rewrite them. Instead **quarantine only
-the rows whose `result_url` host is not ART's domain**, preserve the host-validated rows as
-usable history, and label the rest unverifiable. Record the defect, its date range, and this
-distinction in `RISK-REGISTER.md`.
+**Remedy, corrected again on 2026-08-12 once D5 was known** (Codex Round 9 #2). Round 4's
+answer — quarantine non-ART hosts, keep host-validated rows as usable history — **no longer
+holds.** Host validation fixes *which row* you are looking at; it cannot repair the *number*
+on that row, because D5 means every stored rank came from `rank_absolute` and counted
+local-pack and PAA blocks. A host-validated row is still a mixed-feature position.
+
+So: snapshots stay immutable and are not rewritten, but **every prior numeric local rank is
+excluded from comparisons, deltas and baselines without exception.** Host-validated rows are
+retained for *forensic reference only* — useful to know ART appeared at all on 08-04/07/08,
+not usable as a measurement. Record the defect, its date range, and this distinction in
+`RISK-REGISTER.md`.
 
 **Verification:** `dataforseo.py --verify` gains cases for a competitor URL sharing the
 target path (must not match), a `www.` host variant (must match), a path-prefix collision
@@ -957,17 +971,30 @@ Not free (Codex Round 1 #13, accepted): each needs new logic in `_evaluate_atten
 
 ## Tomorrow — the executable slice (2026-08-12)
 
-Cross-repo order is **Track 1 → 3a → Track 2 → rest of Track 3**. Loop Agency owns 3a and
-3b. Everything here is inside this repo unless marked otherwise.
+**Loop Agency's critical path is `freeze → 3a → fresh verification → rebaseline → 3b`.**
+Track 1 (owner GBP work) and the citation fixes are **owner-parallel** — they need no code
+and block nothing here, so start them whenever. Track 2 (`artwebsite`) follows 3a, because
+its success is unmeasurable until the rank connector tells the truth.
 
-| # | Task | Where | Effort | Why now |
+| # | Task | Where | Effort | Why in this position |
 |---|---|---|---|---|
 | 1 | **Step 0 freeze** — `approval_mode: propose-only` | this repo, 1 line | 2 min | Everything below changes scoring and evaluation under a loop authorised to act on them |
-| 2 | **Track 3a** — D4 + D1 + D5 in `dataforseo.py`, with the fixtures above | this repo | ~half day | One file; the defect runs daily; nothing downstream is trustworthy until it lands |
-| 3 | **Track 3b** — Maps connector (`/v3/serp/google/maps/live/advanced`, `$0.002`) | this repo | ~half day | Now unblocked (no OAuth). First real measurement of the thing that actually decides these searches |
-| 4 | **Declare the rebaseline** — prior local-rank history void, note in run report | this repo | 15 min | Prevents the post-3a delta storm being read as a real regression |
-| 5 | *(owner, no code)* **Track 1 GBP actions** | GBP UI | ~1 hr | Claim Greeley's Acupuncture category; Denver: add Spinal decompression, fix Thursday hours; start photos and reviews |
-| 6 | *(owner, no code)* **Fix BBB / Yelp / Zocdoc addresses** | external | ~1 hr | Three different Greeley street addresses are published; citation consistency is a primary local-pack input |
+| 2 | **Track 3a** — D4 + D1 + D5, **as one atomic change-set** | this repo | ~half day | The defect runs daily; nothing downstream is trustworthy until it lands |
+| 3 | **Fresh single-task verification** | this repo | 20 min | Proves 3a against a real `20000` response, not against a bug |
+| 4 | **Declare the rebaseline** — prior local-rank numbers void | this repo | 15 min | **Must precede 3b and the next scheduled rank check**, or the delta storm reads as a real regression |
+| 5 | **Track 3b** — Maps connector (`/v3/serp/google/maps/live/advanced`, `$0.002`) | this repo | ~half day | Unblocked (no OAuth). First real measurement of what actually decides these searches |
+| — | *(owner-parallel, no code)* **Track 1 GBP actions** | GBP UI | ~1 hr | Claim Greeley's Acupuncture category; Denver: add Spinal decompression, fix Thursday hours; start photos and reviews |
+| — | *(owner-parallel, no code)* **Fix BBB / Yelp / Zocdoc addresses** | external | ~1 hr | Three different Greeley street addresses are published; citation consistency is a primary local-pack input |
+
+**3a must roll out atomically, not as three sequential edits** (Codex Round 9 #3). Scheduled
+tasks execute *this working tree*, so a rank check firing between the D4, D1 and D5 edits
+would observe partial behaviour. Splitting them into three commits with three rebaselines is
+equally wrong — every intermediate state is still semantically invalid. So: develop and test
+D4, D1 and D5 offline and separately, then land them as **one coordinated change-set with
+scheduled runs held**, then do **one** fresh verification and **one** rebaseline.
+
+**"Roughly one file" is inaccurate** — D1 also needs `client_domain` propagated through
+`run_loop.py`'s dispatch. Budget for two files plus tests.
 
 **Not this repo, but higher business value than anything in it —** from the artwebsite
 assessment, flagged here so it isn't lost in the split:
@@ -995,9 +1022,10 @@ assessment, flagged here so it isn't lost in the split:
 3. **P0-b (one controlled live run)** — P0.2 + P0.7, by hand, after cost approval. **This is
    the decision point for the whole plan**: it either supports the local-pack hypothesis or
    refutes it, and P1's priority depends on the answer.
-4. **P1's checklist half** immediately (blocked on nothing); **P1's measurement half** once
-   GBP OAuth access is obtained — its own prerequisite, its own timeline, three separate
-   capabilities.
+4. **P1's checklist half** immediately (blocked on nothing); **P1's measurement half via the
+   Maps connector (3b), straight after 3a and the rebaseline** — no OAuth needed. The OAuth
+   Business Profile Performance API comes later, and only for what Maps cannot see (calls,
+   direction requests, the search-vs-maps split, i.e. P4's data).
 5. **P4's definition** — before P5, because it decides what "priority" means. Connector work
    may be deferred.
 6. **P0-c** — pagination, reporting-only, compared against the old row set. Carry the old
