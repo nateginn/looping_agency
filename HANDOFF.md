@@ -37,6 +37,45 @@ change was deliberately not made** — it alters the live operating state and is
 Next scheduled proposal-generating run is **Mon 2026-08-17 06:00**; the Thursday and daily
 jobs are `technical-only` and generate nothing.
 
+## 2026-08-12 — reconciled with two more assessments; 10 Codex rounds total
+
+Three independent assessments were merged into `PLAN-SEO-PROGRAM-INTEGRATION.md`: this
+plan, MMC's three-track plan (from a manual 8/08 DataForSEO audit), and
+`D:\Dev\artwebsite\SEO-ASSESSMENT-2026-08-12.md`. Still documentation only — no code
+changed, suite 211/211.
+
+**Start here tomorrow: the "executable slice" section of the plan.** Critical path for
+*this* repo is `freeze → 3a → fresh verification → rebaseline → 3b`. Two traps are
+called out explicitly and a cold operator must not skip them:
+
+1. **3a is one atomic change-set, with the scheduled tasks disabled first.** Scheduled jobs
+   run against this working tree, so a rank check firing mid-edit sees partial behaviour.
+   Exact `Disable-ScheduledTask` commands and the hold window are in the plan.
+2. **The rebaseline must be code, not a note.** `_evaluate_attention()` compares against
+   prior snapshots regardless of documentation. Acceptance test: the first rank run after
+   re-enabling emits **zero** historical `local_rank` delta findings.
+
+**New since yesterday:**
+
+- **D5 (High)** — `organic_rank_position` comes from `rank_absolute` (`dataforseo.py:273`),
+  which counts local-pack and PAA blocks. With D1 and D4, `local_rank` has been wrong three
+  independent ways at once. **All prior numeric local ranks are void** — host validation
+  cannot repair a `rank_absolute`-derived number, so the earlier "keep host-validated rows"
+  remedy is withdrawn; they are forensic reference only.
+- **P1 is de-risked and buildable now.** DataForSEO's Maps endpoint
+  (`/v3/serp/google/maps/live/advanced`, `$0.002`, verified live) replaces OAuth as the
+  first path to GBP measurement. OAuth drops to a later enhancement for calls/directions.
+- **GBP primary category is already `Chiropractor`** — this kills the category hypothesis
+  raised 8/11. Greeley's pack absence is **prominence**: 55 reviews / 7 photos against
+  incumbents at 225 / 434 / 508 / 656. Denver: 7 reviews, 5 photos, Thursday reads closed.
+- **Ownership is three-way.** This repo owns only "rebuild the loop". GBP work is
+  owner-executed; city pages belong to `artwebsite`.
+- **Owner decision 8/11:** the Denver listing keeps "ART - Denver". The NAP fix inverts —
+  the website carries the listing's name. Inconsistent listing names are an accepted,
+  recorded trade-off. Do not re-litigate.
+- **Higher business value than anything in this repo:** `artwebsite`'s contact form returns
+  HTTP 500 on every submission. Leads are being lost now.
+
 ---
 
 # CURRENT STATE — 2026-08-11 (earlier session, ended ~00:30 local)
