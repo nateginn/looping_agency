@@ -1,6 +1,7 @@
 # Plan: integrating `SEO_PROGRAM.md` into the Loop Agency process
 
-_Round 7 revision by Claude, 2026-08-11, after seven rounds of Codex adversarial review.
+_Round 7 revision by Claude, 2026-08-11, after seven rounds of Codex adversarial review;
+reconciled 2026-08-12 with MMC's three-track plan and artwebsite's SEO assessment.
 Argument transcript: `PLAN-REVIEW-LOG-SEO-PROGRAM.md`._
 
 `SEO_PROGRAM.md` is the operator's reference compilation (three independent source sets,
@@ -129,7 +130,57 @@ the intent. Ranking #2 under a pack you are absent from is worth approximately n
 work, and its justification is now measured rather than inferred. The GBP checklist half
 should start immediately.
 
-### Four defects this investigation found that were not previously recorded
+### Cross-repo reconciliation — 2026-08-12
+
+Three independent assessments now exist and have been merged into this document:
+
+| Source | Contribution |
+|---|---|
+| This plan (Codex-reviewed, 8 rounds) | D1–D4, the 23-clicks finding, the P0-b SERP diagnostic |
+| MMC's three-track plan (from the 8/08 manual audit, ~$0.15) | D5, live GBP facts, competitor review counts, the Maps API path, the ownership split |
+| `artwebsite/SEO-ASSESSMENT-2026-08-12.md` | Website-side defects, NAP contradictions, the CTR framing |
+
+**Ownership is three-way, and Loop Agency owns exactly one track.**
+
+| Track | Owner repo | Scope |
+|---|---|---|
+| 1 — Google Business Profiles | Owner-executed, facts in MMC | No repo owns it; GBP UI work |
+| 2 — city-specific service pages | `artwebsite` | Tier 2, deploy-on-push, human-only |
+| 3 — rebuild the loop | **Loop Agency (this repo)** | Everything in P0/P5–P8 below |
+
+**Facts now settled that this plan previously treated as open:**
+
+- **GBP primary category is already `Chiropractor`, claimed and correct** (artwebsite
+  assessment §4). This **kills the category hypothesis** raised on 2026-08-11 — Greeley's
+  map-pack absence is *not* a relevance/category problem. It is prominence: **55 reviews and
+  7 photos** against pack incumbents at **Cornerstone 225, Weld 434, REV 508, The Joint 656**.
+  Denver is worse: **7 reviews, 5 photos**, Thursday hours reading "closed", and no Spinal
+  decompression service listed despite it being Denver-exclusive with no web page either.
+- **Greeley ranks #26 for Acupuncture without having claimed the category** — the cheapest
+  single win in the whole audit.
+- **The Denver listing keeps the name "ART - Denver"** (owner decision, 2026-08-11): ~a
+  year of ad equity, and Maps already resolves the clinic under it. Greeley keeps
+  "Accelerated Rehab Therapy of Greeley CO" (20+ years). **The NAP fix therefore inverts** —
+  the *website* carries the listing's location name, not the reverse. Accepted trade-off,
+  recorded not buried: the two listings keep inconsistent names, a real NAP signal loss,
+  knowingly accepted on both sides. Do not re-litigate.
+- **The www→non-www fix already shipped** (`artwebsite` `e5a811c`, 2026-08-10). The GSC
+  http/https dual-ranking evidence in this document is **pre-fix residue**. Verification
+  only — a single `curl -sI` on the www variant.
+- **DataForSEO's Maps endpoint is verified live and cheap** — see the rewritten P1.
+
+**Two independent methods converged**, which is the strongest signal in the whole corpus:
+the loop independently generated homepage title/meta rewrite proposals aimed at exactly the
+CTR defect the website assessment found from the code side. The two proposals were held on
+insufficient-evidence grounds — correctly, given D3, but the *target* was right.
+
+**One correction back to MMC's plan.** Its Track 3a verification says `physical therapy
+denver` should report `organic_rank_position: null`, "matching the independently verified
+`items_count: 0`". If that `items_count: 0` came from a loop snapshot, **it is a D4 artifact**
+— the task was never sent, so the zero proves nothing. Re-derive it from a single-task call
+before using it as a pass criterion, or the fix will be validated against a bug.
+
+### Five defects this investigation found that were not previously recorded
 
 - **D1 (High) — `dataforseo.py` matches SERP results by URL path substring, with no domain
   check.** `tools/dataforseo.py:165` and `:261`:
@@ -167,6 +218,17 @@ should start immediately.
   rows were never measured, and the 2 that were are frequently attributed to a competitor.
   Fixing this is now the top item in P0.1, ahead of the domain-match fix, because no amount
   of correct matching helps a request that was never sent.
+- **D5 (High, from MMC's 8/08 audit, verified in code) — the reported metric is
+  mislabelled. `organic_rank_position` is populated from `rank_absolute`
+  (`dataforseo.py:273`), which counts local-pack and PAA blocks as positions.** So every
+  number the loop has ever reported under an "organic rank" label is a **mixed-feature
+  position**, not an organic one — inflated by however many non-organic blocks sat above the
+  result. Combined with D1 and D4 this means the `local_rank` section has been wrong in
+  three independent ways simultaneously: the wrong rows were never fetched, the rows that
+  were fetched matched the wrong domain, and the number attached to them measured the wrong
+  thing. Fix: keep `organic_rank_position` as a field name so MMC's collector
+  (`collector/sources/looping.py:176-191`) keeps parsing, but populate it from the true
+  organic index; add `organic_rank_group` and `matched_domain` alongside.
 - **D3 (High) — "verified winner" is currently vacuous on this site.** `run_loop.py:518`
   computes `sample_ok = metrics["sample_size"] >= p["min_sample_size"]`, where `sample_size`
   is the run's **total** GSC sample (10,308), not the target row's impressions. With
@@ -290,12 +352,39 @@ Each stage completes before the next begins:
 
 ### P0.1 — Fix the SERP connector: one task per request (D4) first, then domain matching (D1)
 
-**D4 comes first.** `pull_local_rank` (and `pull_metrics`'s SERP path) must issue **one
-POST per task**. Batching silently drops every task after the first, at zero cost, in a way
-that is indistinguishable downstream from "not ranking". Add a `--verify` case that asserts
-a multi-target pull issues one request per target, and treat any non-`20000` task status as
-a **connector error**, never as an empty result — the current `task.get("result") or []`
+**This is MMC's Track 3a, and it is the first implementation task tomorrow.** It is
+roughly one file, the defect runs daily, and Track 2's success is unmeasurable until it
+lands. Three defects get fixed in one pass, in this order:
+
+**D4 first.** `pull_local_rank` (and `pull_metrics`'s SERP path) must issue **one POST per
+task**. Batching silently drops every task after the first, at zero cost, in a way that is
+indistinguishable downstream from "not ranking". Add a `--verify` case that asserts a
+multi-target pull issues one request per target, and treat any non-`20000` task status as a
+**connector error**, never as an empty result — the current `task.get("result") or []`
 pattern is what converts an API rejection into a false negative.
+
+**Then D1.** Thread `client_domain` through from the existing `domain:` spec key, mirroring
+`pull_backlinks(target=spec.get("domain"))` at `run_loop.py:367-370`. Match on host **and**
+path with host normalisation; preserve current behaviour when `client_domain` is `None`.
+Regression fixtures in the existing `--verify` block, taken from real observed data:
+`occ-ortho.com/physical-therapy/` @6 → `None`; `www.mgmc.org/…` @33 → `None`; ART's own URL
+→ match; `www.` variant → match; `/massage/` must not match `/massage-therapy-guide/`.
+
+**Then D5.** Populate `organic_rank_position` from the true organic index rather than
+`rank_absolute`. **Keep the field name** so MMC's collector keeps parsing; add
+`organic_rank_group` and `matched_domain` beside it.
+
+**Rebaseline — plan for it, don't be surprised by it.** After this lands, Denver goes
+`6 → null` and the competitor rows vanish, which fires large `numeric_delta` deltas
+(`run_loop.py:728-751`) against history that was never valid. Treat **all prior local-rank
+history as void**, declare a new baseline in the run report and in MMC's journal, and expect
+the daily rank check's real cost to rise from 2 billed tasks to 12 (~`$0.04` → ~`$0.24`/run)
+once tasks actually get sent. Lower-risk than it sounds: MMC's briefing already discounts
+these rows.
+
+**Line numbers have drifted** — MMC's brief notes `run_loop.py:327` is now `367-370` and
+`647-650` is now `728-751`. Re-derive at implementation time rather than trusting either
+document.
 
 Expect the real cost of the daily rank check to rise from 2 billed tasks to 12 once this is
 fixed. At DataForSEO's observed `$0.02`/task that is ~`$0.24`/run rather than ~`$0.04` —
@@ -554,10 +643,24 @@ assumed to arrive through one API or one permission:
 - **NAP consistency** between the site footer (already captured in
   `locations-detected.json`), `spec.md`'s `locations`, and each profile.
 
-**Access cost, corrected from Round 0** (Codex Round 1 #17): the Business Profile APIs use
-**OAuth 2.0 with a user-consented refresh token**, not the service-account arrangement
-`art-gsc-readonly` uses, and access may require a separate enablement request. A genuine
-prerequisite with its own timeline, not a reuse of existing credentials.
+**Access cost — substantially revised 2026-08-12, and this is the biggest de-risking in
+the plan.** Round 1 concluded that GBP measurement required OAuth 2.0 with a user-consented
+refresh token plus possible enablement approval — its own timeline, and the reason P1's
+measurement half was deferred. **MMC's 8/08 audit verified a cheaper path live:
+DataForSEO's Maps endpoint, `/v3/serp/google/maps/live/advanced`, at `$0.002` per call**,
+using the DataForSEO credential this project **already has stored and working**.
+
+That changes the sequencing materially:
+
+- **Maps-via-DataForSEO measures what actually matters** — map-pack presence and position
+  per market × category, plus each listing's public review count, rating and category set.
+  Every fact in Track 1's GBP table came from it. At `$0.002` a call, a full market ×
+  category sweep costs cents and sits far inside the 40-task/day standing budget.
+- **The OAuth Business Profile Performance API is now a *later* enhancement, not a
+  prerequisite.** It adds what Maps cannot see — calls, direction requests, and the
+  search-vs-maps split, i.e. the P4 business-outcome data. Worth doing; no longer blocking.
+- **Practical consequence: P1's measurement half is buildable tomorrow.** It becomes
+  Track 3b (the Maps connector), and it is the highest-value connector change available.
 
 **Two profiles, not three.** Greeley and Denver are real locations. `spec.md`'s third
 entry, **UNC Campus, is footer-only** and must never be modelled as a third GBP profile.
@@ -852,7 +955,33 @@ Not free (Codex Round 1 #13, accepted): each needs new logic in `_evaluate_atten
   percentages — this site's own position-1 CTR is 0.51%, nowhere near any of them.
 - **Any change to the auto-implementable action set, the three gates, or Tier 2.**
 
-## Sequencing
+## Tomorrow — the executable slice (2026-08-12)
+
+Cross-repo order is **Track 1 → 3a → Track 2 → rest of Track 3**. Loop Agency owns 3a and
+3b. Everything here is inside this repo unless marked otherwise.
+
+| # | Task | Where | Effort | Why now |
+|---|---|---|---|---|
+| 1 | **Step 0 freeze** — `approval_mode: propose-only` | this repo, 1 line | 2 min | Everything below changes scoring and evaluation under a loop authorised to act on them |
+| 2 | **Track 3a** — D4 + D1 + D5 in `dataforseo.py`, with the fixtures above | this repo | ~half day | One file; the defect runs daily; nothing downstream is trustworthy until it lands |
+| 3 | **Track 3b** — Maps connector (`/v3/serp/google/maps/live/advanced`, `$0.002`) | this repo | ~half day | Now unblocked (no OAuth). First real measurement of the thing that actually decides these searches |
+| 4 | **Declare the rebaseline** — prior local-rank history void, note in run report | this repo | 15 min | Prevents the post-3a delta storm being read as a real regression |
+| 5 | *(owner, no code)* **Track 1 GBP actions** | GBP UI | ~1 hr | Claim Greeley's Acupuncture category; Denver: add Spinal decompression, fix Thursday hours; start photos and reviews |
+| 6 | *(owner, no code)* **Fix BBB / Yelp / Zocdoc addresses** | external | ~1 hr | Three different Greeley street addresses are published; citation consistency is a primary local-pack input |
+
+**Not this repo, but higher business value than anything in it —** from the artwebsite
+assessment, flagged here so it isn't lost in the split:
+
+- **The contact form returns HTTP 500 on every submission** (`views.py:337,364` call
+  `redirect('contact')` while `urls.py:6` sets `app_name='main'` → `NoReverseMatch`). Leads
+  are being lost right now. Not SEO, cheapest real-money fix available, belongs to
+  `artwebsite`. **This should outrank every item in this document.**
+- Reviews are rendered client-side with no `AggregateRating` schema, so **no stars in the
+  snippet** on terms already ranking #1 — the single clearest CTR lever.
+- `/Chiropractic/auto-injury/` is indexed and 404s; `/robots.txt` is Cloudflare's with no
+  `Sitemap:` directive.
+
+## Sequencing (full programme)
 
 0. **Step 0** — decide the operating state. Everything below assumes `approval_mode:
    propose-only` is in force, and it stays in force until the step-10 go/no-go.
