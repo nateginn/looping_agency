@@ -713,6 +713,21 @@ work, and the loop has never run one.
 Deliverable: a human checklist plus an authority backlog artifact. **No automated link
 acquisition, ever.**
 
+**DONE 2026-08-12 — citation addresses corrected by the operator.** The artwebsite
+assessment found three different Greeley street addresses published across BBB, Yelp and
+Zocdoc (`1705 61st Ave Ste M`, `2928 W 10th St`) against the correct
+`1823 65th Ave Suite 3`. All three were fixed by Nate on 2026-08-12. Citation consistency
+is a primary local-pack input, so **this date is the baseline for any later claim that
+local visibility improved** — nothing before it should be compared against anything after.
+
+Two caveats worth knowing rather than discovering later:
+- **Directory edits frequently queue for moderation** and can take days to appear, and some
+  sites re-scrape stale data from aggregators afterwards. Worth a manual spot-check in a
+  week, and again in a month.
+- **Automated verification of these three is unreliable from here** — the pages are
+  JS-rendered and hostile to fetching. A null result from a scrape is missing data, not
+  evidence the listing is wrong (the same failure mode as D4). Verify by eye.
+
 ## P3 — Business brief and `PROJECT_RULES` — a live risk, not a future one
 
 `art` is a **medical** business — physical therapy, chiropractic, acupuncture, dry

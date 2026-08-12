@@ -76,6 +76,15 @@ called out explicitly and a cold operator must not skip them:
 - **Higher business value than anything in this repo:** `artwebsite`'s contact form returns
   HTTP 500 on every submission. Leads are being lost now.
 
+**Owner-executed, DONE 2026-08-12:** the BBB / Yelp / Zocdoc address inconsistency is
+fixed. The site publishes `1823 65th Ave Suite 3` (correct); those three directories
+carried two other addresses. **Treat 2026-08-12 as the baseline date for local-visibility
+comparisons** — citation consistency is a primary local-pack input, so pre- and post-fix
+data are not comparable. Directory edits can sit in moderation for days and can be
+re-scraped from stale aggregators, so spot-check by eye in a week and again in a month;
+automated checks of these three are unreliable (JS-rendered, fetch-hostile) and a null
+result means nothing.
+
 ---
 
 # CURRENT STATE — 2026-08-11 (earlier session, ended ~00:30 local)
