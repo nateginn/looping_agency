@@ -146,7 +146,7 @@ Three independent assessments now exist and have been merged into this document:
 |---|---|---|
 | 1 — Google Business Profiles | Owner-executed, facts in MMC | No repo owns it; GBP UI work |
 | 2 — city-specific service pages | `artwebsite` | Tier 2, deploy-on-push, human-only |
-| 3 — rebuild the loop | **Loop Agency (this repo)** | Everything in P0/P5–P8 below |
+| 3 — rebuild the loop | **Loop Agency (this repo)** | P0, **P1's Maps connector (3b)**, and P5–P8 below |
 
 **Facts now settled that this plan previously treated as open:**
 
@@ -355,8 +355,8 @@ Each stage completes before the next begins:
 
 ### P0.1 — Fix the SERP connector: one task per request (D4) first, then domain matching (D1)
 
-**This is MMC's Track 3a, and it is the first implementation task tomorrow.** It is
-roughly one file, the defect runs daily, and Track 2's success is unmeasurable until it
+**This is MMC's Track 3a, and it is the first implementation task of the next
+session.** It is two files plus tests, the defect runs daily, and Track 2's success is unmeasurable until it
 lands. Three defects get fixed in one pass, in this order:
 
 **D4 first.** `pull_local_rank` (and `pull_metrics`'s SERP path) must issue **one POST per
@@ -381,13 +381,24 @@ source but confirm it on live data. MMC must also be told the new fields exist *
 historical rows are not comparable to them, or the briefing will chart a discontinuity as a
 trend.
 
-**Rebaseline — plan for it, don't be surprised by it.** After this lands, Denver goes
-`6 → null` and the competitor rows vanish, which fires large `numeric_delta` deltas
-(`run_loop.py:728-751`) against history that was never valid. Treat **all prior local-rank
-history as void**, declare a new baseline in the run report and in MMC's journal, and expect
-the daily rank check's real cost to rise from 2 billed tasks to 12 (~`$0.04` → ~`$0.24`/run)
-once tasks actually get sent. Lower-risk than it sounds: MMC's briefing already discounts
-these rows.
+**Rebaseline — and it must be code, not prose** (Codex Round 10 #2). After this lands, the
+competitor rows vanish and the surviving numbers change meaning, firing large
+`numeric_delta` findings (`run_loop.py:728-751`) against history that was never valid.
+
+A note in the run report and MMC's journal **will not suppress that** — `_evaluate_attention()`
+compares the new snapshot against prior snapshots on disk regardless of what any document
+says. So the rebaseline needs a real mechanism: write a `local_rank_baseline_run_id` (or an
+equivalent history cutoff) that `_section_history()` respects for the `local_rank` section,
+so comparisons simply do not reach behind it. **Acceptance test: the first scheduled rank run
+after re-enabling emits zero historical `local_rank` delta findings.** If it emits any, the
+cutoff is not working — do not wave it through as expected noise.
+
+**Do not pre-commit to what the corrected numbers will say** (Round 10 #3). Round 9 asserted
+"Denver goes `6 → null`". What is actually established is that **the old rank 6 was
+`occ-ortho.com` and is discarded**. The fresh, correctly-executed request may return null, or
+ART at some validated rank — that is the point of measuring. Expect the daily rank check's
+real cost to rise from 2 billed tasks to 12 (~`$0.04` → ~`$0.24`/run) once tasks are actually
+sent.
 
 **Line numbers have drifted** — MMC's brief notes `run_loop.py:327` is now `367-370` and
 `647-650` is now `728-751`. Re-derive at implementation time rather than trusting either
@@ -645,7 +656,9 @@ shape.
 a realistic radius, weekly posts, 15–20 real work photos, messaging response speed, the CID
 footer link, and the monthly competitor-profile audit.
 
-**The measurement half** (build after P0 reports what those SERPs contain). Scope these as
+**The measurement half.** **3b does not depend on P0-b** — P0-b was a one-shot organic
+SERP-composition diagnostic and it has already run (2026-08-11); the Maps connector reads a
+different endpoint and answers a different question. Do not treat P0-b as a prerequisite. Scope these as
 **three separate connector capabilities with separate access checks and independent
 degradation** (Codex Round 3 #15) — they are distinct data surfaces and should not be
 assumed to arrive through one API or one permission:
@@ -969,7 +982,7 @@ Not free (Codex Round 1 #13, accepted): each needs new logic in `_evaluate_atten
   percentages — this site's own position-1 CTR is 0.51%, nowhere near any of them.
 - **Any change to the auto-implementable action set, the three gates, or Tier 2.**
 
-## Tomorrow — the executable slice (2026-08-12)
+## The executable slice — next working session
 
 **Loop Agency's critical path is `freeze → 3a → fresh verification → rebaseline → 3b`.**
 Track 1 (owner GBP work) and the citation fixes are **owner-parallel** — they need no code
@@ -993,8 +1006,24 @@ equally wrong — every intermediate state is still semantically invalid. So: de
 D4, D1 and D5 offline and separately, then land them as **one coordinated change-set with
 scheduled runs held**, then do **one** fresh verification and **one** rebaseline.
 
-**"Roughly one file" is inaccurate** — D1 also needs `client_domain` propagated through
-`run_loop.py`'s dispatch. Budget for two files plus tests.
+**Holding the scheduled runs — the exact procedure** (Codex Round 10 #1). Only two jobs
+touch the rank path. Before editing anything:
+
+```powershell
+Disable-ScheduledTask -TaskName "LoopAgency-Art-SEO-DailyRank"    # daily 07:00
+Disable-ScheduledTask -TaskName "LoopAgency-Art-SEO-Technical"    # Thu 06:00
+Disable-ScheduledTask -TaskName "LoopAgency-Art-SEO"              # Mon 06:00, the full run
+Get-ScheduledTask -TaskName "LoopAgency*" | Select TaskName,State  # confirm all Disabled
+```
+
+Then confirm no run is mid-flight — `projects/art/loops/seo/run.lock` must be absent (if
+present, wait; never delete it by hand, the stale-lock recovery in `lib/lock.py` owns that).
+Re-enable with `Enable-ScheduledTask` **only after** the fresh verification and the
+rebaseline are both done. The hold window is the whole of steps 2–4 below.
+
+**Budget two files plus tests, not one** — D1 also needs `client_domain` propagated through
+`run_loop.py`'s dispatch (`run_loop.py:348` passes `targets`/`locations`/`language_code`/
+`device` but not `domain`, while the adjacent backlinks branch at `:370` does).
 
 **Not this repo, but higher business value than anything in it —** from the artwebsite
 assessment, flagged here so it isn't lost in the split:
