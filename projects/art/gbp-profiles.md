@@ -74,7 +74,8 @@ This file is the durable record of what the profiles actually contain. It is doc
 - Workman's Comp Massage Therapy
 - Medical Massage
 - Orthopedic Massage
-- Massage Therapy Cup *(name unclear — see open items)*
+- Massage Therapy *(the general catch-all)*
+- Cupping Therapy *(unconfirmed — see open items)*
 
 **Physical Therapy Clinic**
 - Plantar Fasciitis Treatment
@@ -103,8 +104,10 @@ Medical Massage · Therapeutic Massage · Trigger Point Massage · Orthopedic Ma
 
 ## Open items
 
-1. **`Massage Therapy Cup`** — likely a truncation or typo. If cupping therapy is offered,
-   rename to `Cupping Therapy`; otherwise delete.
+1. **A trailing "cup" appeared in the operator's list** after `Massage Therapy`. The
+   general `Massage Therapy` catch-all is confirmed present; whether a separate
+   **Cupping Therapy** service exists is unconfirmed. If cupping is offered, add it
+   properly named; otherwise there is nothing to fix.
 2. **Deep Tissue Massage is missing from Greeley.** `deep tissue massage greeley co` sits
    at position **14.3** in GSC — one of Greeley's better-ranking massage terms. Add it.
 3. **`Sports Massage Therapist` is described as a second "primary" category.** A profile
