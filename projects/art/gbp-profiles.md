@@ -75,7 +75,7 @@ This file is the durable record of what the profiles actually contain. It is doc
 - Medical Massage
 - Orthopedic Massage
 - Massage Therapy *(the general catch-all)*
-- Cupping Therapy *(unconfirmed — see open items)*
+- Cupping Therapy
 
 **Physical Therapy Clinic**
 - Plantar Fasciitis Treatment
@@ -104,21 +104,17 @@ Medical Massage · Therapeutic Massage · Trigger Point Massage · Orthopedic Ma
 
 ## Open items
 
-1. **A trailing "cup" appeared in the operator's list** after `Massage Therapy`. The
-   general `Massage Therapy` catch-all is confirmed present; whether a separate
-   **Cupping Therapy** service exists is unconfirmed. If cupping is offered, add it
-   properly named; otherwise there is nothing to fix.
-2. **Deep Tissue Massage is missing from Greeley.** `deep tissue massage greeley co` sits
+1. **Deep Tissue Massage is missing from Greeley.** `deep tissue massage greeley co` sits
    at position **14.3** in GSC — one of Greeley's better-ranking massage terms. Add it.
-3. **`Sports Massage Therapist` is described as a second "primary" category.** A profile
+2. **`Sports Massage Therapist` is described as a second "primary" category.** A profile
    has exactly one primary; this is presumably an additional category. Worth confirming,
    and it has no services attached.
-4. **Denver primary category not independently confirmed.** The artwebsite assessment
+3. **Denver primary category not independently confirmed.** The artwebsite assessment
    verified `Chiropractor` as primary, but each location is set separately.
-5. **Photos and reviews are the actual pack gap, and neither is addressed by services.**
+4. **Photos and reviews are the actual pack gap, and neither is addressed by services.**
    Greeley 55 reviews / 7 photos; Denver 7 reviews / 5 photos; pack incumbents at
    Cornerstone 225, Weld 434, REV 508, The Joint 656.
-6. **Denver — still outstanding from the audit:** Thursday hours read "closed", and photos
+5. **Denver — still outstanding from the audit:** Thursday hours read "closed", and photos
    need to go 5 → 40+.
 
 ## Why this matters for the loop
