@@ -20,5 +20,10 @@ Runs `tools/run_loop.py`, which implements the run contract from the root `CLAUD
    - `status: "partial-failure"` → read `runs/<run-id>/report.md`; summarize the connector failure for the human. No proposals were generated; nothing else to do.
    - `status: "paused-breach"` → read `runs/<run-id>/report.md`; tell the human a guardrail breach halted the loop and that new proposals are blocked until they run `/review-pending` and resolve it.
    - `status: "ok"` → read `runs/<run-id>/report.md` and summarize: what won, what's still in its observation window, what new proposals were drafted (with tier and target), and any proposals flagged stale (undecided for >=2 cycles).
-4. Never call `tools/apply.py` from this skill. Applying a proposal is always a separate, explicit `/review-pending` action gated on human approval.
-5. Never point this skill at the operator's website repo or any real credential alias — Phase 1 stops at that boundary (see RISK-REGISTER.md R6). If asked to run a loop against a real project before Phase 2 connectors are wired, say so and stop.
+4. **Only if `<loop>` is `seo`**, rebuild the progress dashboard afterwards and report its path:
+   ```
+   ./.venv/Scripts/python.exe tools/seo_timeseries.py <project> seo
+   ```
+   This is a read-only derivation from the snapshots that were just written; it takes under a second and touches nothing the run contract owns. **A non-zero exit here is reported as a note and never changes the run's reported outcome** — a cosmetic artifact must not be able to make a successful loop run look failed. Skip this step entirely for any other loop; it is SEO-specific.
+5. Never call `tools/apply.py` from this skill. Applying a proposal is always a separate, explicit `/review-pending` action gated on human approval.
+6. Never point this skill at the operator's website repo or any real credential alias — Phase 1 stops at that boundary (see RISK-REGISTER.md R6). If asked to run a loop against a real project before Phase 2 connectors are wired, say so and stop.

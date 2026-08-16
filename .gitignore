@@ -5,3 +5,9 @@ __pycache__/
 # Scheduler transcripts written by tools/scheduled/task.cmd. Machine-local
 # operational noise - runs/<run-id>/run.json is the observability contract.
 logs/
+# Derived SEO dashboard artifacts (tools/seo_timeseries.py, tools/gsc_daily.py).
+# 100% rebuildable in under a second from runs/*/snapshot.json, which is the system
+# of record - so committing a regenerated multi-hundred-KB blob every week buys
+# nothing. Ignored by PATH, not by filename, so a new artifact cannot silently
+# escape the rule (PLAN-SEO-TIMESERIES.md Q1, default = hold).
+projects/*/loops/*/timeseries/
