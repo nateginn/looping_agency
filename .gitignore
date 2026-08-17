@@ -5,6 +5,16 @@ __pycache__/
 # Scheduler transcripts written by tools/scheduled/task.cmd. Machine-local
 # operational noise - runs/<run-id>/run.json is the observability contract.
 logs/
+# Client raw data. `runs/<run-id>/snapshot.json` holds the real Google searches people
+# typed to reach a client's site (707 distinct queries for `art`, 267 of them carrying a
+# condition or injury term), their landing pages, click/impression counts, and the client's
+# street addresses. `diagnostics/` holds SERP captures. This repo is public, so none of it
+# is published from here on (operator decision, 2026-08-16). Untracked with
+# `git rm -r --cached` at the same time - a .gitignore rule alone does nothing to files git
+# already tracks. The files stay on disk and remain the system of record locally; a fresh
+# clone simply has no run history. Commits already pushed are not affected by this.
+projects/*/loops/*/runs/
+projects/*/diagnostics/
 # Derived SEO dashboard artifacts (tools/seo_timeseries.py, tools/gsc_daily.py).
 # 100% rebuildable in under a second from runs/*/snapshot.json, which is the system
 # of record - so committing a regenerated multi-hundred-KB blob every week buys
