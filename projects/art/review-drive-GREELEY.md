@@ -9,7 +9,7 @@
 ## ┌─────────────────────────────────┐
 ## │                                 │
 ## │   [ INSERT GREELEY QR CODE ]    │
-## │        ![alt text](image.png)                         │
+## │                                 │
 ## │      Review our Greeley office  │
 ## │                                 │
 ## └─────────────────────────────────┘
