@@ -38,7 +38,11 @@ CONNECTOR_REGISTRY = {
     "dataforseo": {
         "handler": "dataforseo-serp",
         "credential_alias": "dataforseo",
-        "requires": ["targets"],
+        # "domain" added 2026-08-16 (Issue #1): a SERP result can only be attributed to
+        # this client by host, so a spec without a domain must refuse to validate rather
+        # than let the connector fall back to URL-substring matching - which is what
+        # recorded competitors' rankings as the client's (defect D1).
+        "requires": ["targets", "domain"],
         # Merges into search_analytics (serp_position enrichment on matching
         # rows), so it is a contributor to the evaluated metric set.
         "critical": True,
@@ -46,7 +50,7 @@ CONNECTOR_REGISTRY = {
     "dataforseo-local-rank": {
         "handler": "dataforseo-local-rank",
         "credential_alias": "dataforseo",
-        "requires": ["targets", "locations"],
+        "requires": ["targets", "locations", "domain"],
         "critical": False,
     },
     "dataforseo-backlinks": {

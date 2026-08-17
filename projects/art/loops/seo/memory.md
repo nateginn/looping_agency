@@ -20,3 +20,9 @@ One line appended per run by `tools/run_loop.py`. This is a derived view; `runs/
 - 2026-08-10T12:00:02.978882Z run 2026-08-10T12-00-01-321Z-2qbkux: partial-failure (connector error, redacted)
 - 2026-08-11T05:20:39.028477Z run 2026-08-11T05-18-25-362Z-u5z1dd: ok, mode full, 3 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
 - Tue 2026-08-11 07:00 local (UTC-06:00) / 2026-08-11T13:00:30.724147Z run 2026-08-11T13-00-02-046Z-7xbr6d: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Thu 2026-08-13 06:01 local (UTC-06:00) / 2026-08-13T12:01:53.955964Z run 2026-08-13T12-00-01-504Z-77fk72: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Thu 2026-08-13 07:00 local (UTC-06:00) / 2026-08-13T13:00:47.782839Z run 2026-08-13T13-00-02-037Z-0elfna: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Fri 2026-08-14 07:00 local (UTC-06:00) / 2026-08-14T13:00:35.903455Z run 2026-08-14T13-00-02-344Z-tcynhu: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Sat 2026-08-15 07:00 local (UTC-06:00) / 2026-08-15T13:00:40.018412Z run 2026-08-15T13-00-02-237Z-6794jc: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Sun 2026-08-16 07:00 local (UTC-06:00) / 2026-08-16T13:00:42.043071Z run 2026-08-16T13-00-02-297Z-6uaxz7: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Sun 2026-08-16 20:20 local (UTC-06:00) / 2026-08-17T02:20:49.586746Z run 2026-08-17T02-17-09-484Z-t5060s: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live

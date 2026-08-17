@@ -119,6 +119,7 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
                 resolve_credential=lambda _a: value,
                 targets=spec.get("targets"),
                 locations=spec.get("locations"),
+                domain=spec.get("domain"),
                 language_code=spec.get("language_code") or "en",
                 device=spec.get("device") or "desktop",
                 http_post=wrapped_post,
@@ -176,6 +177,7 @@ def _check_connector(input_name, spec, project_dir, resolve_fn, http_post, lines
                 credential_alias=alias,
                 resolve_credential=lambda _a: value,
                 targets=spec.get("targets"),
+                domain=spec.get("domain"),
                 location_code=spec.get("location_code") or 2840,
                 language_code=spec.get("language_code") or "en",
                 device=spec.get("device") or "desktop",
@@ -278,6 +280,7 @@ inputs:
   - dataforseo
 site_url: "sc-domain:example.com"
 metrics_window_days: 28
+domain: "example.com"
 targets:
   - keyword: best loop agency
     page: /blog/loop-agency
@@ -310,7 +313,16 @@ credential_aliases:
 
     def fake_http_ok(url, headers, body_bytes):
         if "dataforseo" in url:
-            payload = {"tasks": [{"result": [{"items": [{"type": "organic", "rank_absolute": 6, "url": "https://example.com/blog/loop-agency"}]}]}]}
+            # Well-formed since Issue #1: the connector requires a 20000 task status and an
+            # echoed keyword, because a rejected task previously came back as an empty item
+            # list and was recorded as "not ranking".
+            payload = {"tasks": [{
+                "status_code": 20000, "status_message": "Ok.",
+                "data": {"keyword": json.loads(body_bytes)[0]["keyword"]},
+                "result": [{"items": [
+                    {"type": "local_pack", "rank_absolute": 1, "rank_group": 1},
+                    {"type": "organic", "rank_absolute": 2, "rank_group": 1, "url": "https://example.com/blog/loop-agency"},
+                ]}]}]}
         else:
             payload = {"rows": [{"keys": ["best loop agency", "/blog/loop-agency"], "clicks": 3, "impressions": 100, "position": 5.2}]}
         return 200, "OK", json.dumps(payload).encode("utf-8")

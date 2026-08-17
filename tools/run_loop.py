@@ -195,10 +195,28 @@ def _latest_snapshot_sections(runs_dir, current_run_id=None):
     return load_json(candidates[0][1])
 
 
+# The history cutoff (Issue #1). A section whose meaning changed is not comparable to
+# its older self, and `_evaluate_attention` compares snapshots on disk regardless of what
+# any document says - so the cutoff has to be code, not prose.
+#
+# Keyed on the section's own `schema_version` rather than on a baseline run id, because
+# `_build_snapshot` carries every un-refreshed section forward verbatim: a pre-fix
+# local_rank section lives on inside run directories created long after the fix, and a
+# run-id cutoff would hand it straight to the comparison. The version travels with the
+# data it describes, so it cannot be outrun by a carry-forward.
+MIN_SECTION_SCHEMA_VERSION = {
+    # v1 rows reported rank_absolute (ads/local-pack/PAA inclusive) matched by bare URL
+    # substring with no domain check, and only ever queried the first target of each
+    # batched request. See dataforseo.LOCAL_RANK_SCHEMA_VERSION.
+    "local_rank": 2,
+}
+
+
 def _section_history(runs_dir, section_name, current_run_id):
     history = []
     if not os.path.isdir(runs_dir):
         return history
+    min_version = MIN_SECTION_SCHEMA_VERSION.get(section_name)
     run_names = sorted(os.listdir(runs_dir), reverse=True)
     seen_as_of = set()
     for run_name in run_names:
@@ -211,6 +229,11 @@ def _section_history(runs_dir, section_name, current_run_id):
         section = snapshot.get(section_name)
         if not isinstance(section, dict):
             continue
+        if min_version is not None:
+            version = section.get("schema_version")
+            # Absent (v1, which never wrote the key) or non-integer both fail closed.
+            if not isinstance(version, int) or isinstance(version, bool) or version < min_version:
+                continue
         as_of = section.get("as_of")
         if not as_of or as_of in seen_as_of:
             continue
@@ -328,6 +351,10 @@ def _dispatch_connector(input_name, handler, spec, aliases, resolver, http_get, 
     elif handler == "dataforseo-serp":
         args = {
             "targets": spec.get("targets"),
+            # Without the domain a SERP result cannot be attributed to this client, which
+            # is defect D1 - the connector refuses rather than falling back to substring
+            # matching, and connector_registry lists "domain" under this input's requires.
+            "domain": spec.get("domain"),
             "location_code": spec.get("location_code") or 2840,
             "language_code": spec.get("language_code") or "en",
             "device": spec.get("device") or "desktop",
@@ -350,6 +377,7 @@ def _dispatch_connector(input_name, handler, spec, aliases, resolver, http_get, 
                 resolve_credential=resolver,
                 targets=spec.get("targets"),
                 locations=spec.get("locations"),
+                domain=spec.get("domain"),
                 language_code=spec.get("language_code") or "en",
                 device=spec.get("device") or "desktop",
                 http_post=http_post or dataforseo._default_http_post,
@@ -717,6 +745,24 @@ def _numeric(value):
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
+def _rank_of(row):
+    """A local-rank row's comparable position, or None if it has none.
+
+    None means "do not compare this row", and the distinction is load-bearing. The
+    previous code read `(_numeric(pos) or 0)` on both sides, so a row with no position
+    was compared as rank 0 - the best rank there is. A target going from "no answer" to
+    a real rank of 40 computed as a +40 delta and fired the attention threshold, and a
+    genuine drop out of the results computed as a -40 improvement. Since Issue #1 a row
+    can also be an explicit `error` (the API gave us nothing), which is missing data and
+    must never be read as a position at all.
+    """
+    if not isinstance(row, dict):
+        return None
+    if row.get("status") == "error":
+        return None
+    return _numeric(row.get("organic_rank_position"))
+
+
 def _evaluate_attention(spec, run_id, runs_dir, snapshot, updated_sections):
     findings = []
     history_local_rank = _section_history(runs_dir, "local_rank", run_id) if "local_rank" in updated_sections else []
@@ -734,16 +780,20 @@ def _evaluate_attention(spec, run_id, runs_dir, snapshot, updated_sections):
                 prev = previous_rows.get(key)
                 if not prev:
                     continue
-                delta = (_numeric(row.get("organic_rank_position")) or 0) - (_numeric(prev.get("organic_rank_position")) or 0)
+                current_pos, prev_pos = _rank_of(row), _rank_of(prev)
+                if current_pos is None or prev_pos is None:
+                    continue
+                delta = current_pos - prev_pos
                 if not _compare(delta, threshold["comparator"], threshold["threshold"]):
                     continue
                 ok = True
                 for _ in range(1, int(threshold.get("consecutive_runs") or 1)):
                     older = older_rows.get(key)
-                    if not older:
+                    older_pos = _rank_of(older) if older else None
+                    if older_pos is None:
                         ok = False
                         break
-                    prev_delta = (_numeric(prev.get("organic_rank_position")) or 0) - (_numeric(older.get("organic_rank_position")) or 0)
+                    prev_delta = prev_pos - older_pos
                     if not _compare(prev_delta, threshold["comparator"], threshold["threshold"]):
                         ok = False
                         break
@@ -823,7 +873,25 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
     report_lines.extend(["", f'## Local Rank By Location (as of {_local_stamp(local_rank.get("as_of"), short=True)})'])
     if local_rank.get("rows"):
         for row in local_rank["rows"]:
-            report_lines.append(f'- {row.get("location_name")}: "{row.get("keyword")}" -> {row.get("organic_rank_position")} on {row.get("page")}')
+            # A row with no position is either "we looked and we are not there" or "we
+            # never got an answer", and rendering both as a bare `None` is what let a
+            # months-long collection failure read as a months-long ranking failure.
+            status = row.get("status")
+            if status == "error":
+                outcome = f'NO ANSWER ({row.get("error_reason")}) - missing data, not an absence'
+            elif status == "absent":
+                seen = row.get("organic_results_seen")
+                outcome = f"not in results (of {seen} organic results seen)" if seen else "not in results"
+            elif status == "ok":
+                outcome = f'#{row.get("organic_rank_position")} organic'
+            else:
+                outcome = str(row.get("organic_rank_position"))
+            report_lines.append(f'- {row.get("location_name")}: "{row.get("keyword")}" -> {outcome} on {row.get("page")}')
+        if local_rank.get("request_count") is not None:
+            report_lines.append(
+                f'- collection: {local_rank.get("request_count")} request(s) sent, '
+                f'{local_rank.get("success_count")} answered, {local_rank.get("error_count")} failed'
+            )
     else:
         report_lines.append("- none")
 

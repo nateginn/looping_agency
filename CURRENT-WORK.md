@@ -22,7 +22,10 @@ lists. Decisions get recorded here as they're made, so no context is lost betwee
 - `projects/*/loops/*/runs/` and `projects/*/diagnostics/` are **untracked and gitignored**
   (58 files). Files remain on disk; the loop and dashboard are unaffected.
 
-**In progress:** nothing. Issue #1 is specified below but not started.
+**Issue #1 is done** (2026-08-16, local only — nothing pushed). See "Issue #1 — closed" below
+for what the first correct measurement actually said.
+
+**In progress:** nothing. The backlog below is unscheduled.
 
 ---
 
@@ -66,46 +69,91 @@ Two independent audits were run against the code and the repository.
 
 ---
 
-## Issue #1 — the DataForSEO rank collector (next up)
+## Issue #1 — closed 2026-08-16
 
-**File:** `tools/dataforseo.py`, `pull_local_rank` (~lines 238–283), plus its `--verify` tests.
+All three defects and the policy change are fixed, and the first correct measurement in this
+system's history has been taken. The weekly `LoopAgency-Art-SEO` task was disabled for the
+duration and re-enabled after acceptance passed.
 
-Three defects and one policy change:
+**What changed**
 
-1. **All 12 keywords go out in one request; the live endpoint processes only the first.**
-   → one request per keyword. Treat a non-success task status as a connector error, never as
-   an empty result — that conversion is what turned API rejections into false "not ranking".
-2. **Results are matched by URL-fragment substring with no domain check**, which is how
-   competitors' rankings were recorded as the client's.
-   → match on host *and* path with segment boundaries. Reuse the matcher already written and
-   tested in `tools/lib/timeseries.py` (`classify_local_rank_row`, `_path_matches`); its
-   fixtures include `/massage/` correctly not matching `/massage-therapy-guide/`.
-3. **The stored position counts every SERP element** (ads, map pack), not the organic index.
-   → record the true organic position. Keep the existing field name so MMC's briefing keeps
-   parsing; add `matched_domain` beside it.
-4. **Policy (decision 4):** discard non-matching results. Do not write `result_url` or any
-   other competitor identifier into the snapshot.
+- `tools/lib/serp_match.py` (new) — the shared "is this result ours, and where?" matcher.
+  `tools/lib/timeseries.py` now imports it rather than keeping its own copy, so the
+  connector, the dashboard and the one-shot diagnostic cannot drift apart again.
+- `tools/dataforseo.py` — one POST per target; tasks matched by the keyword the API echoes
+  back, never by array index; every non-`20000` outcome recorded as an **error**, never as an
+  empty result. Position is the true organic index (cross-checked against `rank_group`, which
+  agreed on all 12 live rows). Non-matching results are discarded — no competitor host, URL
+  or title reaches disk. Each row carries `status: ok | absent | error`, and one failing
+  target no longer discards the other eleven. `pull_metrics` got the same fix but **fails
+  closed** instead, because it is a `critical` connector feeding `search_analytics`.
+- `domain` is now required for both DataForSEO inputs (`connector_registry.py`). There is no
+  "no domain configured" fallback — that would revive the substring match behind a default.
+- `tools/run_loop.py` — `_section_history` refuses to hand a pre-fix (`schema_version < 2`)
+  `local_rank` section to the attention comparison, and `_rank_of` replaces
+  `(_numeric(x) or 0)`, which had been reading a missing position as **rank 0** — the best
+  rank there is. report.md now distinguishes "not in results (of 99 seen)" from "NO ANSWER".
+- `tools/seo_timeseries.py` — the integrity panel is split into a corrected era and a
+  pre-fix era; the D4 claim is scoped and past-tense once a v2 observation exists, instead of
+  silently becoming false.
 
-**Also needed: a history cutoff.** Once fixed, the numbers change meaning — competitor entries
-vanish, real ones appear — and compared against the old records that reads as a huge swing and
-fires false alarms. `tools/run_loop.py` `_section_history` must respect a cutoff so comparisons
-cannot reach behind it.
+**Why a version stamp rather than `local_rank_baseline_run_id`:** `_build_snapshot` carries
+un-refreshed sections forward verbatim, so a pre-fix section lives on inside run directories
+created after the fix. A run-id cutoff would hand it straight to the comparison; the version
+travels with the data it describes.
 
-**Verification**
-- A live run issues 12 requests and returns 12 results.
-- Every recorded position resolves to the client's own site.
-- No competitor domain or URL appears anywhere in the snapshot.
-- The first scheduled run after re-enabling raises **zero** historical rank alarms. If it
-  raises any, the cutoff is not working — do not wave it through as expected noise.
-- `tools/tests/phase1_exit_criteria.py` stays green (211/211) and every module's `--verify`
-  passes.
+**What the first correct measurement said** (run `2026-08-17T02-17-09-484Z-t5060s`, 12 billed
+tasks). 4 of 12 targets rank; 7 are genuinely absent; 1 gave no answer (`40101`) and is
+recorded as missing data, not as an absence:
+
+| | Greeley | Denver |
+|---|---|---|
+| physical therapy | **#46** | absent (78 seen) |
+| chiropractor | absent (99 seen) | absent (96 seen) |
+| auto injury | *no answer* | **#18** |
+| work comp | **#21** | absent (39 seen) |
+| massage | absent (77 seen) | absent (89 seen) |
+| acupuncture | **#35** | absent (79 seen) |
+
+The old stored value for `physical therapy greeley` was `40` — which was `beaminghealth.com`'s
+`rank_absolute`. The new `46` is this site's own organic index. **The two numbers were never
+measuring the same thing**, which is exactly why the cutoff exists. The homepage also ranks
+for several of these (#29 Greeley physical therapy, #17 Greeley acupuncture) where the
+targeted service page does not.
+
+**Acceptance, all passed**
+- 12 requests issued, 12 rows returned, one per configured target.
+- Every recorded position resolves to the client's own site (`matched_domain`), and
+  `rank_group` agreed with the counted organic index on every row.
+- Zero non-client hosts anywhere in the snapshot.
+- **Zero** historical rank alarms. Counterfactually, 17 prior observations would have been
+  compared without the cutoff; 0 were.
+- `tools/tests/phase1_exit_criteria.py` 225/225 (was 211/211), and every module `--verify`
+  passes. Two pre-existing failures in `lib/timeseries.py` — stale hardcoded run counts that
+  went red whenever a new run landed — were rewritten as invariants.
+
+**Correction to this file's own earlier wording.** It said "the first scheduled run after
+re-enabling raises zero historical rank alarms". That is not a durable test: with v2-only
+history, zero findings are guaranteed by construction through the *second* v2 observation
+(`consecutive_runs: 2` needs both `history[0]` and `history[1]`), and from the **third** a
+real rank move is *supposed* to fire. The correct standing criterion is *comparisons draw
+exclusively on v2 history* — asserted offline in `phase1_exit_criteria.py`, which also proves
+a leaked pre-fix section would fire.
 
 ---
 
 ## Backlog — not scheduled; planned when we reach it
 
+- **MMC's briefing will misread the new rows** (`D:\Dev\MMC`, so it needs your go-ahead
+  before I touch it). `collector/sources/looping.py` `_summarize_local_rank` counts any
+  `position is None` as a genuine "not in top results", so the one `status: "error"` row in
+  the run above would be briefed as a real absence — the exact failure mode Issue #1 existed
+  to kill, one repo over. It also needs telling that pre-cutoff rows are not comparable to
+  post-cutoff ones, or the briefing charts the correction as a trend. Field names were kept
+  (`organic_rank_position`, `result_url`) so it keeps parsing in the meantime.
 - **Make rank data actually steer decisions.** The gap between intent and build (finding 5).
-  Largest item, and closest to the original purpose of the project.
+  Largest item, and closest to the original purpose of the project. Now unblocked — as of
+  Issue #1 there is real rank data to steer with for the first time.
 - **Make "did it work?" mean something.** There is no "worse" outcome — anything short of a
   guardrail breach is filed as a *verified winner*, including a page that slipped four
   positions (`run_loop.py` `_evaluate_prior_experiments`, ~lines 549–562). Needs the operator
@@ -122,6 +170,9 @@ cannot reach behind it.
   `PLAN-SEO-TIMESERIES.md`. They quote real searches as evidence, so they need redacting
   rather than ignoring. Also: the client's real street addresses are baked into test fixtures
   in `tools/dataforseo.py` and `tools/spec_validate.py` and should be swapped for invented ones.
+  Two more found during Issue #1: `tools/serp_diagnostic.py`'s `--verify` and
+  `tools/lib/timeseries.py`'s check-15 fixtures hardcode real competitor domains. New fixtures
+  written in Issue #1 all use synthetic `.invalid` hosts; these are the leftovers.
 - **The map listing.** A correct one-off test (2026-08-12) found the client ranks #2
   organically in Greeley and still takes zero clicks, because a three-entry map pack sits above
   the organic results. Denver is absent from the top 100 entirely. This is where leads are

@@ -23,6 +23,19 @@ import os
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
+# The "is this result ours?" primitives moved down into `serp_match` for Issue #1 so
+# that `tools/dataforseo.py` could reuse the exact rules these fixtures proved, without
+# a connector having to import the dashboard. Re-exported under their original names -
+# every caller in this module is unchanged.
+try:
+    from .serp_match import is_own_url
+    from .serp_match import path_matches as _path_matches
+    from .serp_match import registrable_host
+except ImportError:  # run directly, e.g. `python tools/lib/timeseries.py --verify`
+    from serp_match import is_own_url
+    from serp_match import path_matches as _path_matches
+    from serp_match import registrable_host
+
 SECTION_KEYS = ("search_analytics", "local_rank", "backlinks", "technical_health")
 
 # `gsc.py:77` sends this and never paginates; it is not recorded in run.json, so any
@@ -76,15 +89,6 @@ def normalize_page(url):
     if host.startswith("www."):
         host = host[4:]
     return f"https://{host}{parts.path}"
-
-
-def registrable_host(url):
-    """Lower-cased host with `www.` stripped. Not a public-suffix parse - it is used
-    only to name a competitor in a panel, never to authorise anything."""
-    if not url:
-        return None
-    host = (urlsplit(url).hostname or "").lower()
-    return host[4:] if host.startswith("www.") else host
 
 
 def _iso(value):
@@ -194,33 +198,35 @@ def derive_batch_indexes(rows, run_json=None):
     return indexes, None
 
 
-def _path_matches(target_path, url):
-    """Segment-boundary match: `/massage/` must not match `/massage-therapy-guide/`.
-
-    Wrapping both sides in slashes makes a plain substring test exact at segment
-    boundaries - `/massage-therapy-guide/` contains `/massage-`, never `/massage/`.
-    """
-    if not target_path or not url:
-        return False
-    path = urlsplit(url).path or "/"
-    want = target_path if target_path.startswith("/") else "/" + target_path
-    if not want.endswith("/"):
-        want += "/"
-    if not path.endswith("/"):
-        path += "/"
-    return want in path
-
-
-def classify_local_rank_row(row, domain, batch_index):
-    """own | competitor | absent | not-queried | unknown.
+def classify_local_rank_row(row, domain, batch_index, schema_version=None):
+    """own | competitor | absent | error | not-queried | unknown.
 
     `own` requires host AND segment-boundary path match, mirroring the rule P0.1
-    specifies for the connector fix. The historical rows carry `rank_absolute` matched by
-    bare URL substring with no domain check (defects D1/D5), which is why no branch here
-    ever returns a rank.
+    specifies for the connector fix. The v1 rows carry `rank_absolute` matched by bare URL
+    substring with no domain check (defects D1/D5), which is why no branch here ever
+    returns a rank.
+
+    **Two eras, and the classification rule differs between them.** v1 rows carry no
+    status, so a null had to be *inferred* as "never queried" from the row's position in
+    its batch (defect D4: only the first task of each batched POST was executed). From
+    schema v2 the connector states the answer outright, and the batch inference becomes
+    actively wrong - a genuinely absent v2 row at batch index 3 would be mislabelled
+    "not-queried" by the old rule. So v2 rows are read, never inferred.
     """
     position = row.get("organic_rank_position")
     result_url = row.get("result_url")
+
+    if isinstance(schema_version, int) and schema_version >= 2:
+        status = row.get("status")
+        if status == "error":
+            return "error"
+        if status == "absent":
+            return "absent"
+        if status == "ok":
+            # The v2 connector discards non-matches outright, so an `ok` row is ours by
+            # construction - but this is a forensic module, so verify rather than trust.
+            return "own" if is_own_url(result_url, domain) else "competitor"
+        return "unknown"
 
     if batch_index == "unknown":
         return "unknown"
@@ -509,26 +515,36 @@ def _extract_local_rank(series, seen, warnings, run_id, snapshot, run_json, doma
         return
     seen["local_rank"].add(as_of)
     rows = section.get("rows") or []
+    # Absent on every v1 section - the key did not exist before the Issue #1 fix.
+    schema_version = section.get("schema_version") if isinstance(section.get("schema_version"), int) else 1
+    corrected = schema_version >= 2
+
     indexes, note = derive_batch_indexes(rows, run_json)
-    if note:
+    # Batch order only ever meant anything while the connector batched. Reporting a
+    # reconstruction warning about a v2 observation would be noise about a defect that no
+    # longer exists in it.
+    if note and not corrected:
         warnings.append(f"{run_id}: {note}")
 
     out_rows, invariant_broken = [], False
     for row, idx in zip(rows, indexes):
-        classification = classify_local_rank_row(row, domain, idx)
-        if idx != "unknown" and idx > 0 and row.get("organic_rank_position") is not None:
+        classification = classify_local_rank_row(row, domain, idx, schema_version=schema_version)
+        if not corrected and idx != "unknown" and idx > 0 and row.get("organic_rank_position") is not None:
             invariant_broken = True
         out_rows.append({
             "location": row.get("location_name"),
             "keyword": row.get("keyword"),
             "page": row.get("page"),
-            "batch_index": idx,
+            "batch_index": idx if not corrected else None,
             "classification": classification,
             "competitor_domain": registrable_host(row.get("result_url")) if classification == "competitor" else None,
             "result_url": row.get("result_url"),
-            # Quarantined by name: rank_absolute counts every SERP feature and was matched
-            # by bare URL substring. It is never rendered - see check 27c.
-            "forensic": {"raw_rank_absolute_not_a_rank": row.get("organic_rank_position")},
+            # v1: rank_absolute, counting every SERP feature, matched by bare URL substring -
+            # quarantined by name and never rendered (check 27c). v2: the validated organic
+            # index on our own domain, which IS a rank; it is charted from `organic_position`.
+            "forensic": {"raw_rank_absolute_not_a_rank": None if corrected else row.get("organic_rank_position")},
+            "organic_position": row.get("organic_rank_position") if corrected else None,
+            "schema_version": schema_version,
         })
     if invariant_broken:
         warnings.append(
@@ -540,7 +556,10 @@ def _extract_local_rank(series, seen, warnings, run_id, snapshot, run_json, doma
         "observed_at": as_of,
         "first_seen_run_id": run_id,
         "row_count": len(out_rows),
-        "batch_invariant_holds": not invariant_broken,
+        "schema_version": schema_version,
+        # Only a claim about the batching era. A v2 observation is not evidence for or
+        # against it, so it is reported as not-applicable rather than as True.
+        "batch_invariant_holds": None if corrected else not invariant_broken,
         "rows": out_rows,
     })
 
@@ -831,6 +850,26 @@ def _self_test():  # noqa: C901 - a flat checklist reads better than nested help
         bad = [f"{n}: got {g}, want {w}" for n, g, w in fixtures if g != w]
         check("15 local-rank classification matches every P0.1 fixture", not bad, "; ".join(bad))
 
+        # --- 15b: schema v2 is read, never inferred -------------------------------------
+        # The v1 rule says "null position at batch index > 0 means never queried". Applied
+        # to a corrected row that means a genuine absence at position 3 in its location's
+        # list gets reported as a defect that no longer exists. v2 states its own answer.
+        def cls2(status, url=None, position=None, idx=3):
+            row = {"page": "/chiropractor/", "status": status, "result_url": url,
+                   "organic_rank_position": position}
+            return classify_local_rank_row(row, REAL_DOMAIN, idx, schema_version=2)
+
+        v2_fixtures = [
+            ("v2 absent at batch index 3 is absent, not not-queried", cls2("absent"), "absent"),
+            ("v2 error is error, never absent", cls2("error"), "error"),
+            ("v2 ok on our own url is own", cls2("ok", f"https://{REAL_DOMAIN}/chiropractor/", 2), "own"),
+            ("v2 ok is still verified, not trusted", cls2("ok", "https://competitor-one.invalid/chiropractor/", 2), "competitor"),
+            ("v2 with an unrecognised status is unknown, never absent", cls2("something-new"), "unknown"),
+        ]
+        bad2 = [f"{n}: got {g}, want {w}" for n, g, w in v2_fixtures if g != w]
+        check("15b schema-v2 local-rank rows are classified from their own status, not from batch order",
+              not bad2, "; ".join(bad2))
+
         # --- 16b: batch-index provenance guards ----------------------------------------
         noncontig = [
             {"location_name": "Greeley", "keyword": "a", "page": "/a/"},
@@ -909,9 +948,16 @@ def _self_test():  # noqa: C901 - a flat checklist reads better than nested help
             gsc = real["series"]["gsc"]
             latest = gsc[-1]
 
-            check("1b real artifacts: 23 run dirs / 22 snapshot-bearing -> 9 GSC observations, 8 usable",
-                  real["run_dirs"] == 23 and real["snapshot_bearing"] == 22 and len(gsc) == 8,
-                  f"dirs={real['run_dirs']} snaps={real['snapshot_bearing']} obs={len(gsc)} (1 zero-row pull dropped)")
+            # Bounds, not frozen counts. This asserted `== 23 / == 22 / == 8` and started
+            # failing the moment the next scheduled run landed - a check that goes red on
+            # new data teaches you to ignore it. What it actually exists to prove is rule
+            # 1 (deduplicate by measurement, never by run) and F1 (schema-v1 snapshots are
+            # not silently dropped), and both are properties, not totals.
+            check("1b real artifacts: snapshots dedupe to far fewer GSC observations than runs, and no historical pull is lost",
+                  real["snapshot_bearing"] <= real["run_dirs"]
+                  and len(gsc) < real["snapshot_bearing"]
+                  and len(gsc) >= 8,
+                  f"dirs={real['run_dirs']} snaps={real['snapshot_bearing']} obs={len(gsc)} (>=8 expected; 1 zero-row pull dropped)")
 
             raw_snapshot = normalize_snapshot(_load_json(
                 os.path.join(REAL_RUNS, "2026-08-11T05-18-25-362Z-u5z1dd", "snapshot.json")))
@@ -933,19 +979,37 @@ def _self_test():  # noqa: C901 - a flat checklist reads better than nested help
                   f"{t}")
 
             lr = real["series"]["local_rank"]
-            nonnull = [(o["observed_at"], r) for o in lr for r in o["rows"]
+            # F6 is a claim about the *batching era only*. It was written when every
+            # observation was v1; a corrected v2 observation is neither evidence for it nor
+            # a violation of it, so it is scoped rather than left to go false on 2026-08-16.
+            # The v1 set is now frozen - the connector cannot write another - so this is a
+            # statement about closed history, asserted as a floor rather than a total.
+            lr_v1 = [o for o in lr if o["schema_version"] == 1]
+            lr_v2 = [o for o in lr if o["schema_version"] >= 2]
+            nonnull = [(o["observed_at"], r) for o in lr_v1 for r in o["rows"]
                        if r["forensic"]["raw_rank_absolute_not_a_rank"] is not None]
             all_first = all(r["batch_index"] == 0 for _, r in nonnull)
-            check("16 F6 invariant: every non-null local-rank result in all history is batch index 0",
-                  len(lr) == 16 and len(nonnull) == 31 and all_first,
-                  f"{len(nonnull)} non-null across {len(lr)} observations; all_index_0={all_first}. "
-                  "IF THIS FAILS the connector changed and 'not-queried' can no longer be inferred from batch order")
+            check("16 F6 invariant, scoped to the pre-fix era: every non-null v1 local-rank result is batch index 0",
+                  len(lr_v1) >= 16 and len(nonnull) >= 31 and all_first,
+                  f"{len(nonnull)} non-null across {len(lr_v1)} v1 observations ({len(lr_v2)} v2); all_index_0={all_first}. "
+                  "IF all_index_0 FAILS the v1 history is not what D4 says it is and 'not-queried' was mis-inferred")
+
+            check("16e the two eras never share a classification rule: v2 rows carry no inferred batch index",
+                  all(r["batch_index"] is None for o in lr_v2 for r in o["rows"])
+                  and all(r["batch_index"] is not None for o in lr_v1 for r in o["rows"]),
+                  f"v1={len(lr_v1)} v2={len(lr_v2)}")
 
             leaked = [k for o in lr for r in o["rows"] for k in r if k == "position"]
+            # v1's stored number is rank_absolute matched by substring - not a rank, and
+            # never rendered. v2's IS a validated organic rank, so `organic_position` is
+            # exempt here; it is null on every v1 row by construction.
+            ignore = {"batch_index", "schema_version", "organic_position"}
             outside = [r for o in lr for r in o["rows"]
-                       if any(isinstance(v, (int, float)) and k != "batch_index" for k, v in r.items())]
-            check("17 no 'position' field and no rank number outside forensic in the local_rank series",
-                  not leaked and not outside, f"position_keys={len(leaked)} numeric_outside_forensic={len(outside)}")
+                       if any(isinstance(v, (int, float)) and k not in ignore for k, v in r.items())]
+            v1_leak = [r for o in lr_v1 for r in o["rows"] if r["organic_position"] is not None]
+            check("17 no 'position' field, no rank number outside forensic, and no v1 row exposing a chartable rank",
+                  not leaked and not outside and not v1_leak,
+                  f"position_keys={len(leaked)} numeric_outside_forensic={len(outside)} v1_rank_leaks={len(v1_leak)}")
 
             classifications = {}
             for o in lr:

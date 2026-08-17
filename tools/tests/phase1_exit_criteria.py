@@ -153,14 +153,68 @@ GSC_DFS_SPEC = (
         "inputs:\n  - gsc\n  - dataforseo\n",
     )
     .replace(
+        # `domain` is required for any dataforseo input since Issue #1: a SERP result can
+        # only be attributed to this client by host, and the connector refuses rather than
+        # falling back to the URL-substring match that recorded competitors as us (D1).
         "metrics_window_days: 28\n",
-        "metrics_window_days: 28\ntargets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n",
+        'metrics_window_days: 28\ndomain: "example.com"\ntargets:\n  - keyword: best loop agency\n    page: /blog/loop-agency\n',
     )
     .replace(
         "credential_aliases:\n  gsc: fixture-gsc-alias\n",
         "credential_aliases:\n  gsc: fixture-gsc-alias\n  dataforseo: fixture-dfs-alias\n",
     )
 )
+
+# Issue #1: the local-rank history cutoff. consecutive_runs is 1 here deliberately - the
+# real art spec uses 2, which would mask the cutoff behind "not enough history yet" and
+# make the test pass for the wrong reason.
+LOCAL_RANK_SPEC = """---
+version: 1
+loop: seo
+objective: Issue #1 local-rank history-cutoff fixture
+primary_metric: gsc_position
+guardrail_metrics:
+  - name: ranking_pages_position
+    comparator: ">"
+    threshold: 5
+    consecutive_runs: 1
+failure_threshold:
+  metric: ranking_pages_position
+  comparator: ">"
+  value: 5
+inputs:
+  - dataforseo-local-rank
+domain: "ourclinic.invalid"
+targets:
+  - keyword: physical therapy greeley
+    page: /physical-therapy/
+    location: Greeley
+locations:
+  - name: Greeley
+    address: "100 Example St Greeley, CO 80634"
+    zip: "80634"
+attention_thresholds:
+  - kind: numeric_delta
+    metric: organic_rank_position
+    comparator: ">"
+    threshold: 5
+    consecutive_runs: 1
+allowed_actions:
+  - type: title-tag-rewrite
+    tier: 1
+    rollback: revert PR
+    observation_window_days: 14
+    min_sample_size: 100
+approval_mode: propose-only
+max_run_duration_minutes: 5
+schedule: "manual"
+stop_condition: test fixture teardown
+memory: memory.md
+credential_aliases:
+  dataforseo: fixture-dfs-alias
+---
+# fixture
+"""
 
 FAKE_LIVE_TOKEN = "sk-test-fake-live-token-ABC123"
 
@@ -1582,7 +1636,22 @@ def test_gsc_dataforseo_merge():
 
     def fake_http(url, headers, body_bytes):
         if "dataforseo" in url:
-            payload = {"tasks": [{"result": [{"items": [{"type": "organic", "rank_absolute": 6, "url": "https://example.com/blog/loop-agency"}]}]}]}
+            # Real SERP composition: a local pack and a People Also Ask block sit above the
+            # organic results, so rank_absolute (6) runs four ahead of the true organic
+            # index (2), and a competitor carrying our exact path outranks us. The old
+            # fixture had a single bare item, which could not tell the two apart - so it
+            # passed just as happily against the buggy connector.
+            payload = {"tasks": [{
+                "status_code": 20000, "status_message": "Ok.",
+                "data": {"keyword": "best loop agency"},
+                "result": [{"items": [
+                    {"type": "local_pack", "rank_absolute": 1, "rank_group": 1},
+                    {"type": "local_pack", "rank_absolute": 2, "rank_group": 2},
+                    {"type": "local_pack", "rank_absolute": 3, "rank_group": 3},
+                    {"type": "organic", "rank_absolute": 4, "rank_group": 1, "url": "https://competitor-one.invalid/blog/loop-agency"},
+                    {"type": "people_also_ask", "rank_absolute": 5, "rank_group": 1},
+                    {"type": "organic", "rank_absolute": 6, "rank_group": 2, "url": "https://example.com/blog/loop-agency"},
+                ]}]}]}
         else:
             payload = {"rows": [{"keys": ["best loop agency", "https://example.com/blog/loop-agency"], "clicks": 42, "impressions": 900, "position": 8.2}]}
         return 200, "OK", json.dumps(payload).encode("utf-8")
@@ -1593,7 +1662,147 @@ def test_gsc_dataforseo_merge():
     snapshot = _read_json(os.path.join(loop_dir, "runs", result["run_id"], "snapshot.json"))
     row = snapshot["search_analytics"]["keywords"][0]
     check("merge: gsc stays the primary source (clicks/position preserved)", row["clicks"] == 42 and row["position"] == 8.2)
-    check("merge: dataforseo path target enriches the full-URL gsc row with serp_position", row.get("serp_position") == 6)
+    check("merge: serp_position is the organic index (2), not rank_absolute (6) - defect D5", row.get("serp_position") == 2)
+    check("merge: the competitor sharing our path is not enriched onto our row - defect D1",
+          row.get("matched_domain") is None or row.get("matched_domain") == "example.com")
+    check("merge: no competitor host reaches the snapshot", "competitor-one" not in json.dumps(snapshot))
+
+
+def _seed_local_rank_run(run_id, as_of, position, schema_version=None, status=None):
+    """Write a prior run's snapshot carrying one local_rank row, v1 or v2."""
+    row = {
+        "location_name": "Greeley", "location_address": "100 Example St Greeley, CO 80634",
+        "zip": "80634", "location_code": 1014529, "location_target": "Greeley,Colorado,United States",
+        "keyword": "physical therapy greeley", "page": "/physical-therapy/",
+        "organic_rank_position": position, "result_url": None,
+    }
+    section = {"source": "dataforseo-local-rank", "as_of": as_of, "rows": [row]}
+    if schema_version is not None:
+        section["schema_version"] = schema_version
+        section["rank_metric"] = "organic_index"
+        row["status"] = status or ("ok" if position is not None else "absent")
+        row["matched_domain"] = "ourclinic.invalid" if position is not None else None
+        row["organic_results_seen"] = 40
+    run_dir = os.path.join(loop_dir, "runs", run_id)
+    os.makedirs(run_dir, exist_ok=True)
+    _write_json(os.path.join(run_dir, "snapshot.json"),
+                {"schema_version": 2, "search_analytics": None, "local_rank": section,
+                 "backlinks": None, "technical_health": None})
+
+
+def _local_rank_http(position):
+    """Fake SERP placing our page at a given organic index, behind that many competitors."""
+    def fake_post(url, headers, body_bytes):
+        keyword = json.loads(body_bytes)[0]["keyword"]
+        items = []
+        for i in range(1, position):
+            items.append({"type": "organic", "rank_absolute": i, "rank_group": i,
+                          "url": f"https://competitor-{i}.invalid/physical-therapy/"})
+        items.append({"type": "organic", "rank_absolute": position, "rank_group": position,
+                      "url": "https://ourclinic.invalid/physical-therapy/"})
+        payload = {"tasks": [{"status_code": 20000, "status_message": "Ok.",
+                              "data": {"keyword": keyword}, "result": [{"items": items}]}]}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    def fake_get(url, headers):
+        payload = {"tasks": [{"result": [{"location_code": 1014529, "location_name": "Greeley,Colorado,United States"}]}]}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    return fake_post, fake_get
+
+
+def _attention_findings(result):
+    flags = result["run_json"]["attention_flags"]  # indexed, not .get() - a renamed key
+    return [f for f in flags if "Local rank" in f]  # must fail loudly, not read as "no findings"
+
+
+def test_local_rank_history_cutoff_ignores_prefix_sections():
+    """The rebaseline has to be code, not prose (P0.1, Codex round 10 #2).
+
+    `_evaluate_attention` compares this run's snapshot against prior snapshots on disk
+    regardless of what any document says. After the connector fix the surviving numbers
+    change meaning - competitor rows vanish, rank_absolute becomes an organic index - so
+    every one of them would read as a large movement against history that was never valid.
+    """
+    reset_fixture()
+    _write_spec(LOCAL_RANK_SPEC)
+    # A pre-fix reading of rank 1 (which was really rank_absolute, quite possibly a
+    # competitor's). Against a corrected reading of 30 that is a +29 delta, far past the
+    # threshold of 5 - so if the cutoff leaks, this fires.
+    _seed_local_rank_run("2026-08-01T06-00-00-000Z-aaaaaa", "2026-08-01T06:00:00Z", 1)
+    post, get = _local_rank_http(30)
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=post, _http_get=get)
+
+    check("cutoff: the run succeeds and writes a v2 local_rank section", result["status"] == "ok")
+    snapshot = _read_json(os.path.join(loop_dir, "runs", result["run_id"], "snapshot.json"))
+    section = snapshot["local_rank"]
+    check("cutoff: the new section announces schema_version 2", section["schema_version"] == 2)
+    check("cutoff: the recorded position is the organic index", section["rows"][0]["organic_rank_position"] == 30)
+    check("cutoff: zero rank findings against pre-fix history", _attention_findings(result) == [])
+    check("cutoff: and no competitor host reached the snapshot", "competitor-1" not in json.dumps(snapshot))
+
+    # The same seeded prior, but marked v2: the cutoff must filter history, not disable
+    # the check. Without this a cutoff that simply returned [] forever would pass above.
+    reset_fixture()
+    _write_spec(LOCAL_RANK_SPEC)
+    _seed_local_rank_run("2026-08-01T06-00-00-000Z-aaaaaa", "2026-08-01T06:00:00Z", 1, schema_version=2)
+    post, get = _local_rank_http(30)
+    result2 = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=post, _http_get=get)
+    check("cutoff: two post-fix readings DO compare - a real 29-place drop still fires",
+          len(_attention_findings(result2)) == 1)
+
+
+def test_local_rank_error_row_is_never_compared_as_a_position():
+    """`(_numeric(x) or 0)` read a missing position as rank 0 - the best rank there is.
+
+    So a target that simply gave no answer, then returned a real rank of 30, computed as
+    a +30 delta and raised an alarm about a movement that never happened.
+    """
+    reset_fixture()
+    _write_spec(LOCAL_RANK_SPEC)
+    _seed_local_rank_run("2026-08-01T06-00-00-000Z-aaaaaa", "2026-08-01T06:00:00Z", None,
+                         schema_version=2, status="error")
+    post, get = _local_rank_http(30)
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=post, _http_get=get)
+    check("null-as-zero: a prior row with no answer is skipped, not compared as rank 0",
+          _attention_findings(result) == [])
+
+    # And the reverse direction: a prior real rank against a current error.
+    reset_fixture()
+    _write_spec(LOCAL_RANK_SPEC)
+    _seed_local_rank_run("2026-08-01T06-00-00-000Z-aaaaaa", "2026-08-01T06:00:00Z", 1, schema_version=2)
+
+    def failing_post(url, headers, body_bytes):
+        return 500, "Server Error", b"upstream down"
+
+    _, get = _local_rank_http(30)
+    result2 = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=failing_post, _http_get=get)
+    check("null-as-zero: an all-failed pull degrades the run rather than reporting absences",
+          result2["status"] == "degraded")
+    check("null-as-zero: and raises no rank finding from the failure", _attention_findings(result2) == [])
+
+
+def test_local_rank_report_distinguishes_absent_from_no_answer():
+    reset_fixture()
+    _write_spec(LOCAL_RANK_SPEC)
+
+    def absent_post(url, headers, body_bytes):
+        keyword = json.loads(body_bytes)[0]["keyword"]
+        items = [{"type": "organic", "rank_absolute": i, "rank_group": i,
+                  "url": f"https://competitor-{i}.invalid/physical-therapy/"} for i in range(1, 6)]
+        payload = {"tasks": [{"status_code": 20000, "data": {"keyword": keyword}, "result": [{"items": items}]}]}
+        return 200, "OK", json.dumps(payload).encode("utf-8")
+
+    _, get = _local_rank_http(3)
+    result = run_loop(PROJECT, LOOP, _resolve_credential=lambda alias: FAKE_LIVE_TOKEN, _http_post=absent_post, _http_get=get)
+    with open(os.path.join(loop_dir, "runs", result["run_id"], "report.md"), "r", encoding="utf-8") as f:
+        report = f.read()
+    check("report: a genuine absence says so, and says out of how many results",
+          "not in results (of 5 organic results seen)" in report)
+    check("report: the collection counters are stated, since run.json records one tool_call not 12 POSTs",
+          "1 request(s) sent, 1 answered, 0 failed" in report)
+    check("report: no competitor host is rendered into the human report",
+          "competitor-1" not in report)
 
 
 def test_gsc_connector_failure_clean_partial():
@@ -2015,6 +2224,9 @@ def main():
     test_stale_lock_ttl_comes_from_spec()
     test_gsc_dispatch_offline()
     test_gsc_dataforseo_merge()
+    test_local_rank_history_cutoff_ignores_prefix_sections()
+    test_local_rank_error_row_is_never_compared_as_a_position()
+    test_local_rank_report_distinguishes_absent_from_no_answer()
     test_gsc_connector_failure_clean_partial()
     test_degradable_connector_failure_degrades_instead_of_killing_the_run()
     test_critical_connector_failure_still_aborts_the_whole_run()

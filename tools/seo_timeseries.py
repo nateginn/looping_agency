@@ -370,6 +370,10 @@ footer code{{background:var(--surface);border:1px solid var(--border);border-rad
 padding:1px 5px}}
 .st-good{{color:{STATUS['good']}}} .st-warn{{color:{STATUS['serious']}}}
 .st-crit{{color:{STATUS['critical']}}}
+/* Separates the pre-fix local-rank era from the corrected one. The two are never
+   charted together, so the page has to make the seam visible rather than implied. */
+.era{{font-size:14px;margin:26px 0 10px;padding-top:16px;border-top:1px solid var(--border);
+color:var(--muted);text-transform:uppercase;letter-spacing:.04em}}
 @media print{{body{{background:#fff}}.tile,figure.chart{{break-inside:avoid}}}}
 """
 
@@ -428,14 +432,66 @@ def _tracked_table(gsc, universe, brand_terms, exclusions):
 
 
 def _integrity_panel(local_rank):
-    """F6: no rank chart and no rank number. Classification only.
+    """Local-rank collection integrity, split at the Issue #1 connector fix.
 
-    31 of 31 non-null results in the whole history are index 0 of their batch, so ten of
-    twelve targets have never been queried at all. A rank line drawn through this would
-    be a fabrication containing competitors' rankings.
+    Two eras that must never be blended into one statement. Before the fix (schema v1):
+    every non-null result was index 0 of its batch, so ten of twelve targets were never
+    queried at all, and the values that did come back were `rank_absolute` matched by bare
+    URL substring - a rank line drawn through them would be a fabrication containing
+    competitors' rankings. From schema v2 the connector sends one request per target and
+    validates the host, so those rows are real ranks.
+
+    The pre-fix panel's claims are therefore stated in the past tense and scoped to v1
+    observations once any v2 observation exists. Left in the present tense they would
+    simply become false the day the fix landed.
     """
     if not local_rank:
         return "<p class=\"empty\">No local-rank observations.</p>"
+    v1 = [o for o in local_rank if (o.get("schema_version") or 1) == 1]
+    v2 = [o for o in local_rank if (o.get("schema_version") or 1) >= 2]
+    parts = []
+    if v2:
+        parts.append(_corrected_rank_panel(v2))
+    if v1:
+        parts.append(_prefix_rank_panel(v1, superseded=bool(v2)))
+    return "".join(parts)
+
+
+def _corrected_rank_panel(observations):
+    """The post-fix era. These rows are ranks; the pre-fix ones are not, and the two
+    series are never joined - a chart spanning the cutoff would render the correction
+    itself as a movement."""
+    latest = observations[-1]
+    counts = {}
+    for r in latest["rows"]:
+        counts[r["classification"]] = counts.get(r["classification"], 0) + 1
+    rows = []
+    for r in sorted(latest["rows"], key=lambda r: (r["location"] or "", r["keyword"] or "")):
+        if r["classification"] == "own":
+            state = f'<span class="st-good">#{esc(str(r["organic_position"]))} organic</span>'
+        elif r["classification"] == "absent":
+            state = '<span class="st-warn">not in results</span>'
+        elif r["classification"] == "error":
+            state = '<span class="st-crit">no answer &mdash; missing data, not an absence</span>'
+        else:
+            state = f'<span class="st-warn">{esc(r["classification"])}</span>'
+        rows.append(f"<tr><td>{esc(r['location'])}</td><td>{esc(r['keyword'])}</td>"
+                    f"<td>{esc(r['page'])}</td><td>{state}</td></tr>")
+    return (
+        f'<div class="banner"><strong>Corrected collection &mdash; {len(observations)} observation(s) '
+        f'since the connector fix.</strong> One request per target, results validated by host '
+        f'<em>and</em> path, and the position recorded is the organic index rather than '
+        f'<code>rank_absolute</code>. These rows are real ranks. <strong>They are not comparable to '
+        f'the pre-fix history below</strong>, which is why nothing is charted across the two.</div>'
+        f'<p class="small">Latest observation {esc(latest["observed_at"])}: '
+        + esc(", ".join(f"{k} {v}" for k, v in sorted(counts.items()))) + ".</p>"
+        "<table><thead><tr><th>Location</th><th>Keyword</th><th>Target page</th>"
+        "<th>Result</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
+
+
+def _prefix_rank_panel(local_rank, superseded=False):
+    if not local_rank:
+        return ""
     targets, counts = {}, {}
     for obs in local_rank:
         for r in obs["rows"]:
@@ -473,21 +529,31 @@ def _integrity_panel(local_rank):
                     f'<td class="n">{t["own"]}</td><td class="n">{t["competitor"]}</td>'
                     f"<td>{esc(who) if who != '&mdash;' else who}</td></tr>")
 
+    # Past tense once a corrected observation exists: these are closed claims about a
+    # fixed set of historical observations, not a description of how collection works now.
+    era = "in the pre-fix history" if superseded else "in the entire history"
+    heading = (f'<h3 class="era">Pre-fix collection &mdash; closed history, {len(local_rank)} observations</h3>'
+               if superseded else "")
+    was, batched, are_matched, is_stored, resumes = (
+        ("were", "batched", "were matched", "stored was", "resumed with the fix above")
+        if superseded else
+        ("are", "batches", "are matched", "stored is", "resumes once P0.1 lands"))
     return (
-        f'<div class="banner crit"><strong>{never} of the {len(current)} rank targets currently '
-        f"configured have never been queried, once, in the entire history.</strong> "
-        f"The DataForSEO connector batches every "
+        heading
+        + f'<div class="banner crit"><strong>{never} of the {len(current)} rank targets configured '
+        f"at the time were never queried, once, {era}.</strong> "
+        f"The DataForSEO connector {batched} every "
         f"target for a location into one request, and the live endpoint executes only the first "
-        f"one (defect D4, <code>PLAN-SEO-PROGRAM-INTEGRATION.md</code> P0.1). Across all "
-        f"{len(local_rank)} observations, <strong>every single non-null result is the first target "
+        f"one (defect D4, <code>PLAN-SEO-PROGRAM-INTEGRATION.md</code> P0.1). Across these "
+        f"{len(local_rank)} observations, <strong>every single non-null result {was} the first target "
         f"of its batch — no exceptions</strong>. So a <em>null</em> here means "
         f"<em>not asked</em>, not <em>not ranking</em>.</div>"
         f'<div class="banner">Two further defects make the numbers that <em>were</em> returned '
-        f"unusable as ranks: results are matched by bare URL substring with no domain check (D1), "
-        f"so competitors' pages are attributed to this site; and the value stored is "
+        f"unusable as ranks: results {are_matched} by bare URL substring with no domain check (D1), "
+        f"so competitors' pages {was} attributed to this site; and the value {is_stored} "
         f"<code>rank_absolute</code>, which counts every SERP feature rather than the organic "
-        f"index (D5). <strong>That is why this section shows no rank numbers and no rank chart.</strong> "
-        f"It shows only what was collected. Real rank tracking resumes once P0.1 lands.</div>"
+        f"index (D5). <strong>That is why this era shows no rank numbers and no rank chart.</strong> "
+        f"It shows only what was collected. Real rank tracking {resumes}.</div>"
         f'<p class="small">Observation outcomes across {total:,} target-checks: '
         + esc(", ".join(f"{k} {v:,}" for k, v in sorted(counts.items())))
         + (f". The table below also lists {retired} retired target(s) from the "
@@ -1239,6 +1305,51 @@ def _self_test():  # noqa: C901
                   "987654" not in sentinel_panel and "876543" not in sentinel_panel
                   and "raw_rank_absolute_not_a_rank" not in html_text,
                   "a quarantined rank value reached the panel")
+
+            # 27h: the D4 claim is a statement about a closed set of observations. Left in
+            # the present tense it becomes false the day a corrected observation lands, and
+            # a dashboard that asserts a fixed defect is still active is worse than silent.
+            v2_obs = {
+                "observed_at": "2026-08-17T13:00:00Z", "first_seen_run_id": "r2", "row_count": 3,
+                "schema_version": 2, "batch_invariant_holds": None,
+                "rows": [
+                    {"location": "Greeley", "keyword": "physical therapy greeley", "page": "/physical-therapy/",
+                     "batch_index": None, "classification": "own", "competitor_domain": None,
+                     "result_url": "https://acceleratedrehabtherapy.com/physical-therapy/",
+                     "forensic": {"raw_rank_absolute_not_a_rank": None},
+                     "organic_position": 2, "schema_version": 2},
+                    {"location": "Greeley", "keyword": "chiropractor greeley", "page": "/chiropractor/",
+                     "batch_index": None, "classification": "absent", "competitor_domain": None,
+                     "result_url": None, "forensic": {"raw_rank_absolute_not_a_rank": None},
+                     "organic_position": None, "schema_version": 2},
+                    {"location": "Denver", "keyword": "massage therapy denver", "page": "/massage/",
+                     "batch_index": None, "classification": "error", "competitor_domain": None,
+                     "result_url": None, "forensic": {"raw_rank_absolute_not_a_rank": None},
+                     "organic_position": None, "schema_version": 2},
+                ]}
+            v1_obs = {
+                "observed_at": "2026-08-15T13:00:39Z", "first_seen_run_id": "r", "row_count": 2,
+                "schema_version": 1, "batch_invariant_holds": True,
+                "rows": [
+                    {"location": "Greeley", "keyword": "physical therapy greeley",
+                     "page": "/physical-therapy/", "batch_index": 0, "classification": "competitor",
+                     "competitor_domain": "example-competitor.invalid",
+                     "result_url": "https://example-competitor.invalid/physical-therapy/",
+                     "forensic": {"raw_rank_absolute_not_a_rank": 987654},
+                     "organic_position": None, "schema_version": 1},
+                ]}
+            mixed = _integrity_panel([v1_obs, v2_obs])
+            v1_only = _integrity_panel([v1_obs])
+            check("27h the D4 claim is scoped to the pre-fix era once a corrected observation exists",
+                  "were never queried" in mixed and "Corrected collection" in mixed
+                  and "Pre-fix collection" in mixed and "not comparable to" in mixed
+                  and "Corrected collection" not in v1_only,
+                  "the panel still asserts the batching defect in the present tense")
+            check("27i a corrected row renders its organic rank, and an error is never shown as an absence",
+                  "#2 organic" in mixed and "not in results" in mixed
+                  and "missing data, not an absence" in mixed
+                  and "987654" not in mixed,
+                  "corrected-era rendering is wrong")
 
             check("27d near-duplicate re-pulls are annotated on the page",
                   "re-pull" in html_text and "near-identical by construction" in html_text)
