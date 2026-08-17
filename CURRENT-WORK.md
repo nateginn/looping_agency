@@ -4,6 +4,10 @@ _Last updated 2026-08-16. This is the live working record: what we're doing, wha
 and why. It supersedes the older `PLAN-*.md` files for anything current — those remain as the
 historical design record. Read this first._
 
+> **State at handoff:** Issue #1 is closed, built, verified against live data, and **pushed**
+> (`origin/master` at `f026bb1`). MMC's side is done too. `art/seo` is back on `propose-only`.
+> Nothing is in progress; the backlog at the bottom is unscheduled and unordered.
+
 ---
 
 ## Working agreement
@@ -15,17 +19,46 @@ lists. Decisions get recorded here as they're made, so no context is lost betwee
 
 ## Where things stand
 
-**Done and committed** (`58a97d6`, local only — nothing pushed):
+**Done, committed and pushed.** `origin/master` is at `f026bb1` as of 2026-08-16; the push
+carried 11 commits (`ef5c8ec..f026bb1`), the operator's own, by hand — decision 7 still holds,
+no tooling pushes anything.
 
-- The daily rank job `LoopAgency-Art-SEO-DailyRank` is **disabled**. It stays off until the
-  collector is fixed, then returns at a reduced cadence.
+- The daily rank job `LoopAgency-Art-SEO-DailyRank` is **disabled** (`58a97d6`). It stays off
+  until the cadence is deliberately restarted; the collector itself is now fixed.
+  `LoopAgency-Art-SEO` (weekly, Mon 06:00) and `-Technical` (Thu 06:00) are enabled.
 - `projects/*/loops/*/runs/` and `projects/*/diagnostics/` are **untracked and gitignored**
-  (58 files). Files remain on disk; the loop and dashboard are unaffected.
+  (58 files). Files remain on disk; the loop and dashboard are unaffected. Note the earlier
+  committed copies are still in published history — decision 3 accepted that.
+- **Issue #1 is closed** (`dccb53a`) — see "Issue #1 — closed" below for what the first
+  correct measurement said.
+- **MMC's collector is fixed too** — see "MMC" below. Both repos are consistent.
+- **`art/seo` is back on `propose-only`** (2026-08-16). See "Automation is off, for real" below.
 
-**Issue #1 is done** (2026-08-16, local only — nothing pushed). See "Issue #1 — closed" below
-for what the first correct measurement actually said.
+**In progress:** nothing. The backlog below is unscheduled and unordered.
 
-**In progress:** nothing. The backlog below is unscheduled.
+---
+
+## Automation is off, for real (2026-08-16)
+
+Three records disagreed: decision 6 said automation stays off, `SEO_PROGRAM.md` Part 3A
+priority 0 said keep the loop propose-only/manual — and `projects/art/loops/seo/spec.md` still
+said `approval_mode: tier1-enabled` + `auto_implementation_enabled: true`, left over from the
+2026-08-03 Phase 7 activation. The spec now says `propose-only` + `false`.
+
+`approval_mode` is the switch that actually matters. `apply.py:216-222` reads it **fresh from
+the spec at apply time** and refuses every Tier-1 apply regardless of which path reached it —
+human `approved` via `/review-pending`, or `approved-for-implementation` via `/codex-seo-review`.
+`auto_implementation_enabled: false` alone would only have gated the Codex path (`apply.py:233`),
+leaving the human-approval route open, so it is defence in depth rather than the lock.
+
+Nothing was ever auto-implemented under the activation: zero proposals reached `applied`, and
+`pending/` was empty when the switch flipped, so no already-created proposal carries a stale
+cached `manual_approval_only: false` into the frozen state. Proposals are still *generated* —
+`propose-only` blocks application, not drafting.
+
+**To restore it:** flip both keys back, but only on an explicit recorded go/no-go, and not
+before the backlog's "did it work?" item lands. Today there is still no "worse" outcome, so
+the loop's success verdict remains vacuous — which is the reason decision 6 exists.
 
 ---
 
@@ -65,7 +98,9 @@ Two independent audits were run against the code and the repository.
 | 4 | **No data about other businesses or websites is stored, at all.** The collector must inspect a result to tell whether it is the client's, then **discard** non-matches — keeping "matched / did not match", never a competitor domain or URL. This forgoes competitive intel that is normally useful; operator's call. |
 | 5 | **Do not publish the dashboard** — no hosted page, no commit — until the underlying data is correct. |
 | 6 | **Automation stays off** until "did it work?" is trustworthy. |
-| 7 | **Nothing gets pushed automatically.** Local commits only; pushing is the operator's. |
+| 7 | **Nothing gets pushed automatically.** Local commits only; pushing is the operator's. Held on 2026-08-16: the 11-commit push was done by hand. |
+| 8 | **`SEO_PROGRAM.md` stays untracked and local** (2026-08-16). It is a 910-line distillation of three third-party courses, and its Part 3A is a named assessment of the client's site defects and traffic. Publishing it to the public repo is a call that hasn't been made, so it is deliberately not committed — not forgotten. It is not gitignored either, so it keeps showing as `??` in `git status` as a visible reminder. |
+| 9 | **Automation is off at the spec, not just on paper** (2026-08-16). `art/seo` is `approval_mode: propose-only` + `auto_implementation_enabled: false`. Restoring either needs an explicit recorded go/no-go — see "Automation is off, for real" above. |
 
 ---
 
@@ -142,15 +177,49 @@ a leaked pre-fix section would fire.
 
 ---
 
+## MMC — the briefing side, done 2026-08-16 (`D:\Dev\MMC`)
+
+Fixed in that repo, by a session there, not from here. Recorded so the two halves stay legible
+together — a change to this connector's output shape is always a two-repo change.
+
+`collector/sources/looping.py` `_summarize_local_rank` used to count every null position as a
+genuine "not in top results", which would have briefed Issue #1's one `error` row as a real
+absence — the same failure mode, one repo over. It now splits three ways from the row's explicit
+`status`: `local_rank_positions` (ok), `local_rank_absent` (carrying `organic_results_seen`, so
+"not in 99 results" is auditable), and `local_rank_errors` (carrying `error_reason` /
+`status_code`). `local_rank_null_count` was **removed** rather than left as a field that invites
+re-merging the two outcomes. Added `local_rank_counts` (cross-checked against the section's own
+`request_count`/`success_count`/`error_count`) and `local_rank_meta`.
+
+**The era boundary is carried as a `series_key`** derived from `schema_version` + `rank_metric`,
+and only matching keys may be compared. That is stricter than the date-based rule this repo
+first suggested, for a reason specific to MMC: its collector reads whichever run is *latest*, so
+a missed run leaves a pre-cutover snapshot in place and a date rule would stamp v1 data
+"corrected". This repo didn't need that form because `_section_history` walks every run
+directory, not just the newest. `PROMPT.md` still names 2026-08-17 as human-facing context, but
+no code branches on it.
+
+`PROMPT.md` now requires "not ranking" and "no answer from the rank check" as separate phrases
+with separate counts, forbids writing an error as an absence or a drop, escalates a total pull
+failure to *Decisions awaiting Nate* instead of narrating a ranking collapse, and refuses deltas
+across `series_key`. `collector/drift.py` needed no change. Two KB pages asserting the superseded
+2026-07-26 partial fix were corrected.
+
+**Correction worth carrying forward:** v1 sections *do* have `rank_metric` (value
+`"organic_rank_position"`). Only `schema_version` is genuinely new. This repo's brief to MMC got
+that wrong; detect the era on `rank_metric`'s **value**, not on a key's presence.
+
+**Left open deliberately on MMC's side:** no drift check for a total local-rank collection
+failure — with 1 error in 12 being ordinary, any threshold is either noise or arbitrary, so
+`PROMPT.md` escalates the all-failed case instead. If a hard check is ever wanted, the
+non-arbitrary one is `request_count == number of configured targets` (12): that is the specific
+canary for D4 returning, and it has a right answer rather than a tolerance. It is already
+asserted in this repo's test suite, so it would be defence in depth.
+
+---
+
 ## Backlog — not scheduled; planned when we reach it
 
-- **MMC's briefing will misread the new rows** (`D:\Dev\MMC`, so it needs your go-ahead
-  before I touch it). `collector/sources/looping.py` `_summarize_local_rank` counts any
-  `position is None` as a genuine "not in top results", so the one `status: "error"` row in
-  the run above would be briefed as a real absence — the exact failure mode Issue #1 existed
-  to kill, one repo over. It also needs telling that pre-cutoff rows are not comparable to
-  post-cutoff ones, or the briefing charts the correction as a trend. Field names were kept
-  (`organic_rank_position`, `result_url`) so it keeps parsing in the meantime.
 - **Make rank data actually steer decisions.** The gap between intent and build (finding 5).
   Largest item, and closest to the original purpose of the project. Now unblocked — as of
   Issue #1 there is real rank data to steer with for the first time.
