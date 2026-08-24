@@ -1,11 +1,13 @@
 # Current work — start here
 
-_Last updated 2026-08-16. This is the live working record: what we're doing, what we decided,
+_Last updated 2026-08-24. This is the live working record: what we're doing, what we decided,
 and why. It supersedes the older `PLAN-*.md` files for anything current — those remain as the
 historical design record. Read this first._
 
 > **State at handoff:** Issue #1 is closed, built, verified against live data, and **pushed**
 > (`origin/master` at `f026bb1`). MMC's side is done too. `art/seo` is back on `propose-only`.
+> Two more `run_loop.py` defects (round-robin action assignment, min_sample_size) are fixed and
+> **committed locally, not yet pushed** (`9ec1306`) — see "Two run_loop.py defects fixed" below.
 > Nothing is in progress; the backlog at the bottom is unscheduled and unordered.
 
 ---
@@ -33,6 +35,9 @@ no tooling pushes anything.
   correct measurement said.
 - **MMC's collector is fixed too** — see "MMC" below. Both repos are consistent.
 - **`art/seo` is back on `propose-only`** (2026-08-16). See "Automation is off, for real" below.
+- **Two `run_loop.py` defects fixed, 6 pending proposals rejected** (`9ec1306`, **local commit,
+  not pushed** — this repo's tooling never pushes; decision 7). See "Two run_loop.py defects
+  fixed" below.
 
 **In progress:** nothing. The backlog below is unscheduled and unordered.
 
@@ -177,6 +182,48 @@ a leaked pre-fix section would fire.
 
 ---
 
+## Two run_loop.py defects fixed, 6 pending proposals rejected — 2026-08-24
+
+**Local commit `9ec1306`, not pushed** (decision 7 — pushing this repo is the operator's own
+call, same as everything else here).
+
+**Defect 1 — round-robin action assignment never actually round-robinned.**
+`_pick_new_actions` computed `n = min(max_count, len(candidates), len(allowed_actions))`, then
+assigned `allowed_actions[i % len(allowed_actions)]` to each of the top `n` click-ranked
+candidates. Because `n` could never exceed `len(allowed_actions)`, the modulo could never wrap
+— the "round robin" was dead code, and worse, it silently capped a run's proposal volume to
+however many action types were configured, even when `max_count` and candidate supply both
+allowed more. `art/seo`'s spec happens to have exactly 3 allowed actions and `max_count=3`, so
+this had zero visible effect there — it only bites a spec with fewer action types than
+candidates. Fixed: `n = min(max_count, len(candidates))`; `spec_validate.py` already requires
+`allowed_actions` to be non-empty, so the modulo stays safe.
+
+**Defect 2 — min_sample_size compared against the wrong number.**
+`_evaluate_prior_experiments` gated an applied proposal's evaluation on
+`metrics["sample_size"] >= p["min_sample_size"]` — but `metrics["sample_size"]` is impressions
+summed across *every* keyword row site-wide, not the specific page/keyword being judged. That
+site total was almost always above `min_sample_size` regardless of whether the one row in
+question had enough traffic yet, so the check never actually blocked a verdict (this was
+backlog item "Fix the data-sufficiency check", `run_loop.py:518` in the old line numbering).
+Fixed: the per-target row was already being fetched a few lines later for the match itself —
+that row's own `impressions` field is now what gets compared to `min_sample_size`.
+
+`tools/tests/phase1_exit_criteria.py` had two assertions (`test_degradable_connector_failure_...`,
+`test_keyword_exclusions_filters_candidates`) that hard-coded the round-robin cap bug's effect
+(GOOD_SPEC's single allowed_action capped proposal creation to 1 regardless of candidate count)
+— updated to the corrected counts (3 and 2). Full suite: 225/225 after the fix.
+
+**The 6 proposals sitting in `art/seo/pending/`** (3 from the 2026-08-17 run, 3 from
+2026-08-24) were rejected via `/review-pending`: 3 targeted the clinic's own already-ranking
+brand term "accelerated rehab" (0–2 clicks — not a real ranking problem), and 3 targeted
+near-brand-noise query variants. `keyword_exclusions` in `projects/art/loops/seo/spec.md` was
+extended with those 3 variants — `"accelerated massage and rehab"`, `"accelerated pt"`,
+`"accelerate rehab"` — verified as substring-safe against the real brand terms
+("accelerated rehab", "accelerated rehab therapy" both still un-excluded) before rejecting, so
+next Monday's run doesn't immediately recreate the same class of proposal.
+
+---
+
 ## MMC — the briefing side, done 2026-08-16 (`D:\Dev\MMC`)
 
 Fixed in that repo, by a session there, not from here. Recorded so the two halves stay legible
@@ -227,9 +274,6 @@ asserted in this repo's test suite, so it would be defence in depth.
   guardrail breach is filed as a *verified winner*, including a page that slipped four
   positions (`run_loop.py` `_evaluate_prior_experiments`, ~lines 549–562). Needs the operator
   to set the thresholds: what counts as "no change" vs "worse".
-- **Fix the data-sufficiency check.** `run_loop.py:518` compares `min_sample_size` against the
-  whole site's impressions rather than the page being judged, so it never blocks a verdict.
-  The correct row is already fetched twelve lines later.
 - **Fix the half-blind second-opinion review.** `lib/review_protocol.py:149–168` reads
   `results` and `indexation`; the data is written as `rows` and `indexation_rows`, so both
   fields are always empty. An address-format mismatch sits behind it (rank rows store
