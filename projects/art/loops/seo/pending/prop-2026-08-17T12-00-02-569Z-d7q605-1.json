@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-17T12-00-02-569Z-d7q605-1",
+  "loop": "seo",
+  "action_type": "meta-description-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/massage/",
+    "keyword": "rehab massage therapy"
+  },
+  "baseline_position": 15.2,
+  "rationale": "keyword \"rehab massage therapy\" at position 15.2 on https://acceleratedrehabtherapy.com/massage/ with 1 clicks - candidate for meta-description-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "rejected",
+  "created_run_id": "2026-08-17T12-00-02-569Z-d7q605",
+  "created_at": "2026-08-17T12:00:02.569865Z",
+  "run_cycles_seen": 2,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "1 click, position 15.2 - too low-signal to act on; batch cleanup while fixing the min_sample_size and round-robin defects.",
+    "at": "2026-08-24T23:29:10.603407Z"
+  },
+  "applied_at": null
+}

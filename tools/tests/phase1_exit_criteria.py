@@ -1860,7 +1860,11 @@ def test_degradable_connector_failure_degrades_instead_of_killing_the_run():
     check("degraded connector: a snapshot was still written", os.path.exists(os.path.join(run_dir, "snapshot.json")))
     snapshot = _read_json(os.path.join(run_dir, "snapshot.json"))
     check("degraded connector: the surviving connector's metrics are in the snapshot", bool((snapshot.get("search_analytics") or {}).get("keywords")))
-    check("degraded connector: the cycle still produced proposals", len(run_json["proposals_created"]) == 1)
+    # GOOD_SPEC has exactly 1 allowed_action; the fixture's 3 mock keywords all
+    # qualify, and the fix to _pick_new_actions (n is no longer capped to
+    # len(allowed_actions)) means all 3 get a proposal, cycling that one action
+    # type via the round-robin modulo instead of stopping after just one.
+    check("degraded connector: the cycle still produced proposals", len(run_json["proposals_created"]) == 3)
 
     with open(os.path.join(run_dir, "report.md"), "r", encoding="utf-8") as f:
         report = f.read()
@@ -1917,7 +1921,10 @@ def test_keyword_exclusions_filters_candidates():
     result = run_loop(PROJECT, LOOP, scenario="normal")
     created = result["run_json"]["proposals_created"]
     check("keyword_exclusions: run still succeeds", result["status"] == "ok")
-    check("keyword_exclusions: still creates a proposal", len(created) == 1)
+    # 1 of the 3 mock keywords is excluded; the other 2 both qualify and (post
+    # round-robin fix) both get a proposal, since n is no longer capped to
+    # GOOD_SPEC's single allowed_action.
+    check("keyword_exclusions: still creates proposals", len(created) == 2)
     proposal = _read_json(os.path.join(pending_dir, f"{created[0]}.json"))
     check("keyword_exclusions: excluded keyword not picked", "ai marketing" not in proposal["target"]["keyword"])
     check("keyword_exclusions: next-best candidate picked instead", proposal["target"]["keyword"] == "best loop agency")

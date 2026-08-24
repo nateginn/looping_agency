@@ -543,11 +543,10 @@ def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
         applied_at = datetime.fromisoformat(p["applied_at"].replace("Z", "+00:00"))
         age_days = (now - applied_at).total_seconds() / 86400
         window_elapsed = age_days >= p["observation_window_days"]
-        sample_ok = metrics["sample_size"] >= p["min_sample_size"]
 
-        if not window_elapsed or not sample_ok:
+        if not window_elapsed:
             still_cooling_down.add(_cooldown_key_from_target(p["target"]))
-            decisions.append(f'proposal {p["id"]}: still in observation window (age {age_days:.1f}d/{p["observation_window_days"]}d, sample {metrics["sample_size"]}/{p["min_sample_size"]})')
+            decisions.append(f'proposal {p["id"]}: still in observation window (age {age_days:.1f}d/{p["observation_window_days"]}d)')
             continue
 
         row, match_reason = _proposal_row_for_page(metrics, p)
@@ -558,6 +557,17 @@ def _evaluate_prior_experiments(proposals, metrics, spec, run_id, now):
             continue
         if match_reason == "ambiguous":
             decisions.append(_mark_not_evaluable(p, run_id, f"multiple metrics rows matched target {target_desc} after normalization; refusing to guess"))
+            continue
+
+        # Sample sufficiency is judged against this target's own impressions, not
+        # metrics["sample_size"] - that field sums every keyword row site-wide, so
+        # it was almost always >= min_sample_size regardless of whether this one
+        # page/keyword had enough traffic yet to draw a real conclusion from. The
+        # row was already being fetched above; it just wasn't used for this check.
+        row_impressions = row.get("impressions") or 0
+        if row_impressions < p["min_sample_size"]:
+            still_cooling_down.add(_cooldown_key_from_target(p["target"]))
+            decisions.append(f'proposal {p["id"]}: still in observation window (age {age_days:.1f}d/{p["observation_window_days"]}d, sample {row_impressions}/{p["min_sample_size"]})')
             continue
 
         metric_value = row["position"]
@@ -706,7 +716,15 @@ def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
 
     proposals = []
     allowed_actions = spec["allowed_actions"]
-    n = min(max_count, len(candidates), len(allowed_actions))
+    # Capped only by max_count and candidate availability, never by how many
+    # distinct action types are configured. The modulo below is what lets
+    # action types repeat (round-robin) once there are more good candidates
+    # than allowed_actions entries - folding len(allowed_actions) into this
+    # bound made that branch unreachable (n could never exceed it) and
+    # silently throttled a week's proposal volume to whichever was smaller,
+    # with no round-robin ever actually occurring. spec_validate.py already
+    # requires allowed_actions to be non-empty, so the modulo below is safe.
+    n = min(max_count, len(candidates))
     for i in range(n):
         action = allowed_actions[i % len(allowed_actions)]
         kw = candidates[i]

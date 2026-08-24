@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-24T12-00-01-958Z-1fswiv-0",
+  "loop": "seo",
+  "action_type": "title-tag-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/work-comp/",
+    "keyword": "accelerated massage and rehab"
+  },
+  "baseline_position": 8.75,
+  "rationale": "keyword \"accelerated massage and rehab\" at position 8.75 on https://acceleratedrehabtherapy.com/work-comp/ with 0 clicks - candidate for title-tag-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "rejected",
+  "created_run_id": "2026-08-24T12-00-01-958Z-1fswiv",
+  "created_at": "2026-08-24T12:00:01.958924Z",
+  "run_cycles_seen": 0,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Near-brand-noise query - now added to keyword_exclusions ('accelerated massage and rehab') so it won't recur.",
+    "at": "2026-08-24T23:29:13.746995Z"
+  },
+  "applied_at": null
+}

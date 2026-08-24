@@ -101,6 +101,9 @@ keyword_exclusions:
   - "accelerated healing"        # "accelerated healing center" - different business
   - "accelerated recovery"       # generic/ambiguous (addiction recovery, etc.), 0 clicks
   - "accelerated performance"    # "accelerated performance rehabilitation" - different business
+  - "accelerated massage and rehab"   # near-brand noise query, not the real brand term - 0 clicks
+  - "accelerated pt"              # near-brand noise query, not the real brand term
+  - "accelerate rehab"            # near-brand noise query (missing the "d") - not "accelerated rehab"
 attention_thresholds:
   - kind: numeric_delta
     metric: organic_rank_position

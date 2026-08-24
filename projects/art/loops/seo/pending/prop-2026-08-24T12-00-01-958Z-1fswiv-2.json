@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-24T12-00-01-958Z-1fswiv-2",
+  "loop": "seo",
+  "action_type": "internal-link-addition",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/physical-therapy/",
+    "keyword": "accelerated rehab"
+  },
+  "baseline_position": 8,
+  "rationale": "keyword \"accelerated rehab\" at position 8 on https://acceleratedrehabtherapy.com/physical-therapy/ with 0 clicks - candidate for internal-link-addition",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": true,
+  "observation_window_days": 21,
+  "min_sample_size": 150,
+  "status": "rejected",
+  "created_run_id": "2026-08-24T12-00-01-958Z-1fswiv",
+  "created_at": "2026-08-24T12:00:01.958924Z",
+  "run_cycles_seen": 0,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Targets the clinic's own brand term 'accelerated rehab' on the physical-therapy page with 0 clicks - not a real ranking problem.",
+    "at": "2026-08-24T23:29:16.767972Z"
+  },
+  "applied_at": null
+}

@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-24T12-00-01-958Z-1fswiv-1",
+  "loop": "seo",
+  "action_type": "meta-description-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/contact/",
+    "keyword": "accelerated rehab"
+  },
+  "baseline_position": 17.857142857142858,
+  "rationale": "keyword \"accelerated rehab\" at position 17.857142857142858 on https://acceleratedrehabtherapy.com/contact/ with 0 clicks - candidate for meta-description-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "rejected",
+  "created_run_id": "2026-08-24T12-00-01-958Z-1fswiv",
+  "created_at": "2026-08-24T12:00:01.958924Z",
+  "run_cycles_seen": 0,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Targets the clinic's own brand term 'accelerated rehab' on the contact page with 0 clicks - not a real ranking problem.",
+    "at": "2026-08-24T23:29:15.270363Z"
+  },
+  "applied_at": null
+}

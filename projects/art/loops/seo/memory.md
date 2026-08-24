@@ -26,3 +26,6 @@ One line appended per run by `tools/run_loop.py`. This is a derived view; `runs/
 - Sat 2026-08-15 07:00 local (UTC-06:00) / 2026-08-15T13:00:40.018412Z run 2026-08-15T13-00-02-237Z-6794jc: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
 - Sun 2026-08-16 07:00 local (UTC-06:00) / 2026-08-16T13:00:42.043071Z run 2026-08-16T13-00-02-297Z-6uaxz7: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
 - Sun 2026-08-16 20:20 local (UTC-06:00) / 2026-08-17T02:20:49.586746Z run 2026-08-17T02-17-09-484Z-t5060s: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Mon 2026-08-17 06:07 local (UTC-06:00) / 2026-08-17T12:07:37.892261Z run 2026-08-17T12-00-02-569Z-d7q605: ok, mode full, 3 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Thu 2026-08-20 06:02 local (UTC-06:00) / 2026-08-20T12:02:11.040459Z run 2026-08-20T12-00-02-643Z-o31h3d: ok, mode technical-only, 0 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live
+- Mon 2026-08-24 06:08 local (UTC-06:00) / 2026-08-24T12:08:41.094241Z run 2026-08-24T12-00-01-958Z-1fswiv: ok, mode full, 3 new proposal(s), 0 evaluated, 0 stale, 0 awaiting-live

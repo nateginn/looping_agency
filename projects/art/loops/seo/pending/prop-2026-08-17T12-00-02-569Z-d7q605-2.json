@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-17T12-00-02-569Z-d7q605-2",
+  "loop": "seo",
+  "action_type": "internal-link-addition",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/",
+    "keyword": "accelerate rehab"
+  },
+  "baseline_position": 10,
+  "rationale": "keyword \"accelerate rehab\" at position 10 on https://acceleratedrehabtherapy.com/ with 0 clicks - candidate for internal-link-addition",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": true,
+  "observation_window_days": 21,
+  "min_sample_size": 150,
+  "status": "rejected",
+  "created_run_id": "2026-08-17T12-00-02-569Z-d7q605",
+  "created_at": "2026-08-17T12:00:02.569865Z",
+  "run_cycles_seen": 2,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Near-brand-noise query, missing the 'd' in 'accelerated' - now added to keyword_exclusions ('accelerate rehab') so it won't recur.",
+    "at": "2026-08-24T23:29:12.250686Z"
+  },
+  "applied_at": null
+}

@@ -1,0 +1,27 @@
+{
+  "id": "prop-2026-08-17T12-00-02-569Z-d7q605-0",
+  "loop": "seo",
+  "action_type": "title-tag-rewrite",
+  "tier": 1,
+  "target": {
+    "page": "https://acceleratedrehabtherapy.com/",
+    "keyword": "accelerated rehab"
+  },
+  "baseline_position": 8.666666666666668,
+  "rationale": "keyword \"accelerated rehab\" at position 8.666666666666668 on https://acceleratedrehabtherapy.com/ with 2 clicks - candidate for title-tag-rewrite",
+  "rollback": "local branch/commit only \u2014 Loop Agency never pushes this repo, and any live change or rollback is pushed by Nate by hand",
+  "manual_approval_only": false,
+  "observation_window_days": 14,
+  "min_sample_size": 100,
+  "status": "rejected",
+  "created_run_id": "2026-08-17T12-00-02-569Z-d7q605",
+  "created_at": "2026-08-17T12:00:02.569865Z",
+  "run_cycles_seen": 2,
+  "decision": {
+    "action": "reject",
+    "by": "human",
+    "note": "Targets the clinic's own brand term 'accelerated rehab' on the homepage with only 2 clicks - not a real ranking problem to solve with a title rewrite.",
+    "at": "2026-08-24T23:29:09.007096Z"
+  },
+  "applied_at": null
+}
