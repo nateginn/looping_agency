@@ -6,9 +6,11 @@ historical design record. Read this first._
 
 > **State at handoff:** Issue #1 is closed, built, verified against live data, and **pushed**
 > (`origin/master` at `f026bb1`). MMC's side is done too. `art/seo` is back on `propose-only`.
-> Two more `run_loop.py` defects (round-robin action assignment, min_sample_size) are fixed and
-> **committed locally, not yet pushed** (`9ec1306`) — see "Two run_loop.py defects fixed" below.
-> Nothing is in progress; the backlog at the bottom is unscheduled and unordered.
+> Two more `run_loop.py` defects (round-robin action assignment, min_sample_size) are fixed,
+> the 6 pending near-brand-noise proposals are rejected, and both are **pushed**
+> (`origin/master` at `821d93f`, by the operator's own hand — decision 7) — see "Two
+> run_loop.py defects fixed" below. Nothing is in progress; the backlog at the bottom is
+> unscheduled and unordered.
 
 ---
 
@@ -21,9 +23,10 @@ lists. Decisions get recorded here as they're made, so no context is lost betwee
 
 ## Where things stand
 
-**Done, committed and pushed.** `origin/master` is at `f026bb1` as of 2026-08-16; the push
-carried 11 commits (`ef5c8ec..f026bb1`), the operator's own, by hand — decision 7 still holds,
-no tooling pushes anything.
+**Done, committed and pushed.** `origin/master` is at `821d93f` as of 2026-08-24; the
+2026-08-16 push carried 11 commits (`ef5c8ec..f026bb1`), and the 2026-08-24 push carried 3 more
+(`f026bb1..821d93f`) — both the operator's own, by hand. Decision 7 still holds, no tooling
+pushes anything.
 
 - The daily rank job `LoopAgency-Art-SEO-DailyRank` is **disabled** (`58a97d6`). It stays off
   until the cadence is deliberately restarted; the collector itself is now fixed.
@@ -35,9 +38,8 @@ no tooling pushes anything.
   correct measurement said.
 - **MMC's collector is fixed too** — see "MMC" below. Both repos are consistent.
 - **`art/seo` is back on `propose-only`** (2026-08-16). See "Automation is off, for real" below.
-- **Two `run_loop.py` defects fixed, 6 pending proposals rejected** (`9ec1306`, **local commit,
-  not pushed** — this repo's tooling never pushes; decision 7). See "Two run_loop.py defects
-  fixed" below.
+- **Two `run_loop.py` defects fixed, 6 pending proposals rejected** (`9ec1306`, **pushed**). See
+  "Two run_loop.py defects fixed" below.
 
 **In progress:** nothing. The backlog below is unscheduled and unordered.
 
@@ -184,8 +186,8 @@ a leaked pre-fix section would fire.
 
 ## Two run_loop.py defects fixed, 6 pending proposals rejected — 2026-08-24
 
-**Local commit `9ec1306`, not pushed** (decision 7 — pushing this repo is the operator's own
-call, same as everything else here).
+**Commit `9ec1306`, pushed to `origin/master` at `821d93f`** by the operator's own hand
+(decision 7 — pushing this repo is the operator's own call, same as everything else here).
 
 **Defect 1 — round-robin action assignment never actually round-robinned.**
 `_pick_new_actions` computed `n = min(max_count, len(candidates), len(allowed_actions))`, then
