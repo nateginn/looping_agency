@@ -12,10 +12,12 @@ primary_metric: gbp_compliance_pass_rate
 # validator) / (all drafted payloads submitted to that validator) - the denominator is every
 # payload the validator was ever run against, not just the ones that subsequently entered
 # approval review (gating the denominator on "entered review" would make this 100% by
-# construction and measure nothing - see the plan's Phase 2 section). NOT computed by any code
-# yet - draft_gbp_post.py (Phase 4) and its own observability counters are unbuilt. Recorded
-# here now so the metric name and definition are fixed before any evaluator code exists to
-# compute it, per the plan's explicit warning against a metric that's decided after the fact.
+# construction and measure nothing - see the plan's Phase 2 section). draft_gbp_post.py itself
+# shipped 2026-08-31 (Phase 4), but this metric's own observability counters (pass/fail counts
+# actually recorded and aggregated over time) are still unbuilt - drafting validates one
+# payload at a time and does not yet track a running rate anywhere. Recorded here now so the
+# metric name and definition are fixed before any evaluator code exists to compute it, per the
+# plan's explicit warning against a metric that's decided after the fact.
 guardrail_metrics:
   - name: remote_post_rejections
     comparator: ">"
@@ -199,15 +201,23 @@ belong in `templates/loops/seo/gbp-checklist.md` (human-run), not in a Post prop
 - Is **not** in `project.md`'s `loops_enabled` and **not** registered with Windows Task
   Scheduler. It can be run on demand (`python tools/run_loop.py art gbp`) for testing; nothing
   currently runs it automatically. A drafted proposal goes no further than `draft` today —
-  there is no drafting tool to add Post copy (Phase 4) and no way to approve it into anything
-  that could ever be published (Phases 5-6 are unbuilt).
+  there is no way to approve it into anything that could ever be published (Phases 5-6 are
+  unbuilt).
+- **Drafting exists** (`tools/draft_gbp_post.py`, plan Phase 4, shipped 2026-08-31) — validates
+  a proposed STANDARD Post (EVENT/OFFER refused outright, their exact API-required fields
+  never independently verified) against the character limit and CTA enum documented in
+  Google's public API reference (not yet confirmed against a live response - no credential
+  exists), a same-origin-only link allowlist, a deterministic PHI/medical-claims/urgency lint,
+  and `tools/lib/gbp_constraints.py`'s cross-repo hard gate: a parsed-facts projection of both
+  `gbp-profiles.md` (via a confirmation sidecar, `gbp-profile-confirmations.yaml`) and MMC's
+  `registry/clients/art.yaml`, hashed and manifested onto the proposal, refusing to draft if
+  the two sources contradict a confirmed fact, if either source is unconfirmed/stale, or if
+  the target location is closed/inactive/unknown. Hardened via four rounds of Codex adversarial
+  review - see `tools/lib/gbp_constraints.py`'s and `tools/draft_gbp_post.py`'s inline history.
+  This lint is an explicitly-acknowledged backstop, not an exhaustive classifier: the plan's
+  actual first line of defense is the human-supervised drafting session itself.
 
 ## What this loop does NOT do yet
-
-- **No drafting tool** for the Post's actual copy (`tools/draft_gbp_post.py`, plan Phase 4) —
-  validates a proposed Post against the real, current GBP API contract (character limit, CTA
-  enum, post-type-specific required fields) and against both `gbp-profiles.md` and MMC's
-  `registry/clients/art.yaml` (trademark/medical-claims/current-hours constraints). Unbuilt.
 - **No approval-state extensions** (plan Phase 5) — the new terminal statuses a published
   post needs (`publishing`, `live`, `rejected-by-google`, `not-found`, `retracted`,
   `publish-unknown`) and `tools/lib/event_log.py`'s allowlist extension to carry them.

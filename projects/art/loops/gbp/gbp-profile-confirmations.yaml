@@ -1,0 +1,66 @@
+# Confirmation sidecar for ../../gbp-profiles.md (GBP Posts plan Phase 4).
+#
+# gbp-profiles.md is prose with ONE blanket "As of 2026-08-12" header, not per-fact
+# confirmation dates the way MMC's registry/clients/art.yaml uses (`*_confirmed: "..."` per
+# field). The plan requires per-fact confirmation metadata before tools/lib/gbp_constraints.py
+# can treat a gbp-profiles.md-derived fact as safe to assert in a Post - this file is the
+# plan's explicitly offered alternative to editing gbp-profiles.md's prose directly.
+#
+# Every confirmed_date below is seeded from that ONE blanket header date, because that is the
+# only confirmation evidence that actually exists today - this is a coarser confirmation than
+# art.yaml's genuine per-fact dates, and is documented as such rather than presented as
+# equivalent. Refining this to true per-fact confirmation requires a human to actually
+# reconfirm each fact individually with the operator, the same way art.yaml's dates were
+# obtained. tools/lib/gbp_constraints.py's staleness check (180 days) applies to these dates
+# exactly as it does to art.yaml's.
+#
+# `kind` values recognized by tools/lib/gbp_constraints.py:
+#   - "credential_wording": the required phrasing when a service credential is mentioned.
+#   - "shockwave_device_type": cross-checked against art.yaml's service_constraints entry
+#     for "Shockwave therapy" - see find_contradictions().
+#   - "hours" / "address": structurally supported for a future fact of this kind; none exist
+#     in gbp-profiles.md today (it documents credentials/wording/service structure, not
+#     location hours or street addresses - those live in art.yaml only).
+
+version: 1
+source: projects/art/gbp-profiles.md
+blanket_confirmation_date: "2026-08-12"
+# sha256 of ../../gbp-profiles.md's exact current content (2026-08-31). Checked fresh on
+# every read by tools/lib/gbp_constraints.py's parse_gbp_profile_confirmations() - a mismatch
+# means gbp-profiles.md changed since this sidecar was last updated, and every fact below is
+# treated as unconfirmed until a human reconfirms it against the new prose and updates this
+# hash. Recompute with:
+#   python -c "import hashlib; print(hashlib.sha256(open('projects/art/gbp-profiles.md', encoding='utf-8').read().encode('utf-8')).hexdigest())"
+source_content_hash: "50517f906949265b5188e3a01ed6c473ae2edb7176fea7b19605e1f3e4d119ed"
+
+facts:
+  - id: acupuncture-credential-wording
+    kind: credential_wording
+    location: both
+    value: "Provided by chiropractors certified in acupuncture."
+    note: >
+      Acupuncture is delivered by chiropractors holding acupuncture certification (CAc), not
+      a licensed acupuncturist (L.Ac.). Claiming L.Ac. would be inaccurate on a public medical
+      profile. Applies to both Greeley and Denver.
+    confirmed_date: "2026-08-12"
+
+  - id: massage-credential-wording
+    kind: credential_wording
+    location: both
+    value: "Licensed massage therapists (LMT)"
+    note: "Massage is delivered by licensed massage therapists (LMT)."
+    confirmed_date: "2026-08-12"
+
+  - id: greeley-shockwave-device-type
+    kind: shockwave_device_type
+    location: Greeley
+    value: "focused (fESWT)"
+    note: "Shockwave devices are FOCUSED (fESWT), never radial. The clinic's genuine differentiator."
+    confirmed_date: "2026-08-12"
+
+  - id: denver-shockwave-device-type
+    kind: shockwave_device_type
+    location: Denver
+    value: "focused (fESWT)"
+    note: "Shockwave devices are FOCUSED (fESWT), never radial. The clinic's genuine differentiator."
+    confirmed_date: "2026-08-12"
