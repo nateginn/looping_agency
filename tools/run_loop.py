@@ -1432,10 +1432,20 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         # machine, emitted only after the corresponding disk write above.
         for proposal in new_proposals:
             try:
+                target = proposal.get("target") or {}
                 append_event(
                     loop_dir, "proposal_created", project=project_slug, loop=loop_name, proposal_id=proposal["id"],
-                    action_type=proposal.get("action_type"), target_page=(proposal.get("target") or {}).get("page"),
-                    keyword=(proposal.get("target") or {}).get("keyword"), resulting_proposal_status="draft",
+                    action_type=proposal.get("action_type"), target_page=target.get("page"),
+                    keyword=target.get("keyword"),
+                    # GBP-shaped fields (target.location/topic) - a GBP proposal has no
+                    # page/keyword at all, so without these its own event would carry no
+                    # target information whatsoever (event_log.py's ALLOWED_EXTRA_FIELDS
+                    # extended 2026-08-31 to carry them; append_event already drops any None
+                    # value, so this is a no-op for an SEO-shaped proposal).
+                    target_location=target.get("location"), topic=target.get("topic"),
+                    opportunity_type=proposal.get("opportunity_type"),
+                    content_gap_evidence_id=(proposal.get("content_gap_evidence") or {}).get("evidence_id"),
+                    resulting_proposal_status="draft",
                     source_run_id=run_id,
                 )
             except Exception:

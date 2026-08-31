@@ -28,6 +28,16 @@ _STRING_REQUIRED = ("event_id", "at", "project", "loop", "proposal_id", "event_t
 # Bounded set of optional fields an event may carry. Anything outside this set
 # passed to append_event() is dropped, not silently included - keeps every
 # event's shape predictable for MMC's reader and for tests.
+#
+# `target_location`/`topic`/`opportunity_type`/`content_gap_evidence_id` added 2026-08-31
+# (GBP Posts plan Phase 3/5): a GBP proposal's target is `{location, topic}`, not `{page,
+# keyword}` - without these, a GBP proposal_created event silently lost its own target
+# entirely (target_page/keyword are always None for a GBP proposal). The remaining new fields
+# (remote_post_id through retracted_by) are reserved for Phase 6's publish/retract events -
+# added now, ahead of that code, so a future publish event's field names are fixed before any
+# event actually writes them, matching how CONTENT_GAP_EVIDENCE_SCHEMA_VERSION and the other
+# GBP schema constants were also fixed ahead of their consuming code in earlier phases. Unused
+# until Phase 6 exists to emit them.
 ALLOWED_EXTRA_FIELDS = {
     "action_type", "target_page", "keyword", "previous_value", "new_value",
     "implementation_commit", "implementation_branch", "pr_url",
@@ -36,6 +46,10 @@ ALLOWED_EXTRA_FIELDS = {
     "proposal_content_hash", "evidence_packet_hash", "spec_content_hash",
     "confidence", "objections", "required_corrections", "final_adjudication",
     "implementation_before", "implementation_after", "reconciled", "note",
+    "target_location", "topic", "opportunity_type", "content_gap_evidence_id",
+    "remote_post_id", "google_state", "internal_state", "payload_hash",
+    "locked_location_id", "locked_account_id", "location_mapping_version",
+    "http_status", "retraction_reason", "retracted_by", "metrics_pull_freshness",
 }
 
 REVIEW_SUBSYSTEM_EVENT_TYPES = {
@@ -474,6 +488,18 @@ def _self_test():
         e1 = append_event(loop_dir, "proposal_created", project="p", loop="seo", proposal_id="prop-1", action_type="title-tag-rewrite")
         checks.append(("first event gets seq 0", e1["seq"] == 0))
         checks.append(("event_id is zero-padded and loop-scoped", e1["event_id"] == "evt-seo-000000000000"))
+
+        # GBP-shaped fields (2026-08-31, Phase 3/5) - a GBP proposal's target is
+        # {location, topic}, not {page, keyword}, and carries no page/keyword at all. Uses its
+        # own loop_dir so it doesn't disturb the seq-numbered assertions below.
+        gbp_loop_dir = os.path.join(tmp, "loops", "gbp")
+        os.makedirs(gbp_loop_dir, exist_ok=True)
+        e1b = append_event(
+            gbp_loop_dir, "proposal_created", project="p", loop="gbp", proposal_id="gbp-prop-1",
+            action_type="gbp-post-draft", target_location="Greeley", topic="some-gap-id",
+            opportunity_type="content_freshness", content_gap_evidence_id="some-gap-id",
+        )
+        checks.append(("GBP-shaped fields (target_location/topic/opportunity_type/content_gap_evidence_id) round-trip", e1b.get("target_location") == "Greeley" and e1b.get("topic") == "some-gap-id" and e1b.get("opportunity_type") == "content_freshness" and e1b.get("content_gap_evidence_id") == "some-gap-id"))
 
         e2 = append_event(loop_dir, "review_started", project="p", loop="seo", proposal_id="prop-1", resulting_proposal_status="review-pending")
         checks.append(("second event increments seq", e2["seq"] == 1))
