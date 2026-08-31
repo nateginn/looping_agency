@@ -1,16 +1,98 @@
 # Current work — start here
 
-_Last updated 2026-08-24. This is the live working record: what we're doing, what we decided,
+_Last updated 2026-08-31. This is the live working record: what we're doing, what we decided,
 and why. It supersedes the older `PLAN-*.md` files for anything current — those remain as the
 historical design record. Read this first._
 
-> **State at handoff:** Issue #1 is closed, built, verified against live data, and **pushed**
-> (`origin/master` at `f026bb1`). MMC's side is done too. `art/seo` is back on `propose-only`.
-> Two more `run_loop.py` defects (round-robin action assignment, min_sample_size) are fixed,
-> the 6 pending near-brand-noise proposals are rejected, and both are **pushed**
-> (`origin/master` at `821d93f`, by the operator's own hand — decision 7) — see "Two
-> run_loop.py defects fixed" below. Nothing is in progress; the backlog at the bottom is
-> unscheduled and unordered.
+> **State at handoff:** A new Google Business Profile (GBP) Posts loop was built for `art`
+> while the operator was away, per a design handed off in chat (mirroring the pattern of
+> `kb/handoffs/looping-seo-ranking.md` from MMC). Phases 1–4 of that design are built, tested,
+> and **committed locally** (`6511628`, `bd01b22`, `d9a2e1e`, `b3d95a1`, `fe368da` —
+> **not pushed**, per decision 7). See "GBP Posts loop — Phases 1–4 built" below for full
+> detail, what's still needed (Phases 5–7, gated on the operator's Google API access), and a
+> punch list of what to check on return. Issue #1 and the two `run_loop.py` defects from the
+> prior session remain closed and pushed as described further below; nothing about that work
+> changed this session.
+
+---
+
+## GBP Posts loop — Phases 1–4 built, 2026-08-31 (autonomous session)
+
+A new sibling loop, `art/gbp`, drafts Google Business Profile Post proposals from genuine
+content-gap evidence (never from a rank/pack signal alone — see the framing note in
+`projects/art/loops/gbp/spec.md`). Built end to end while the operator was away, hardened via
+14 rounds of adversarial Codex review across the four phases (2 on Phase 1, 3 on Phase 2, 2 on
+Phase 3, 4 on Phase 4, 1 on the small event-log extension), each round run against real
+production data (`D:\Dev\MMC\registry\clients\art.yaml`, `projects/art/gbp-profiles.md`,
+`projects/art/loops/gbp/known-gaps.yaml`) as well as synthetic fixtures. Local commits only,
+**not pushed** — decision 7 applies here exactly as everywhere else in this repo.
+
+**What's built and where:**
+- **Phase 1** (`6511628`) — `tools/dataforseo_maps.py` / `tools/dataforseo_local_pack.py`:
+  DataForSEO Maps-rank and local-pack connectors, matching this client's own listing only by a
+  verified `place_id`/`cid` (never name/domain), wired into `connector_registry.py`/
+  `spec_validate.py`/`run_loop.py`. **Not yet enabled** — needs a verified `place_id`/`cid` per
+  location (Phase 0, see below) before it can go in any spec's `inputs`.
+- **Phase 2** (`bd01b22`) — `projects/art/loops/gbp/spec.md` (the loop itself, scaffolded but
+  **not** in `project.md`'s `loops_enabled` and **not** scheduled), `known-gaps.yaml`
+  (machine-readable content/structural gaps sourced from `gbp-profiles.md`), and
+  `templates/loops/seo/gbp-checklist.md` (the human-run structural checklist
+  `PLAN-SEO-PROGRAM-INTEGRATION.md` named but never created). Also a real structural fix to
+  shared code: `run_loop.py`'s SEO-shaped selector/evaluator are now gated on
+  `spec["loop"] == "seo"`, not merely on what connectors happen to be configured — closing a
+  carry-forward loophole a Codex review found in the original claim.
+- **Phase 3** (`d9a2e1e`) — `run_loop.py`'s `_pick_gbp_actions`: drafts a proposal only from a
+  `known-gaps.yaml` entry explicitly routed `content_gap_evidence`, re-hashed fresh every run.
+  The real `known-gaps.yaml` currently has exactly one eligible entry (Greeley deep-tissue
+  massage) and produces exactly one real proposal on a live run. The most consequential fix
+  here: the first version's rationale interpolated the gap's free-text `summary` verbatim,
+  which could itself carry a rank-fix claim (the real entry's summary literally cites a GSC
+  position) — the rationale is now built exclusively from closed/structured fields.
+- **Phase 4** (`b3d95a1`) — `tools/lib/gbp_constraints.py` + `tools/draft_gbp_post.py`: the
+  drafting/validation tool and its cross-repo hard gate (parses + hashes a small projection of
+  both `gbp-profiles.md`, via a new confirmation sidecar `gbp-profile-confirmations.yaml`, and
+  MMC's `art.yaml`; refuses to draft on any contradiction, any unconfirmed/stale fact, or a
+  closed/inactive target location). This phase took the most hardening — see its own commit
+  message for the full list, but the standout: the parser initially read `service_constraints`
+  from the wrong YAML path and silently returned empty against the real `art.yaml`, disabling
+  every trademark/promotability check, undetected by its own self-test because the test
+  fixture matched the same wrong schema. Fixed and re-verified against the real file.
+- **Small Phase 5 start** (`fe368da`) — `event_log.py`'s field allowlist extended so a GBP
+  proposal's `{location, topic}` target (and future publish-event fields) don't get silently
+  dropped. The rest of Phase 5 (resolving live Google `accountId`/`locationId` at approval
+  time, new terminal proposal statuses) was deliberately **not** built — it needs either live
+  Google API access or Phase 6's publish machinery to have a real shape.
+
+**Deliberately not attempted this session:** Phase 6 (`tools/publish_gbp_post.py` — the only
+thing that would ever call Google's API to create a Post) and Phase 7 (`measure_gbp_post.py`
+— a capability spike). Both are blocked on Phase 0: a verified `place_id`/`cid` per location,
+a Google Cloud project with posting/measurement APIs enabled (subject to Google's own access
+review), and the one-time human-verified pairing between DataForSEO's identifiers and Google's
+`accountId`/`locationId` for the same physical location. None of that can be done without the
+operator. Given how many real, serious bugs four rounds of review found even in the
+lower-risk phases (1–4), building the actual live-publish path speculatively — for public
+medical-business content, with no way to verify it against a real API — was judged too risky
+to attempt blind; it deserves the operator's explicit sign-off on the approach, not just a
+best-effort implementation checked only by code review.
+
+**Punch list for the operator's return:**
+1. Skim the five commit messages above (`git log --oneline 821d93f..fe368da` or `git log -5`)
+   for the full detail — this summary is necessarily compressed.
+2. Nothing here changed `art/seo`'s behavior or state — the two are independent sibling loops.
+   `art/gbp` is inert (not scheduled, not in `loops_enabled`) until explicitly turned on.
+3. Decide whether to push (`821d93f..fe368da`) — per decision 7, that's the operator's call,
+   never automated.
+4. When ready to proceed toward Phase 0: the concrete asks are in
+   `projects/art/loops/gbp/spec.md`'s "Phase 0" section.
+5. `known-gaps.yaml`'s confirmation dates and `gbp-profile-confirmations.yaml`'s blanket
+   `source_content_hash` were seeded from the single "as of 2026-08-12" date in
+   `gbp-profiles.md` — genuinely per-fact confirmation would need the operator to reconfirm
+   each fact individually, the same way `art.yaml`'s facts were originally obtained.
+6. `projects/art/gbp-profiles.md` (pre-existing, not touched this session) names real
+   competitors with review counts (Cornerstone, Weld, REV, The Joint) — flagged during Phase 2
+   review as arguably in tension with standing decision 4's letter ("no data about other
+   businesses is stored, at all"), but left untouched since it predates this session and
+   scrubbing a human-authored document is the operator's call, not something to do unasked.
 
 ---
 
