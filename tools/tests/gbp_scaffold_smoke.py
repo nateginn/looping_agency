@@ -1,23 +1,27 @@
-# Offline smoke test for the GBP Posts loop scaffold (Phase 2 of the plan in
+# Offline smoke test for the GBP Posts loop scaffold (Phases 2-3 of the plan in
 # kb/handoffs/looping-gbp-posts.md, mirrored into projects/art/loops/gbp/spec.md's own Notes).
 #
-# Exercises tools/run_loop.py against the REAL projects/art/loops/gbp/spec.md end to end,
-# entirely offline - fake resolve_credential/http_post/http_get/http fetch/github requester,
-# never a real credential or network call. Scope, honestly stated: this proves the run
-# contract completes cleanly for this spec and that zero proposals are generated - it does
-# NOT exercise a selector, a payload-hash gate, or a publish state machine, none of which
-# exist yet (Phases 3-6 of the plan). A Codex review of an earlier version of this file
-# (2026-08-31) correctly flagged that overclaim, plus four real defects fixed below.
+# Exercises tools/run_loop.py against the REAL projects/art/loops/gbp/spec.md AND the real
+# known-gaps.yaml end to end, entirely offline - fake resolve_credential/http_post/http_get/
+# http fetch/github requester, never a real credential or network call. Scope, honestly
+# stated: this proves the run contract completes cleanly for this spec, that the real
+# known-gaps.yaml's one eligible content-gap entry produces exactly one proposal, and that a
+# second run does not duplicate it - it does NOT exercise a payload-hash gate or a publish
+# state machine, neither of which exists yet (Phases 4-6 of the plan). See
+# tools/tests/gbp_selector_test.py for focused unit-level coverage of the selector itself
+# (_pick_gbp_actions) against synthetic fixtures.
 #
-# The one property this test exists to guard, durably, across future refactors: this loop's
-# spec deliberately configures no connector that populates `search_analytics` (see spec.md's
-# "Deliberately NOT included" note). Since 2026-08-31, that is enforced structurally in
-# run_loop.py itself (`spec.get("loop") == "seo"` gates both _evaluate_prior_experiments and
-# _pick_new_actions) rather than being an incidental consequence of what's in `inputs` today -
-# a Codex review found the original claim ("no such connector is configured, so it can never
-# fire") false in general, because _build_snapshot carries a stale search_analytics section
-# forward from any earlier run that did populate one. This test proves BOTH the current-run
-# case and the stale-carry-forward case.
+# Two properties this test exists to guard, durably, across future refactors:
+# 1. This loop's spec deliberately configures no connector that populates `search_analytics`
+#    (see spec.md's "Deliberately NOT included" note), and even a STALE, carried-forward
+#    search_analytics section (from some hypothetical earlier run that did include such a
+#    connector) must never make run_loop.py's SEO-shaped `_pick_new_actions` fire for this
+#    loop - enforced structurally by `spec.get("loop") == "seo"` gating both that function and
+#    `_evaluate_prior_experiments` (a Codex review of an earlier version of this test/spec's
+#    claim, 2026-08-31, found the un-gated version false in general).
+# 2. The real known-gaps.yaml's one content_gap entry (greeley-deep-tissue-massage-missing)
+#    produces exactly one gbp-post-draft proposal, and a second consecutive run does not
+#    create a duplicate (cooldown keyed on {location, topic}, not the SEO-shaped {page}).
 import json
 import os
 import shutil
@@ -85,8 +89,13 @@ def _snapshot_dir(dir_path):
 
 def _restore_dir(dir_path, saved):
     if saved is None:
-        if os.path.isdir(dir_path) and not os.listdir(dir_path):
-            os.rmdir(dir_path)
+        # The directory did not exist before this test ran at all, so everything in it now -
+        # not just an empty leftover - is this test's own creation and must be removed in
+        # full. An earlier version only removed it when already empty, which silently left a
+        # crashed run's proposal file behind (caught when a real run crash during
+        # development left exactly such a file in the real pending/ dir).
+        if os.path.isdir(dir_path):
+            shutil.rmtree(dir_path, ignore_errors=True)
         return
     os.makedirs(dir_path, exist_ok=True)
     for name in os.listdir(dir_path):
@@ -200,7 +209,8 @@ def run():
         checks.append(("run status is ok (no critical connector configured -> nothing can abort it)", result["status"] == "ok"))
 
         run_json = result.get("run_json") or {}
-        checks.append(("zero proposals created - no selector exists yet, and none should fire", run_json.get("proposals_created") == []))
+        first_run_created = run_json.get("proposals_created") or []
+        checks.append(("exactly one proposal is created from the real known-gaps.yaml's one eligible content-gap entry", len(first_run_created) == 1))
         checks.append(("dataforseo-local-rank ran (tool_calls records it)", any(tc.get("tool") == "dataforseo-local-rank" for tc in run_json.get("tool_calls") or [])))
         checks.append(("gsc-indexation ran (tool_calls records it)", any(tc.get("tool") == "gsc-indexation" for tc in run_json.get("tool_calls") or [])))
         checks.append(("no connector degraded in this fully-fixture-backed run", run_json.get("degraded_connectors") == []))
@@ -215,11 +225,13 @@ def run():
 
         pending_proposals = list_proposals(pending_dir)
         new_pending = [p for p in pending_proposals if p.get("_file") not in pre_existing_pending]
-        checks.append(("no new proposal files were written by this run", new_pending == []))
+        checks.append(("exactly one new proposal file was written by this run", len(new_pending) == 1))
+        checks.append(("the proposal is a gbp-post-draft for the Greeley deep-tissue-massage gap", bool(new_pending) and new_pending[0].get("action_type") == "gbp-post-draft" and new_pending[0].get("target", {}).get("topic") == "greeley-deep-tissue-massage-missing"))
+        checks.append(("the proposal carries a content_gap_evidence object", bool(new_pending) and isinstance(new_pending[0].get("content_gap_evidence"), dict)))
 
         second_result = _run_loop_offline()
         checks.append(("a second consecutive run also completes cleanly (no lock/state corruption)", second_result["status"] == "ok"))
-        checks.append(("the second run also creates zero proposals", (second_result.get("run_json") or {}).get("proposals_created") == []))
+        checks.append(("the second run creates zero NEW proposals - cooldown blocks a duplicate for the same location/topic", (second_result.get("run_json") or {}).get("proposals_created") == []))
 
         # --- the actual regression this test exists for: a STALE, carried-forward
         # search_analytics section (as if some earlier run had, incorrectly, included a
@@ -246,11 +258,15 @@ def run():
             json.dump(third_snapshot, f, indent=2)
 
         fourth_result = _run_loop_offline()
-        fourth_run_json = fourth_result.get("run_json") or {}
-        checks.append(("a stale, carried-forward search_analytics section still produces zero proposals for this loop", fourth_run_json.get("proposals_created") == []))
         fourth_pending = list_proposals(pending_dir)
         new_fourth_pending = [p for p in fourth_pending if p.get("_file") not in pre_existing_pending]
-        checks.append(("...and no gbp-post-draft (or any) proposal file was written from the poisoned section", not any(p.get("action_type") == "gbp-post-draft" for p in new_fourth_pending)))
+        # Asserted directly on shape, not just "proposals_created is empty" - the
+        # known-gaps-driven proposal from run 1 is itself still cooling down by now (still
+        # "draft"), which would ALSO make proposals_created empty on run 4 for an unrelated
+        # reason. Checking for the absence of any {page, keyword}-shaped (SEO-shaped) target
+        # unambiguously proves the seo-gate held, independent of that cooldown interaction.
+        checks.append(("a stale, carried-forward search_analytics section produces no SEO-shaped ({page, keyword}) proposal for this loop", not any("page" in (p.get("target") or {}) for p in new_fourth_pending)))
+        checks.append(("...and no proposal at all was written from the poisoned section itself", (fourth_result.get("run_json") or {}).get("proposals_created") == []))
     finally:
         # Test artifacts only - never touch pre-existing content. Restores every stateful
         # file to its exact pre-test bytes (or absence), rather than blindly deleting/

@@ -42,8 +42,9 @@ inputs:
 # identifier and the Business Profile API's accountId/locationId genuinely refer to the same
 # physical location - see the plan's Phase 1 "one-time, safety-sensitive, human-verified step"
 # and Phase 0 below). Deliberately NOT included: gsc, dataforseo, mock (any connector that
-# would populate `search_analytics`) - this loop's proposal selector (Phase 3, unbuilt) is
-# its own code, never run_loop.py's generic _pick_new_actions. As of 2026-08-31 this is a
+# would populate `search_analytics`) - this loop's proposal selector (Phase 3, shipped
+# 2026-08-31 as run_loop.py's `_pick_gbp_actions`) is its own code, never run_loop.py's
+# generic _pick_new_actions. As of 2026-08-31 this is a
 # real structural guarantee, not just a fact about this spec's current `inputs`:
 # run_loop.py gates both _evaluate_prior_experiments and _pick_new_actions on
 # spec["loop"] == "seo", so even a stale search_analytics section carried forward from some
@@ -174,31 +175,39 @@ often**, never a claim that posting will move rank or pack presence. Structural 
 belong in `templates/loops/seo/gbp-checklist.md` (human-run), not in a Post proposal — see
 `known-gaps.yaml`'s `routing` field for the line between the two.
 
-## What this loop does today (Phase 1/2 of the design — scaffold only)
+## What this loop does today (Phases 1-3 of the design)
 
 - Collects `dataforseo-local-rank` (organic rank per keyword/location, reusing the already-
   verified `art-dataforseo-readonly` credential) and `gsc-indexation` (deindexation/coverage
   status on the same lead-intent pages the `seo` loop already tracks).
-- Generates **zero proposals**. `run_loop.py`'s generic `_pick_new_actions` is gated on
-  `spec["loop"] == "seo"` — a structural guarantee, not just a fact about this spec's current
-  `inputs` — since that function's proposal shape (`{page, keyword}` targets, SEO action
-  types) does not fit a GBP Post proposal (`{location, topic}` targets — see the plan's
-  Phase 3), and a stale, carried-forward `search_analytics` section must never make it fire
-  for this loop either (see `tools/tests/gbp_scaffold_smoke.py`'s regression test for this). A
-  dedicated selector is unbuilt; running this loop today is safe and inert beyond
-  observability.
+- Drafts up to 3 `gbp-post-draft` proposals per run via `run_loop.py`'s `_pick_gbp_actions`
+  (Phase 3, shipped 2026-08-31) — but ONLY from a `known-gaps.yaml` entry explicitly routed
+  `content_gap_evidence`, re-read and re-hashed fresh from disk every run. A visibility signal
+  (local-rank absence, an indexation gap) is never sufficient on its own — see the framing
+  note above and `known-gaps.yaml`'s own header. `run_loop.py`'s generic `_pick_new_actions`
+  (SEO-shaped `{page, keyword}` proposals) is separately, structurally gated on
+  `spec["loop"] == "seo"` and can never fire for this loop, including from a stale,
+  carried-forward `search_analytics` section (see `tools/tests/gbp_scaffold_smoke.py`'s
+  regression test). Cooldown is keyed on `{location, topic}`, not `{page}`.
+- Every drafted proposal carries a closed-enum `opportunity_type` (always
+  `content_freshness` today — the plan's other value, `engagement`, needs Phase 6's remote
+  post-history, which is unbuilt), a `signal_reference`, an `intended_user_action`, and a
+  `content_gap_evidence` object. Its `rationale` is templated exclusively from structured
+  fields (entry id, location, confirmed date) — deliberately never the gap's own free-text
+  `summary`, so a rank/visibility claim written into that summary later cannot reach a
+  proposal (see `tools/run_loop.py`'s `_pick_gbp_actions` docstring).
 - Is **not** in `project.md`'s `loops_enabled` and **not** registered with Windows Task
   Scheduler. It can be run on demand (`python tools/run_loop.py art gbp`) for testing; nothing
-  currently runs it automatically.
+  currently runs it automatically. A drafted proposal goes no further than `draft` today —
+  there is no drafting tool to add Post copy (Phase 4) and no way to approve it into anything
+  that could ever be published (Phases 5-6 are unbuilt).
 
 ## What this loop does NOT do yet
 
-- **No proposal selector** (plan Phase 3) — reads `known-gaps.yaml`, local-rank absences, and
-  indexation gaps to draft `gbp-post-draft` proposals. Unbuilt.
-- **No drafting tool** (`tools/draft_gbp_post.py`, plan Phase 4) — validates a proposed Post
-  against the real, current GBP API contract (character limit, CTA enum, post-type-specific
-  required fields) and against both `gbp-profiles.md` and MMC's `registry/clients/art.yaml`
-  (trademark/medical-claims/current-hours constraints). Unbuilt.
+- **No drafting tool** for the Post's actual copy (`tools/draft_gbp_post.py`, plan Phase 4) —
+  validates a proposed Post against the real, current GBP API contract (character limit, CTA
+  enum, post-type-specific required fields) and against both `gbp-profiles.md` and MMC's
+  `registry/clients/art.yaml` (trademark/medical-claims/current-hours constraints). Unbuilt.
 - **No approval-state extensions** (plan Phase 5) — the new terminal statuses a published
   post needs (`publishing`, `live`, `rejected-by-google`, `not-found`, `retracted`,
   `publish-unknown`) and `tools/lib/event_log.py`'s allowlist extension to carry them.

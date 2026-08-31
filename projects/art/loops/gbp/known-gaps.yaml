@@ -1,25 +1,33 @@
 # Machine-readable sibling of ../../gbp-profiles.md (GBP Posts plan Phase 1/2).
 #
-# gbp-profiles.md itself is prose, documentation-only, and unparsed by any code today
-# ("nothing in tools/ reads it" - its own header). This file exists so a future selector
-# (Phase 3, not built yet) has a structured source to read a known gap from, without parsing
-# free-text markdown. Every entry here traces back to a specific line in gbp-profiles.md's
-# "Open items" section (captured 2026-08-12) - this file does not introduce any new claim.
+# gbp-profiles.md itself is prose, documentation-only, and unparsed by any code
+# ("nothing in tools/ reads it" - its own header). THIS file, since 2026-08-31, IS parsed -
+# by run_loop.py's `_pick_gbp_actions` (Phase 3), re-read and re-hashed fresh from disk every
+# run. Every entry here traces back to a specific line in gbp-profiles.md's "Open items"
+# section (captured 2026-08-12) - this file does not introduce any new claim.
 #
 # `routing` follows the plan's explicit rule (see spec.md's framing note): a gap that is
 # genuinely about content freshness (something worth posting about) routes to
-# `content_gap_evidence`, eligible to justify a gbp-post-draft proposal once Phase 3/4 exist.
-# A gap that is structural (a profile *setting* - category, hours, verification, photo/review
-# volume) routes to `checklist_only` and belongs in
-# ../../../templates/loops/seo/gbp-checklist.md for a human to work directly against the live
-# GBP dashboard - a Post cannot fix a structural gap, and no automated proposal should ever be
-# generated from one.
+# `content_gap_evidence` - the ONLY thing that may justify a gbp-post-draft proposal (never a
+# rank/pack/technical-health signal alone). A gap that is structural (a profile *setting* -
+# category, hours, verification, photo/review volume) routes to `checklist_only` and belongs
+# in ../../../templates/loops/seo/gbp-checklist.md for a human to work directly against the
+# live GBP dashboard - a Post cannot fix a structural gap, and `_pick_gbp_actions` never
+# drafts a proposal from one.
 #
 # `confirmed_date` mirrors the confirmation-metadata convention MMC's registry/clients/art.yaml
 # already uses for cross-repo facts (see spec.md's Phase 4 note on constraint-source staleness)
 # - a fact confirmed long enough ago should be treated as needing re-confirmation, the same way
-# a stale registry fact would be. There is no automated staleness check on this file yet
-# (Phase 4 work); treat any confirmed_date here as a manual freshness signal until then.
+# a stale registry fact would be. Since 2026-08-31, `_pick_gbp_actions` DOES enforce this: an
+# entry confirmed more than run_loop.GBP_KNOWN_GAP_MAX_AGE_DAYS (180) days ago is skipped as
+# stale, and a missing/invalid/future confirmed_date is skipped outright, never treated as
+# eligible by default. This is a selection-time check only - distinct from Phase 4's stricter,
+# still-unbuilt publish-time gate on gbp-profiles.md/art.yaml facts themselves.
+#
+# `freshness_threshold_days` on an entry (below) is NOT the mechanism above - it is carried
+# through into a drafted proposal's content_gap_evidence for a future Phase 6 "no post about
+# this in N days" check against real remote post history, which requires publish/reconciliation
+# machinery that does not exist yet. It has no effect on selection today.
 
 version: 1
 source: projects/art/gbp-profiles.md

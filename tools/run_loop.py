@@ -110,8 +110,31 @@ def _target_key(target):
     return json.dumps(target or {}, sort_keys=True)
 
 
+def _describe_target(target):
+    """Human-readable target description for report.md, shape-aware like
+    _cooldown_key_from_target above - an SEO proposal's target has `page`, a GBP Post
+    proposal's has `location`/`topic` and no `page` at all. report.md previously assumed
+    `target["page"]` unconditionally and raised KeyError on the first real GBP proposal
+    (caught by tools/tests/gbp_scaffold_smoke.py, 2026-08-31)."""
+    target = target or {}
+    if "location" in target or "topic" in target:
+        return f'{target.get("location")} / {target.get("topic")}'
+    return target.get("page")
+
+
 def _cooldown_key_from_target(target):
-    return _target_key({"page": (target or {}).get("page")})
+    """Cooldown is keyed on whichever identity fields a target actually has - `page`
+    for an SEO proposal, `{location, topic}` for a GBP Post proposal (plan Phase 3;
+    a GBP proposal has no `page` at all). Dispatching on which keys are PRESENT on the
+    target, rather than on the caller's loop name, means this stays correct even where
+    `proposals` is read generically (this function is called for every proposal in a
+    loop's pending/ regardless of type) - GBP's `{location, topic}` target has no `page`
+    key, so falling through to the SEO shape's `{"page": None}` for every GBP proposal
+    would have collapsed every distinct GBP topic into one shared, wrong cooldown key."""
+    target = target or {}
+    if "location" in target or "topic" in target:
+        return _target_key({"location": target.get("location"), "topic": target.get("topic")})
+    return _target_key({"page": target.get("page")})
 
 
 def _compare(value, comparator, threshold):
@@ -790,6 +813,203 @@ def _pick_new_actions(spec, metrics, cooling_down, run_id, now, max_count=3):
     return proposals, excluded_count
 
 
+# GBP Posts plan Phase 3. A known-gaps.yaml entry confirmed longer ago than this needs a
+# human to re-confirm it before this selector treats it as live evidence - mirrors the
+# staleness convention the plan's Phase 4 section establishes for cross-repo constraint facts
+# (gbp-profiles.md/art.yaml), applied here at selection time as a lower-stakes analog. This is
+# NOT the same mechanism as Phase 4's hard publish-time gate on those two files; it only
+# governs whether this selector drafts a proposal at all.
+GBP_KNOWN_GAP_MAX_AGE_DAYS = 180
+CONTENT_GAP_EVIDENCE_SCHEMA_VERSION = 1
+
+
+def _find_allowed_action(spec, action_type):
+    for action in spec.get("allowed_actions") or []:
+        if action.get("type") == action_type:
+            return action
+    return None
+
+
+def _sha256_json(value):
+    import hashlib
+    return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def _pick_gbp_actions(loop_dir, spec, cooling_down, run_id, now, max_count=3):
+    """GBP Posts plan Phase 3 - deliberately NOT a reuse of _pick_new_actions, and
+    deliberately does not read `search_analytics` at all (see the spec["loop"] == "seo" gate
+    around this function's call site).
+
+    The plan's hard rule: a visibility signal (local-rank absence, local-pack absence, a
+    technical-health/indexation gap) is a trigger to LOOK for a content opportunity, never a
+    content opportunity itself - "a page ranking poorly says nothing about whether there's
+    anything fresh to post about that service." The only thing that can justify drafting a
+    gbp-post-draft proposal today is a known-gaps.yaml entry explicitly routed
+    `content_gap_evidence` (the alternative source the plan names - a "no post in N days"
+    check against real remote post history - requires Phase 6's publish/reconciliation
+    machinery, which is unbuilt; this selector does not fabricate that check in its absence).
+    known-gaps.yaml is re-read and re-hashed fresh from disk every run, never from a cached
+    copy, and `content_gap_evidence.source_entry_hash` is exactly what was actually read.
+
+    `opportunity_type` is always "content_freshness" here (the closed-enum other value,
+    "engagement", belongs to a future no-post-in-N-days trigger this selector cannot express
+    yet) - this is a structural fact about what this function can produce, not a free-text
+    choice, so a rank/visibility claim cannot be smuggled into it.
+    """
+    decisions = []
+    known_gaps_path = os.path.join(loop_dir, "known-gaps.yaml")
+    if not os.path.exists(known_gaps_path):
+        return [], ["known-gaps.yaml not found - no content-gap evidence source available, zero proposals drafted"]
+
+    with open(known_gaps_path, "r", encoding="utf-8") as f:
+        raw_text = f.read()
+    try:
+        parsed = yaml.safe_load(raw_text)
+    except yaml.YAMLError as err:
+        return [], [f"known-gaps.yaml failed to parse ({err}) - zero proposals drafted this run"]
+    if not isinstance(parsed, dict):
+        # A syntactically valid YAML document that isn't a mapping at all (a bare list, a
+        # scalar) - .get("gaps") on it would raise AttributeError rather than degrade
+        # cleanly (Codex review, 2026-08-31).
+        return [], ["known-gaps.yaml does not contain a mapping at its root - zero proposals drafted this run"]
+    raw_gaps = parsed.get("gaps")
+    if raw_gaps is None:
+        raw_gaps = []
+    elif not isinstance(raw_gaps, list):
+        return [], ["known-gaps.yaml's gaps field is not a list - zero proposals drafted this run"]
+
+    try:
+        source_rel_path = os.path.relpath(known_gaps_path, WORKSPACE_ROOT).replace("\\", "/")
+    except ValueError:
+        # Cross-drive on Windows (e.g. a test fixture under a different drive than the
+        # workspace) - relpath cannot express that as a relative path at all. Falls back to
+        # the absolute path rather than raising; this is a display/reference field only, not
+        # something the hash or the proposal's identity depends on.
+        source_rel_path = known_gaps_path
+    action = _find_allowed_action(spec, "gbp-post-draft")
+    if action is None:
+        return [], ['"gbp-post-draft" is not in this loop\'s allowed_actions - zero proposals drafted']
+
+    candidates = []
+    seen_ids_this_run = set()
+    seen_cooldown_keys_this_run = set()
+    for gap in raw_gaps:
+        if not isinstance(gap, dict):
+            decisions.append("known-gaps.yaml contains a non-object gap entry - skipped")
+            continue
+        gap_id = gap.get("id")
+        # Structural gaps route to the human checklist (templates/loops/seo/gbp-checklist.md)
+        # and must never become a proposal - a Post cannot fix a category/hours/photo-count
+        # gap (spec.md's framing note).
+        if gap.get("type") != "content_gap" or gap.get("routing") != "content_gap_evidence":
+            continue
+        location = gap.get("location")
+        summary = gap.get("summary")
+        confirmed_date = gap.get("confirmed_date")
+        if not gap_id or not location or not summary:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}" is missing id/location/summary - skipped')
+            continue
+        if gap_id in seen_ids_this_run:
+            # A malformed source with two entries sharing an id must not become two
+            # proposals in the same run (Codex review, 2026-08-31) - source validation
+            # belongs on known-gaps.yaml itself; this is the selector's own backstop.
+            decisions.append(f'known-gaps.yaml entry "{gap_id}" is duplicated - only the first occurrence is considered')
+            continue
+        seen_ids_this_run.add(gap_id)
+        if not confirmed_date:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}": no confirmed_date - treated as unconfirmed, skipped')
+            continue
+        try:
+            confirmed_dt = datetime.fromisoformat(str(confirmed_date))
+        except ValueError:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}": confirmed_date "{confirmed_date}" is not a valid date - skipped')
+            continue
+        # A naive value (a bare "YYYY-MM-DD" date, as every entry today is written) is
+        # treated as UTC; an already-aware value is converted, never blindly relabeled -
+        # `.replace(tzinfo=...)` on an aware datetime would have silently discarded its
+        # real offset and misdated the confirmation (Codex review, 2026-08-31).
+        confirmed_dt = confirmed_dt.replace(tzinfo=timezone.utc) if confirmed_dt.tzinfo is None else confirmed_dt.astimezone(timezone.utc)
+        age_days = (now - confirmed_dt).total_seconds() / 86400
+        if age_days < 0:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}": confirmed_date "{confirmed_date}" is in the future - invalid, skipped')
+            continue
+        if age_days > GBP_KNOWN_GAP_MAX_AGE_DAYS:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}": confirmed {age_days:.0f}d ago (> {GBP_KNOWN_GAP_MAX_AGE_DAYS}d) - stale, needs re-confirmation, skipped')
+            continue
+        cooldown_key = _cooldown_key_from_target({"location": location, "topic": gap_id})
+        if cooldown_key in cooling_down or cooldown_key in seen_cooldown_keys_this_run:
+            decisions.append(f'known-gaps.yaml entry "{gap_id}": a non-terminal proposal already exists for {location}/{gap_id} - cooldown')
+            continue
+        seen_cooldown_keys_this_run.add(cooldown_key)
+        candidates.append((gap, age_days))
+
+    new_proposals = []
+    for i, (gap, age_days) in enumerate(candidates[:max_count]):
+        gap_id = gap["id"]
+        evidence = {
+            "schema_version": CONTENT_GAP_EVIDENCE_SCHEMA_VERSION,
+            "evidence_id": gap_id,
+            "source": source_rel_path,
+            "source_entry_hash": _sha256_json(gap),
+            "observed_at": _now_iso(now),
+            # Two distinct thresholds, recorded distinctly rather than conflated under one
+            # name (Codex review, 2026-08-31 - the original single `freshness_threshold_days`
+            # field claimed to have "qualified" this proposal but was never actually checked
+            # against anything): `gap_freshness_threshold_days` is known-gaps.yaml's own
+            # declared value, carried through for a future Phase 6 "no post about this in N
+            # days" check against real remote post history (not buildable yet - Phase 6 is
+            # unbuilt); `confirmation_max_age_days`/`confirmation_age_days` are what THIS
+            # selector actually evaluated just now to decide the underlying fact is still
+            # trustworthy.
+            "gap_freshness_threshold_days": gap.get("freshness_threshold_days"),
+            "gap_confirmed_date": gap.get("confirmed_date"),
+            "confirmation_max_age_days": GBP_KNOWN_GAP_MAX_AGE_DAYS,
+            "confirmation_age_days": round(age_days, 1),
+        }
+        proposals_new_entry = {
+            "id": f"prop-{run_id}-{i}",
+            "loop": spec["loop"],
+            "action_type": "gbp-post-draft",
+            "tier": action["tier"],
+            "target": {"location": gap["location"], "topic": gap_id},
+            "opportunity_type": "content_freshness",
+            "signal_reference": {"known_gaps_entry_id": gap_id, "source": source_rel_path},
+            "intended_user_action": gap.get("intended_user_action") or "learn_more",
+            "content_gap_evidence": evidence,
+            # Templated EXCLUSIVELY from closed/structured fields (gap_id, location,
+            # confirmed_date) - deliberately never gap["summary"], which is human-authored
+            # free text and could itself contain a rank/visibility claim (e.g. "will improve
+            # rank") that this function would otherwise blindly echo into the proposal,
+            # defeating the entire point of a templated-only rationale (Codex review,
+            # 2026-08-31 - the real known-gaps.yaml entry's summary literally mentions a GSC
+            # position, which the original version copied straight into the rationale). A
+            # reviewer who wants the human-authored summary can read it directly via
+            # signal_reference.known_gaps_entry_id/source.
+            "rationale": (
+                f'Content-freshness opportunity at {gap["location"]}, from known-gaps.yaml entry "{gap_id}" '
+                f'(confirmed {gap.get("confirmed_date")}). See that entry\'s own summary field for the human-authored '
+                "detail - deliberately not repeated here, to keep this field limited to structured data only."
+            ),
+            "rollback": "retract via tools/retract_gbp_post.py once published (plan Phase 6, unbuilt) - a draft/approval has nothing live to roll back",
+            "manual_approval_only": action.get("manual_approval_only") is True,
+            "observation_window_days": action["observation_window_days"],
+            "min_sample_size": action["min_sample_size"],
+            "status": "draft",
+            "created_run_id": run_id,
+            "created_at": _now_iso(now),
+            "run_cycles_seen": 0,
+            "decision": None,
+            "applied_at": None,
+        }
+        new_proposals.append(proposals_new_entry)
+        decisions.append(f'proposal drafted from known-gaps.yaml entry "{gap_id}" ({gap["location"]})')
+
+    if not new_proposals:
+        decisions.append("no eligible content-gap evidence found this run - zero proposals drafted")
+
+    return new_proposals, decisions
+
+
 def _status_buckets(proposals):
     buckets = {}
     for proposal in proposals:
@@ -1021,7 +1241,7 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
         report_lines.append("- none")
 
     report_lines.extend(["", f"## New proposals ({len(new_proposals)})"])
-    report_lines.extend([f'- {p["id"]}: {p["action_type"]} on {p["target"]["page"]} (tier {p["tier"]})' for p in new_proposals] if new_proposals else ["- none"])
+    report_lines.extend([f'- {p["id"]}: {p["action_type"]} on {_describe_target(p.get("target"))} (tier {p["tier"]})' for p in new_proposals] if new_proposals else ["- none"])
     report_lines.extend(["", "## Awaiting live confirmation"])
     report_lines.extend([f"- {proposal_id}" for proposal_id in awaiting_ids] if awaiting_ids else ["- none"])
     report_lines.extend(["", "## Stuck implemented (>=3 cycles)"])
@@ -1194,6 +1414,11 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
             new_proposals, excluded_count = _pick_new_actions(spec, search_metrics, still_cooling_down, run_id, now)
             if excluded_count:
                 eval_decisions.append(f"keyword_exclusions filtered {excluded_count} candidate(s)")
+            for proposal in new_proposals:
+                _write_proposal(pending_dir, proposal)
+        elif spec.get("loop") == "gbp":
+            new_proposals, gbp_decisions = _pick_gbp_actions(loop_dir, spec, still_cooling_down, run_id, now)
+            eval_decisions.extend(gbp_decisions)
             for proposal in new_proposals:
                 _write_proposal(pending_dir, proposal)
 
