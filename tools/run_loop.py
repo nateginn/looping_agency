@@ -1135,7 +1135,19 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         breach = None
         still_cooling_down = set()
         search_metrics = snapshot.get("search_analytics")
-        if run_mode["mode"] != "technical-only" and isinstance(search_metrics, dict) and search_metrics.get("keywords") is not None:
+        # `spec["loop"] == "seo"` is a real structural gate, not an artifact of what
+        # happens to be in this run's `inputs` - _build_snapshot carries a stale
+        # search_analytics section forward from any earlier run that DID populate it
+        # (e.g. a since-removed `mock`/`gsc`/`dataforseo` input), so "no such connector
+        # is configured today" is not itself a durable guarantee that this SEO-shaped
+        # evaluator/selector can never fire for a non-seo loop (Codex review of the GBP
+        # Posts plan Phase 2, 2026-08-31, correctly flagged this carry-forward loophole
+        # against a claim in projects/art/loops/gbp/spec.md's Notes). Both
+        # _evaluate_prior_experiments and _pick_new_actions assume SEO-shaped data
+        # ({page, keyword} targets, allowed_actions typed as SEO rewrites) and must
+        # never run for a loop like `gbp` whose own selector (a future phase) works
+        # entirely differently.
+        if spec.get("loop") == "seo" and run_mode["mode"] != "technical-only" and isinstance(search_metrics, dict) and search_metrics.get("keywords") is not None:
             extra_decisions, breach, still_cooling_down = _evaluate_prior_experiments(proposals, search_metrics, spec, run_id, now)
             eval_decisions.extend(extra_decisions)
 
@@ -1178,7 +1190,7 @@ def run_loop(project_slug, loop_name, scenario="normal", run_name=None, _resolve
         new_proposals = []
         if new_state["status"] == "paused-breach":
             eval_decisions.append("BLOCKED: loop is paused-breach - no new proposals until a human resolves the failed experiment via /review-pending")
-        elif run_mode["mode"] != "technical-only" and isinstance(search_metrics, dict) and search_metrics.get("keywords") is not None:
+        elif spec.get("loop") == "seo" and run_mode["mode"] != "technical-only" and isinstance(search_metrics, dict) and search_metrics.get("keywords") is not None:
             new_proposals, excluded_count = _pick_new_actions(spec, search_metrics, still_cooling_down, run_id, now)
             if excluded_count:
                 eval_decisions.append(f"keyword_exclusions filtered {excluded_count} candidate(s)")

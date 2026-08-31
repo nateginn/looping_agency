@@ -1,0 +1,92 @@
+# Machine-readable sibling of ../../gbp-profiles.md (GBP Posts plan Phase 1/2).
+#
+# gbp-profiles.md itself is prose, documentation-only, and unparsed by any code today
+# ("nothing in tools/ reads it" - its own header). This file exists so a future selector
+# (Phase 3, not built yet) has a structured source to read a known gap from, without parsing
+# free-text markdown. Every entry here traces back to a specific line in gbp-profiles.md's
+# "Open items" section (captured 2026-08-12) - this file does not introduce any new claim.
+#
+# `routing` follows the plan's explicit rule (see spec.md's framing note): a gap that is
+# genuinely about content freshness (something worth posting about) routes to
+# `content_gap_evidence`, eligible to justify a gbp-post-draft proposal once Phase 3/4 exist.
+# A gap that is structural (a profile *setting* - category, hours, verification, photo/review
+# volume) routes to `checklist_only` and belongs in
+# ../../../templates/loops/seo/gbp-checklist.md for a human to work directly against the live
+# GBP dashboard - a Post cannot fix a structural gap, and no automated proposal should ever be
+# generated from one.
+#
+# `confirmed_date` mirrors the confirmation-metadata convention MMC's registry/clients/art.yaml
+# already uses for cross-repo facts (see spec.md's Phase 4 note on constraint-source staleness)
+# - a fact confirmed long enough ago should be treated as needing re-confirmation, the same way
+# a stale registry fact would be. There is no automated staleness check on this file yet
+# (Phase 4 work); treat any confirmed_date here as a manual freshness signal until then.
+
+version: 1
+source: projects/art/gbp-profiles.md
+source_captured_at: "2026-08-12"
+
+gaps:
+  - id: greeley-deep-tissue-massage-missing
+    type: content_gap
+    location: Greeley
+    summary: >
+      Deep Tissue Massage is not listed as a service on the Greeley profile, despite
+      "deep tissue massage greeley co" sitting at GSC position 14.3 - one of Greeley's
+      better-ranking massage terms.
+    routing: content_gap_evidence
+    freshness_threshold_days: 60
+    structural_followup: >
+      Add "Deep Tissue Massage" as a service under Massage Therapist on the Greeley
+      profile directly (see gbp-checklist.md) - a Post is a stopgap engagement signal
+      here, not a substitute for the actual service listing.
+    confirmed_date: "2026-08-12"
+
+  - id: greeley-sports-massage-therapist-secondary-category
+    type: structural
+    location: Greeley
+    summary: >
+      "Sports Massage Therapist" is described as a second "primary" category with no
+      services attached. A profile has exactly one primary category; this needs
+      confirming and, if it is really a secondary category, correcting.
+    routing: checklist_only
+    confirmed_date: "2026-08-12"
+
+  - id: denver-primary-category-unconfirmed
+    type: structural
+    location: Denver
+    summary: >
+      Denver's primary category (Chiropractor, per the artwebsite assessment) has not
+      been independently re-confirmed against the live profile; each location is set
+      separately from Greeley.
+    routing: checklist_only
+    confirmed_date: "2026-08-12"
+
+  - id: denver-thursday-hours-closed
+    type: structural
+    location: Denver
+    summary: >
+      The Denver profile reads Thursday hours as "closed", which does not match the
+      clinic's actual schedule per the 2026-08-12 audit.
+    routing: checklist_only
+    confirmed_date: "2026-08-12"
+
+  - id: greeley-photo-count-low
+    type: structural
+    location: Greeley
+    summary: >
+      7 photos on the Greeley profile, well under the 15-20+ working target in
+      gbp-checklist.md - a Prominence gap, not a content-freshness gap. This entry
+      states only this client's own count, never a competitor's (standing decision 4,
+      CURRENT-WORK.md - no data about other businesses is stored, at all, and that
+      applies to a qualitative comparison exactly as much as to a stored number).
+    routing: checklist_only
+    confirmed_date: "2026-08-12"
+
+  - id: denver-photo-count-low
+    type: structural
+    location: Denver
+    summary: >
+      5 photos and 7 reviews on the Denver profile, both well below Greeley's own
+      55 reviews / 7 photos - the same Prominence gap, more pronounced.
+    routing: checklist_only
+    confirmed_date: "2026-08-12"
