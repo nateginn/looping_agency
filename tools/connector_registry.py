@@ -59,6 +59,24 @@ CONNECTOR_REGISTRY = {
         "requires": ["domain"],
         "critical": False,
     },
+    "dataforseo-maps-rank": {
+        "handler": "dataforseo-maps-rank",
+        "credential_alias": "dataforseo",
+        # "gbp_targets"/"gbp_locations" (not "targets"/"locations" - those
+        # require a "page" field that a Maps ranking check has no use for;
+        # see spec_validate.py). Failure here degrades the run exactly like
+        # dataforseo-local-rank, never aborts it - a Maps-endpoint outage
+        # must not cost a week's GSC-driven proposal cycle for an unrelated
+        # loop's data (GBP Posts plan Phase 1).
+        "requires": ["gbp_targets", "gbp_locations_with_identifier"],
+        "critical": False,
+    },
+    "dataforseo-local-pack": {
+        "handler": "dataforseo-local-pack",
+        "credential_alias": "dataforseo",
+        "requires": ["gbp_targets", "gbp_locations_with_identifier"],
+        "critical": False,
+    },
     "pagespeed": {
         "handler": "pagespeed",
         # Real alias key so a configured credential_aliases.pagespeed is actually
@@ -105,7 +123,7 @@ def _self_test():
     checks.append(("every registry entry has handler/credential_alias/requires/critical", all_entries_well_shaped))
 
     checks.append(("search-analytics contributors are critical (their loss would evaluate against stale positions)", all(is_critical(n) for n in ("mock", "gsc", "dataforseo"))))
-    checks.append(("enrichment-only connectors are degradable, not run-fatal", not any(is_critical(n) for n in ("gsc-indexation", "dataforseo-local-rank", "dataforseo-backlinks", "pagespeed"))))
+    checks.append(("enrichment-only connectors are degradable, not run-fatal", not any(is_critical(n) for n in ("gsc-indexation", "dataforseo-local-rank", "dataforseo-backlinks", "pagespeed", "dataforseo-maps-rank", "dataforseo-local-pack"))))
     checks.append(("an unknown connector name is treated as critical, never silently degraded", is_critical("not-a-real-connector") is True))
 
     all_requires_are_lists = all(isinstance(entry["requires"], list) for entry in CONNECTOR_REGISTRY.values())

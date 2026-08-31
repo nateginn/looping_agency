@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 import yaml
 
 try:
-    from . import dataforseo, gsc, pagespeed
+    from . import dataforseo, dataforseo_local_pack, dataforseo_maps, gsc, pagespeed
     from .connector_registry import get_connector, is_critical
     from .lib.credentials import resolve_credential
     from .lib.errors import ConnectorError
@@ -30,6 +30,8 @@ try:
     from .mock_metrics import pull_metrics as pull_mock_metrics
 except ImportError:
     import dataforseo
+    import dataforseo_local_pack
+    import dataforseo_maps
     import gsc
     import pagespeed
     from connector_registry import get_connector, is_critical
@@ -249,9 +251,15 @@ def _build_snapshot(previous_snapshot, fetched_sections):
         "local_rank": None,
         "backlinks": None,
         "technical_health": None,
+        # GBP Posts plan Phase 1: own-listing-only Maps rank / local-pack
+        # presence, carried forward exactly like every other enrichment
+        # section - a degraded connector must never blank an existing
+        # observation, only leave it visibly stale (its own `as_of`).
+        "maps_rank": None,
+        "local_pack": None,
     }
     if previous_snapshot:
-        for key in ("search_analytics", "local_rank", "backlinks", "technical_health"):
+        for key in ("search_analytics", "local_rank", "backlinks", "technical_health", "maps_rank", "local_pack"):
             snapshot[key] = previous_snapshot.get(key)
     for key, value in fetched_sections.items():
         if value is not None:
@@ -386,6 +394,36 @@ def _dispatch_connector(input_name, handler, spec, aliases, resolver, http_get, 
         except Exception as e:
             raise ConnectorError(f"dataforseo-local-rank connector failed: {e}", raw_secrets={}, tool_name="dataforseo-local-rank") from None
         tool_calls.append({"tool": "dataforseo-local-rank", "args": {"locations": [l.get("name") for l in spec.get("locations") or []], "targets": spec.get("targets")}, "at": _now_iso(), "ok": True})
+    elif handler == "dataforseo-maps-rank":
+        try:
+            fetched_sections["maps_rank"] = dataforseo_maps.pull_maps_rank(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver,
+                targets=spec.get("gbp_targets"),
+                locations=spec.get("locations"),
+                language_code=spec.get("language_code") or "en",
+                device=spec.get("device") or "desktop",
+                http_post=http_post or dataforseo._default_http_post,
+                http_get=http_get or dataforseo._default_http_get,
+            )
+        except Exception as e:
+            raise ConnectorError(f"dataforseo-maps-rank connector failed: {e}", raw_secrets={}, tool_name="dataforseo-maps-rank") from None
+        tool_calls.append({"tool": "dataforseo-maps-rank", "args": {"locations": [l.get("name") for l in spec.get("locations") or []], "targets": spec.get("gbp_targets")}, "at": _now_iso(), "ok": True})
+    elif handler == "dataforseo-local-pack":
+        try:
+            fetched_sections["local_pack"] = dataforseo_local_pack.pull_local_pack(
+                credential_alias=aliases[input_name],
+                resolve_credential=resolver,
+                targets=spec.get("gbp_targets"),
+                locations=spec.get("locations"),
+                language_code=spec.get("language_code") or "en",
+                device=spec.get("device") or "desktop",
+                http_post=http_post or dataforseo._default_http_post,
+                http_get=http_get or dataforseo._default_http_get,
+            )
+        except Exception as e:
+            raise ConnectorError(f"dataforseo-local-pack connector failed: {e}", raw_secrets={}, tool_name="dataforseo-local-pack") from None
+        tool_calls.append({"tool": "dataforseo-local-pack", "args": {"locations": [l.get("name") for l in spec.get("locations") or []], "targets": spec.get("gbp_targets")}, "at": _now_iso(), "ok": True})
     elif handler == "dataforseo-backlinks":
         previous_backlinks = (previous_snapshot or {}).get("backlinks") if previous_snapshot else None
         date_from = None
@@ -910,6 +948,39 @@ def _report_lines(run_id, project_slug, loop_name, mode, status, decisions, new_
                 f'- collection: {local_rank.get("request_count")} request(s) sent, '
                 f'{local_rank.get("success_count")} answered, {local_rank.get("error_count")} failed'
             )
+    else:
+        report_lines.append("- none")
+
+    maps_rank = snapshot.get("maps_rank") or {}
+    report_lines.extend(["", f'## Maps Rank (as of {_local_stamp(maps_rank.get("as_of"), short=True)})'])
+    if maps_rank.get("rows"):
+        for row in maps_rank["rows"]:
+            status = row.get("status")
+            if status == "error":
+                outcome = f'NO ANSWER ({row.get("error_reason")}) - missing data, not an absence'
+            elif status == "absent":
+                seen = row.get("results_seen")
+                outcome = f"not in maps results (of {seen} seen)" if seen else "not in maps results"
+            else:
+                outcome = f'#{row.get("rank_group")}'
+            report_lines.append(f'- {row.get("location_name")}: "{row.get("keyword")}" -> {outcome}')
+    else:
+        report_lines.append("- none")
+
+    local_pack = snapshot.get("local_pack") or {}
+    report_lines.extend(["", f'## Local Pack (as of {_local_stamp(local_pack.get("as_of"), short=True)})'])
+    if local_pack.get("rows"):
+        for row in local_pack["rows"]:
+            status = row.get("status")
+            if status == "error":
+                outcome = f'NO ANSWER ({row.get("error_reason")})'
+            elif not row.get("present"):
+                outcome = "no pack shown"
+            elif row.get("site_in_pack"):
+                outcome = f'in pack at #{row.get("site_position")} (of {row.get("entry_count")})'
+            else:
+                outcome = f'pack shown, not in it ({row.get("entry_count")} entries)'
+            report_lines.append(f'- {row.get("location_name")}: "{row.get("keyword")}" -> {outcome}')
     else:
         report_lines.append("- none")
 

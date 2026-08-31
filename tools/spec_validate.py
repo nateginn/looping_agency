@@ -103,6 +103,34 @@ def _validate_locations(locations, errors, path="locations"):
             errors.append(f"{p}.address is required (string)")
         if not is_non_empty_string(location.get("zip")) or not _ZIP_RE.match(location.get("zip")):
             errors.append(f"{p}.zip is required (5-digit ZIP string)")
+        # place_id/cid (GBP Posts plan Phase 1) are optional here and validated
+        # for shape only - "is this location eligible for a Maps/local-pack
+        # connector" is a separate, stricter check (gbp_locations_with_identifier
+        # below), because most loops using `locations` never touch those
+        # connectors and should not be forced to carry these fields.
+        if "place_id" in location and location["place_id"] is not None and not is_non_empty_string(location["place_id"]):
+            errors.append(f"{p}.place_id must be a non-empty string if present")
+        if "cid" in location and location["cid"] is not None and not is_non_empty_string(location["cid"]):
+            errors.append(f"{p}.cid must be a non-empty string if present")
+        if "coordinate" in location and location["coordinate"] is not None and not is_non_empty_string(location["coordinate"]):
+            errors.append(f"{p}.coordinate must be a non-empty string if present")
+
+
+def _validate_gbp_targets(gbp_targets, locations, errors, path="gbp_targets"):
+    if not isinstance(gbp_targets, list) or not gbp_targets:
+        errors.append(f"{path} must be a non-empty array of {{keyword, location}} objects")
+        return
+    location_names = {loc.get("name") for loc in locations if isinstance(loc, dict) and isinstance(loc.get("name"), str)} if isinstance(locations, list) else set()
+    for i, t in enumerate(gbp_targets):
+        p = f"{path}[{i}]"
+        if not isinstance(t, dict):
+            errors.append(f"{p} must be an object")
+            continue
+        if not is_non_empty_string(t.get("keyword")):
+            errors.append(f"{p}.keyword is required (string)")
+        location_name = t.get("location")
+        if not is_non_empty_string(location_name) or location_name not in location_names:
+            errors.append(f'{p}.location "{location_name}" must be a non-empty string matching one of locations[].name')
 
 
 def _validate_attention_thresholds(thresholds, errors):
@@ -179,6 +207,46 @@ def _validate_connector_requirements(spec, inputs, errors, path_prefix=""):
                 priority_pages = spec.get("priority_pages")
                 if not isinstance(priority_pages, list) or len(priority_pages) < 1:
                     errors.append(f'{path_prefix}priority_pages must be a non-empty array when "{connector_name}" is in inputs')
+            elif requirement == "gbp_targets":
+                _validate_gbp_targets(spec.get("gbp_targets"), spec.get("locations"), errors, path=f"{path_prefix}gbp_targets")
+            elif requirement == "gbp_locations_with_identifier":
+                locations = spec.get("locations")
+                gbp_targets = spec.get("gbp_targets")
+                if not isinstance(locations, list) or not locations:
+                    errors.append(f'{path_prefix}locations must be a non-empty array when "{connector_name}" is in inputs')
+                else:
+                    # A duplicate name means locations_by_name (built by every
+                    # GBP connector) silently resolves to whichever entry
+                    # happens to be last, mapping a target to the wrong
+                    # verified identifier without either connector or spec
+                    # validation ever noticing (Codex review, 2026-08-31).
+                    # Only string names are hashable-safe to track here - a
+                    # malformed non-string name (e.g. a YAML list) is already
+                    # reported by _validate_locations and must not crash this
+                    # set-based check (Codex review, 2026-08-31 follow-up).
+                    seen_names = set()
+                    duplicate_names = set()
+                    for loc in locations:
+                        name = loc.get("name") if isinstance(loc, dict) else None
+                        if not isinstance(name, str):
+                            continue
+                        (duplicate_names if name in seen_names else seen_names).add(name)
+                    for name in sorted(duplicate_names):
+                        errors.append(
+                            f'{path_prefix}locations entry "{name}" is duplicated - a GBP connector ("{connector_name}") '
+                            "is in inputs, and a duplicate name would resolve ambiguously to whichever entry is last"
+                        )
+                if isinstance(locations, list) and locations and isinstance(gbp_targets, list):
+                    referenced_names = {t.get("location") for t in gbp_targets if isinstance(t, dict) and isinstance(t.get("location"), str)}
+                    by_name = {loc.get("name"): loc for loc in locations if isinstance(loc, dict) and isinstance(loc.get("name"), str)}
+                    for name in referenced_names:
+                        loc = by_name.get(name)
+                        if loc is not None and not loc.get("place_id") and not loc.get("cid"):
+                            errors.append(
+                                f'{path_prefix}locations entry "{name}" is referenced by gbp_targets and used by '
+                                f'"{connector_name}", so it must carry a verified place_id or cid - matching by '
+                                "name/domain alone is not permitted for Maps/local-pack connectors"
+                            )
 
     if "dataforseo" in inputs or "dataforseo-local-rank" in inputs:
         if spec.get("language_code") is not None and not is_non_empty_string(spec.get("language_code")):
@@ -189,7 +257,11 @@ def _validate_connector_requirements(spec, inputs, errors, path_prefix=""):
     if "dataforseo-local-rank" in inputs:
         targets = spec.get("targets")
         locations = spec.get("locations")
-        location_names = {loc.get("name") for loc in locations} if isinstance(locations, list) else set()
+        # isinstance guards added 2026-08-31 (Codex review of the new GBP
+        # gbp_targets validator found the identical crash-on-malformed-input
+        # pattern here too - a non-dict `locations` entry, or a non-string
+        # `name`, previously raised instead of producing a validation error.
+        location_names = {loc.get("name") for loc in locations if isinstance(loc, dict) and isinstance(loc.get("name"), str)} if isinstance(locations, list) else set()
         if isinstance(targets, list):
             for t_idx, t in enumerate(targets):
                 if not isinstance(t, dict):
@@ -470,6 +542,44 @@ guardrail_metrics: []
         mock_only.pop(key, None)
     mock_only_result = validate_spec_object(mock_only)
 
+    gbp_base = yaml.safe_load(extract_frontmatter(good))
+    gbp_base.pop("additional_schedules", None)
+    gbp_base["inputs"] = ["mock", "dataforseo-maps-rank"]
+    gbp_base["locations"] = [{"name": "Denver", "address": "2480 W 26th Ave #90B, Denver, CO 80211", "zip": "80211", "place_id": "ChIJ-verified-denver"}]
+    gbp_base["gbp_targets"] = [{"keyword": "physical therapy denver", "location": "Denver"}]
+    good_gbp = validate_spec_object(dict(gbp_base))
+
+    gbp_no_targets = dict(gbp_base)
+    gbp_no_targets.pop("gbp_targets", None)
+    bad_gbp_no_targets = validate_spec_object(gbp_no_targets)
+
+    gbp_no_identifier = dict(gbp_base)
+    gbp_no_identifier["locations"] = [{"name": "Denver", "address": "2480 W 26th Ave #90B, Denver, CO 80211", "zip": "80211"}]
+    bad_gbp_no_identifier = validate_spec_object(gbp_no_identifier)
+
+    gbp_unknown_location = dict(gbp_base)
+    gbp_unknown_location["gbp_targets"] = [{"keyword": "physical therapy denver", "location": "Nowhere"}]
+    bad_gbp_unknown_location = validate_spec_object(gbp_unknown_location)
+
+    gbp_duplicate_location = dict(gbp_base)
+    gbp_duplicate_location["locations"] = [
+        {"name": "Denver", "address": "2480 W 26th Ave #90B, Denver, CO 80211", "zip": "80211", "place_id": "ChIJ-a"},
+        {"name": "Denver", "address": "999 Other St, Denver, CO 80211", "zip": "80211", "place_id": "ChIJ-b"},
+    ]
+    bad_gbp_duplicate_location = validate_spec_object(gbp_duplicate_location)
+
+    gbp_malformed_location = dict(gbp_base)
+    gbp_malformed_location["locations"] = ["not-an-object"]
+    bad_gbp_malformed_location = validate_spec_object(gbp_malformed_location)
+
+    gbp_unhashable_name = dict(gbp_base)
+    gbp_unhashable_name["locations"] = [{"name": ["not", "a", "string"], "address": "x", "zip": "80211"}]
+    bad_gbp_unhashable_name = validate_spec_object(gbp_unhashable_name)
+
+    unhashable_targets_location = dict(gbp_base)
+    unhashable_targets_location["gbp_targets"] = [{"keyword": "x", "location": ["also", "not", "a", "string"]}]
+    bad_unhashable_targets_location = validate_spec_object(unhashable_targets_location)
+
     checks = [
         ("valid spec is accepted", good_result["valid"] is True),
         ("valid spec has no errors", len(good_result["errors"]) == 0),
@@ -497,6 +607,14 @@ guardrail_metrics: []
         ("a spec with auto_implementation_enabled absent is still valid (default false)", absent_auto_impl["valid"] is True),
         ("valid noindex_destination_pages list is accepted", good_noindex["valid"] is True),
         ("noindex_destination_pages with an empty string is rejected", any("noindex_destination_pages" in e for e in bad_noindex["errors"])),
+        ("a spec using dataforseo-maps-rank with gbp_targets and an identified location is valid", good_gbp["valid"] is True),
+        ("dataforseo-maps-rank without gbp_targets is rejected", any("gbp_targets" in e for e in bad_gbp_no_targets["errors"])),
+        ("a gbp_targets location with no place_id/cid is rejected (no name/domain fallback permitted)", any("must carry a verified place_id or cid" in e for e in bad_gbp_no_identifier["errors"])),
+        ("a gbp_targets entry referencing an unknown location is rejected", any('location "Nowhere" must be a non-empty string matching' in e for e in bad_gbp_unknown_location["errors"])),
+        ("a duplicate location name is rejected when a GBP connector is in inputs (ambiguous identifier resolution)", any('locations entry "Denver" is duplicated' in e for e in bad_gbp_duplicate_location["errors"])),
+        ("a non-object entry in locations does not crash validation, and is still reported as an error", bad_gbp_malformed_location["valid"] is False and any("must be an object" in e for e in bad_gbp_malformed_location["errors"])),
+        ("a non-string (unhashable) locations[].name does not crash validation", bad_gbp_unhashable_name["valid"] is False),
+        ("a non-string (unhashable) gbp_targets[].location does not crash validation", bad_unhashable_targets_location["valid"] is False),
     ]
 
     shutil.rmtree(tmp, ignore_errors=True)
