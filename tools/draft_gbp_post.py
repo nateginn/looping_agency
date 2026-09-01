@@ -386,11 +386,18 @@ def draft_gbp_post(project, loop, proposal_id, implementation, drafted_by, repo_
 
     try:
         proposal = load_json(proposal_pathname)
-        is_revision = proposal.get("status") == "review-revision-needed"
-        if proposal.get("status") not in ("draft", "review-revision-needed"):
+        # Event-sourced current status, not the cached JSON's own `status` field (Codex
+        # review, 2026-09-01: a crash between approve_gbp_post.py's gbp_proposal_approved
+        # event append and its own proposal-cache rewrite would otherwise leave this cache
+        # reading stale "draft" while the event log already says "approved" - drafting new
+        # copy against that stale cache would silently diverge the approved lock's hash from
+        # the proposal's actual current implementation, with no error anywhere).
+        current_status = sync_proposal_projection(loop_dir, proposal_id, fail_closed=True)["status"]
+        is_revision = current_status == "review-revision-needed"
+        if current_status not in ("draft", "review-revision-needed"):
             raise ValueError(
-                f'draft_gbp_post.py: proposal {proposal_id} has status "{proposal.get("status")}", not "draft" or '
-                '"review-revision-needed" - only a fresh draft, or a proposal flagged for a correctable revision, '
+                f'draft_gbp_post.py: proposal {proposal_id} has event-sourced status "{current_status}", not "draft" '
+                'or "review-revision-needed" - only a fresh draft, or a proposal flagged for a correctable revision, '
                 "may receive new implementation copy"
             )
         if proposal.get("action_type") not in DRAFTABLE_ACTIONS:
@@ -580,6 +587,11 @@ facts:
                 "id": proposal_id, "action_type": "gbp-post-draft", "status": status,
                 "target": {"location": location, "topic": "some-topic"},
             })
+            # draft_gbp_post() now reads its status gate from the event-sourced projection,
+            # not this cached JSON's own `status` field - a seeded proposal needs matching
+            # event history or every call below would see status=None and refuse regardless
+            # of what the JSON says.
+            append_event(loop_dir, "proposal_created", project=project, loop=loop, proposal_id=proposal_id, action_type="gbp-post-draft", resulting_proposal_status=status)
 
         good_impl = {
             "post_type": "STANDARD",
@@ -815,6 +827,25 @@ facts:
         except ValueError as e:
             threw_duplicate = "identical to another proposal" in str(e)
         checks.append(("a summary identical to another pending proposal's is rejected (local duplicate check)", threw_duplicate))
+
+        # The crash-window scenario this event-sourced check exists to close: the cached JSON
+        # still says "draft" (as if approve_gbp_post.py crashed after appending its
+        # gbp_proposal_approved event but before rewriting the proposal cache), while the event
+        # log already says "approved". Drafting against the stale cache would silently diverge
+        # the locked hash from the proposal's actual content (Codex review, 2026-09-01, third
+        # round) - this must refuse using the EVENT-sourced status, not the JSON's.
+        write_proposal(pending_dir, {
+            "id": "prop-cache-drift", "action_type": "gbp-post-draft", "status": "draft",
+            "target": {"location": "Greeley", "topic": "some-topic"},
+        })
+        append_event(loop_dir, "proposal_created", project=project, loop=loop, proposal_id="prop-cache-drift", action_type="gbp-post-draft", resulting_proposal_status="draft")
+        append_event(loop_dir, "gbp_proposal_approved", project=project, loop=loop, proposal_id="prop-cache-drift", action_type="gbp-post-draft", resulting_proposal_status="approved")
+        threw_cache_drift = False
+        try:
+            draft_gbp_post(project, loop, "prop-cache-drift", {**good_impl, "summary": "Unique summary for the cache-drift test."}, "claude-test", art_yaml_path=art_yaml_path)
+        except ValueError as e:
+            threw_cache_drift = "event-sourced status" in str(e) and "approved" in str(e)
+        checks.append(("a proposal whose cached JSON says draft but whose event log says approved is refused (event log is authoritative, not the cache)", threw_cache_drift))
 
         for status in ("reviewed", "approved", "review-pending", "review-approved"):
             proposal_id = f"prop-past-draft-{status}"

@@ -106,6 +106,27 @@ def _restore_dir(dir_path, saved):
             f.write(content)
 
 
+def _force_remove_run_dir(dir_path):
+    """shutil.rmtree(..., ignore_errors=True) alone is not enough on Windows:
+    tools/snapshot.py deliberately writes snapshot.json read-only, and Windows refuses to
+    unlink a read-only file even under ignore_errors - it silently leaves that one file (and
+    therefore the whole directory) behind. Discovered 2026-09-01 when 8+ of this test's own
+    prior-invocation run directories had accumulated for real under
+    projects/art/loops/gbp/runs/ (gitignored, so never caught by git status), each still
+    holding its read-only snapshot.json - and the newest survivor's deliberately-poisoned
+    search_analytics section was then getting carried forward into a brand new invocation's
+    very first "ordinary case" run, exactly the regression this test's own docstring warns
+    against. chmod every file writable first so the directory is actually removed."""
+    for root, _dirs, files in os.walk(dir_path):
+        for name in files:
+            path = os.path.join(root, name)
+            try:
+                os.chmod(path, 0o644)
+            except OSError:
+                pass
+    shutil.rmtree(dir_path, ignore_errors=True)
+
+
 def _fail_closed_requester(url, headers):
     raise AssertionError(f"offline smoke test: no real GitHub call is permitted, attempted {url}")
 
@@ -273,7 +294,7 @@ def run():
         # overwriting, which would destroy real history on a loop that has ever run for real.
         for name in os.listdir(runs_dir) if os.path.isdir(runs_dir) else []:
             if name not in pre_existing_runs:
-                shutil.rmtree(os.path.join(runs_dir, name), ignore_errors=True)
+                _force_remove_run_dir(os.path.join(runs_dir, name))
         # Restores every pre-existing proposal's exact bytes too, not just its filename's
         # continued existence - run_loop.py rewrites every pending proposal file in place
         # each run (bumping counters like run_cycles_seen), which a name-only restore would

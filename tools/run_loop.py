@@ -62,7 +62,21 @@ LOCATION_DIFF_FILENAME = "locations-detected.json"
 # review-revision-needed, review-approved, review-held, approved-for-
 # implementation) must also block a duplicate proposal on the same page,
 # same as draft/reviewed/approved/implemented/applied already do.
-TERMINAL_PROPOSAL_STATUSES = {"rejected", "review-rejected", "verified", "breached"}
+TERMINAL_PROPOSAL_STATUSES = {
+    "rejected", "review-rejected", "verified", "breached",
+    # GBP Posts plan Phase 5 (2026-09-01, advisory consulted via Codex read-only review):
+    # "live" (a post successfully published), "rejected-by-google" (Google refused the
+    # content - the plan requires a materially different payload to retry, enforced by
+    # publish_gbp_post.py's duplicate-content check, not by this cooldown), and "retracted"
+    # (a human deliberately took a live post down) are all KNOWN, resolved outcomes - the
+    # {location, topic} pair is freed for a future, distinct proposal, the same way a
+    # completed SEO proposal frees its page/keyword whether it "verified" or was "rejected".
+    # Deliberately EXCLUDED: "not-found" (an ambiguous publish outcome a bounded
+    # reconciliation window failed to resolve either way - still unresolved, not a decision)
+    # and "publish-unknown" (explicitly requires a human to check the real GBP dashboard) -
+    # both keep blocking a new proposal for the same target until a human resolves them.
+    "live", "rejected-by-google", "retracted",
+}
 
 
 def _now_iso(now=None):

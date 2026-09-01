@@ -83,14 +83,47 @@ def _sha256_text(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+# ZWSP, ZWNJ, ZWJ, LRM, RLM, ALM, WORD JOINER, BOM/ZWNBSP, soft hyphen - written as explicit
+# \u escapes, never literal invisible characters in source, so this list stays legible and
+# auditable in a diff. Mapped to an ordinary space (not deleted outright) so
+# "UNC" + U+200B + "Campus" collapses to the SAME normalized form as "UNC Campus" - an earlier
+# version of this fix deleted them instead, which merged the two words into "unccampus" and
+# still failed to match "unc campus". U+2060 and U+061C added after a Codex review
+# (2026-09-01, fourth round) found them missing from an earlier version of this same list -
+# same invisible-formatting-character category as the others, so folded in here rather than
+# treated as a separate concern.
+#
+# Deliberately NOT attempted: general Unicode confusable/homoglyph detection (e.g. Cyrillic
+# "\u0421" standing in for Latin "C"), which the same review round also raised. locations.json is
+# operator-authored config, never external/attacker input (its own header comments say so),
+# and the realistic failure mode this list defends against is an accidental invisible
+# character from a copy-paste, not deliberate adversarial obfuscation - someone with the
+# access to hand-craft a homoglyph in this file could edit this Python file's own
+# FORBIDDEN_LOCATION_NAMES set just as easily. A real confusables defense would need the full,
+# actively-maintained Unicode confusables table (thousands of characters across many scripts),
+# which is a different-sized project than this one, and this mechanism is explicitly a
+# quality/accountability control against mistakes, not a security boundary against a hostile
+# editor of this same repo - the same position this workspace already takes on the Codex
+# review-verdict mechanism (see CLAUDE.md's Phase 7 section).
+_INVISIBLE_CHARS = "\u200b\u200c\u200d\u200e\u200f\u061c\u2060\ufeff\u00ad"
+
+
 def _normalize_name(value):
     """Case/whitespace-insensitive identity for duplicate detection - "Greeley" and " greeley "
     (or "Pediatric and prenatal chiropractic" vs "pediatric  and prenatal chiropractic") must
     collide as duplicates, not be treated as two distinct entries (Codex review, 2026-08-31,
-    third round: exact-string-only duplicate checks let case/whitespace variants slip through)."""
+    third round: exact-string-only duplicate checks let case/whitespace variants slip through).
+
+    Also treats zero-width/invisible formatting characters (ZWSP, ZWNJ, ZWJ, LRM/RLM, BOM,
+    soft hyphen) as whitespace before normalizing - NFKC does not decompose or remove any of
+    these, so "UNC" + U+200B + "Campus" previously normalized to a DIFFERENT string than
+    "UNC Campus" and could slip past gbp_publish_state.py's forbidden-name check untouched
+    (Codex review, 2026-09-01, third round)."""
     import unicodedata
     if not isinstance(value, str):
         return value
+    for ch in _INVISIBLE_CHARS:
+        value = value.replace(ch, " ")
     return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()
 
 
@@ -473,6 +506,16 @@ def _self_test():
     import tempfile
 
     checks = []
+
+    # _normalize_name: zero-width/invisible characters must be treated as whitespace, not
+    # deleted outright (deleting would wrongly merge "UNC" + ZWSP + "Campus" into "unccampus",
+    # matching neither "UNC Campus" nor "UNCCampus") - Codex review, 2026-09-01, third round.
+    checks.append(('_normalize_name treats a zero-width space between words as an ordinary space', _normalize_name("UNC" + chr(0x200b) + "Campus") == _normalize_name("UNC Campus")))
+    checks.append(('_normalize_name treats a trailing BOM the same as no BOM at all', _normalize_name("Thornton" + chr(0xfeff)) == _normalize_name("Thornton")))
+    checks.append(('_normalize_name still distinguishes genuinely different names after stripping invisible characters', _normalize_name("UNC" + chr(0x200b) + "Campus") != _normalize_name("Denver")))
+    checks.append(('_normalize_name treats a WORD JOINER (U+2060) between words as an ordinary space', _normalize_name("UNC" + chr(0x2060) + "Campus") == _normalize_name("UNC Campus")))
+    checks.append(('_normalize_name treats an ARABIC LETTER MARK (U+061C) between words as an ordinary space', _normalize_name("UNC" + chr(0x061c) + "Campus") == _normalize_name("UNC Campus")))
+
     tmp = tempfile.mkdtemp(prefix="gbp-constraints-test-")
     now = datetime.now(timezone.utc)
 

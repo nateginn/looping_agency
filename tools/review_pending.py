@@ -31,6 +31,20 @@ import yaml
 # unchanged in every way that matters.
 _REVIEW_SUBSYSTEM_STATES = ["review-pending", "review-revision-needed", "review-approved", "review-held"]
 
+# GBP Posts plan Phase 5 (Codex review, 2026-09-01): a "gbp-post-draft" proposal's approval
+# must resolve and lock a concrete publish target (accountId/locationId/place_id) and commit
+# a payload hash tying that lock to the exact drafted content - tools/approve_gbp_post.py does
+# this atomically, under this same loop lock, in a single operation. Letting decide("approve")
+# OR decide("retry") succeed here too would silently flip status to "approved" with no lock at
+# all - the exact state the whole locking mechanism exists to prevent - so this action_type is
+# refused for BOTH transitions unconditionally and routed to that tool instead (a second Codex
+# round, 2026-09-01, found the first version only guarded "approve", missing that
+# TRANSITIONS["retry"] also lands on "approved" from "implement-failed" - unreachable for a
+# gbp-post-draft proposal today since apply.py never applies one, but guarded anyway rather
+# than relying on that staying true). Reject/review are unaffected: they never need a lock.
+GBP_LOCKED_APPROVAL_ACTION_TYPES = {"gbp-post-draft"}
+_GBP_LOCKED_APPROVAL_TRANSITIONS = {"approve", "retry"}
+
 TRANSITIONS = {
     "approve": {"from": ["draft", "reviewed"] + _REVIEW_SUBSYSTEM_STATES, "to": "approved"},
     "reject": {"from": ["draft", "reviewed", "approved"] + _REVIEW_SUBSYSTEM_STATES, "to": "rejected"},
@@ -93,6 +107,12 @@ def decide(project, loop, proposal_id, action, by="human", note=""):
         p = next((x for x in proposals if x["id"] == proposal_id), None)
         if p is None:
             raise ValueError(f"proposal {proposal_id} not found")
+        if action in _GBP_LOCKED_APPROVAL_TRANSITIONS and p.get("action_type") in GBP_LOCKED_APPROVAL_ACTION_TYPES:
+            raise ValueError(
+                f'proposal {proposal_id} has action_type "{p.get("action_type")}" - {action}ing it to "approved" '
+                "requires resolving and locking a publish target, which this tool does not do; use "
+                "tools/approve_gbp_post.py instead"
+            )
         if p["status"] not in t["from"]:
             raise ValueError(f'cannot {action} proposal {proposal_id}: current status is "{p["status"]}", expected one of {", ".join(t["from"])}')
         p["status"] = t["to"]
@@ -102,20 +122,42 @@ def decide(project, loop, proposal_id, action, by="human", note=""):
         # for the separate Codex-review and auto-implementation-authorization
         # records (Phase 7 - PLAN-PHASE7-CODEX-REVIEW.md).
         p["decision"] = {"action": action, "by": by, "note": note, "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
-        _write_proposal(project, loop, p)
-        _emit_human_decision(loop_dir, project, loop, p, action, by, note)
+        if p.get("action_type") in GBP_LOCKED_APPROVAL_ACTION_TYPES:
+            # GBP proposals are event-sourced-authoritative (approve_gbp_post.py's whole
+            # design, and this loop's own hard requirement: "the event log is the sole commit
+            # point"). "approve"/"retry" are refused above, but "reject" and "review" still
+            # flow through here, and the ordinary cache-first/event-best-effort order below
+            # would let a rejection silently fail to reach events.jsonl - leaving the cache
+            # saying "rejected" while the event-sourced projection a future publisher MUST
+            # trust (gbp_publish_state.sync_gbp_approval_lock/sync_proposal_projection) still
+            # says "approved", which could publish a post a human explicitly rejected (Codex
+            # review, 2026-09-01, fifth round). Emit the event FIRST and let a failure abort
+            # the whole decide() call - never silently swallowed - before the cache is touched.
+            _emit_human_decision(loop_dir, project, loop, p, action, by, note, best_effort=False)
+            _write_proposal(project, loop, p)
+        else:
+            _write_proposal(project, loop, p)
+            _emit_human_decision(loop_dir, project, loop, p, action, by, note)
         return p
     finally:
         release_lock(loop_dir, lock["run_id"])
 
 
-def _emit_human_decision(loop_dir, project, loop, proposal, action, by, note):
-    """Best-effort: a human decision is recorded as an event too, alongside
-    the existing `decision` field, so the review subsystem's event-sourced
-    projection (event_log.sync_proposal_projection) correctly reflects a
-    human rescue as the latest transition rather than being silently
-    overwritten by the last Codex-review event the next time a tool replays
-    this proposal's history."""
+def _emit_human_decision(loop_dir, project, loop, proposal, action, by, note, best_effort=True):
+    """Records a human decision as an event too, alongside the existing `decision` field, so
+    the review subsystem's event-sourced projection (event_log.sync_proposal_projection)
+    correctly reflects a human rescue as the latest transition rather than being silently
+    overwritten by the last Codex-review event the next time a tool replays this proposal's
+    history.
+
+    best_effort=True (the default, used for every non-GBP action_type, unchanged from before
+    this parameter existed): a failure to log is swallowed - observability, not authorization,
+    and must never block or unwind an already-written human decision here.
+
+    best_effort=False (GBP proposals only - see decide()): the failure is NOT swallowed. GBP
+    proposals require the event log itself to be the commit point, so a failed append must
+    abort the whole decide() call rather than let the cache silently get ahead of the truth a
+    future publisher is required to trust instead of the cache."""
     try:
         spec_path = os.path.join(loop_dir, "spec.md")
         with open(spec_path, "r", encoding="utf-8") as f:
@@ -127,13 +169,17 @@ def _emit_human_decision(loop_dir, project, loop, proposal, action, by, note):
             with open(repo_project_path, "r", encoding="utf-8") as f:
                 repo_path = (yaml.safe_load(extract_frontmatter(f.read())) or {}).get("repo")
         secret_map = build_secret_map(repo_path, spec.get("credential_aliases"))
+        target = proposal.get("target") or {}
         append_event(
             loop_dir, "human_decision_recorded", project=project, loop=loop, proposal_id=proposal["id"],
-            action_type=proposal.get("action_type"), target_page=(proposal.get("target") or {}).get("page"),
-            keyword=(proposal.get("target") or {}).get("keyword"), resulting_proposal_status=proposal["status"],
-            review_verdict=action, note=note[:500] if note else None, secret_map=secret_map,
+            action_type=proposal.get("action_type"), target_page=target.get("page"), keyword=target.get("keyword"),
+            target_location=target.get("location"), topic=target.get("topic"),
+            resulting_proposal_status=proposal["status"], review_verdict=action,
+            note=note[:500] if note else None, secret_map=secret_map,
         )
     except Exception:
+        if not best_effort:
+            raise
         # Observability, not authorization - a failure to log must never
         # block or unwind an already-written human decision.
         pass

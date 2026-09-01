@@ -48,7 +48,7 @@ ALLOWED_EXTRA_FIELDS = {
     "implementation_before", "implementation_after", "reconciled", "note",
     "target_location", "topic", "opportunity_type", "content_gap_evidence_id",
     "remote_post_id", "google_state", "internal_state", "payload_hash",
-    "locked_location_id", "locked_account_id", "location_mapping_version",
+    "locked_location_id", "locked_account_id", "locked_place_id", "location_mapping_version",
     "http_status", "retraction_reason", "retracted_by", "metrics_pull_freshness",
 }
 

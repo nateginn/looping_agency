@@ -105,11 +105,28 @@ def _acquire(project, loop):
     return loop_dir, lock
 
 
+# A GBP Posts loop proposal is event-sourced-authoritative under its OWN, stricter model
+# (tools/approve_gbp_post.py) - approval requires resolving and locking a live publish target,
+# which this Phase 7 review pipeline knows nothing about. Every subcommand here calls
+# _load_proposal first, so refusing here closes the path uniformly rather than name-by-name
+# (Codex review, 2026-09-01, fifth round: this pipeline had no action_type check at all and
+# would happily mutate a GBP proposal's event-sourced status from a stale cached read, exactly
+# the same category of bug the GBP-specific tools were hardened against).
+GBP_EVENT_SOURCED_ACTION_TYPES = {"gbp-post-draft"}
+
+
 def _load_proposal(pending_dir, proposal_id):
     path = proposal_path(pending_dir, proposal_id)
     if not os.path.exists(path):
         raise ValueError(f"proposal {proposal_id} not found")
-    return load_json(path)
+    proposal = load_json(path)
+    if proposal.get("action_type") in GBP_EVENT_SOURCED_ACTION_TYPES:
+        raise ValueError(
+            f'REFUSED: proposal {proposal_id} has action_type "{proposal.get("action_type")}" - this Codex-review '
+            "pipeline does not support GBP Post proposals; use tools/approve_gbp_post.py or tools/review_pending.py "
+            "(--reject/--review) instead"
+        )
+    return proposal
 
 
 def _sync_and_persist(loop_dir, pending_dir, proposal, fail_closed=True):
