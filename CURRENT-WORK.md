@@ -1,18 +1,129 @@
 # Current work — start here
 
-_Last updated 2026-08-31. This is the live working record: what we're doing, what we decided,
+_Last updated 2026-09-01. This is the live working record: what we're doing, what we decided,
 and why. It supersedes the older `PLAN-*.md` files for anything current — those remain as the
 historical design record. Read this first._
 
 > **State at handoff:** A new Google Business Profile (GBP) Posts loop was built for `art`
 > while the operator was away, per a design handed off in chat (mirroring the pattern of
-> `kb/handoffs/looping-seo-ranking.md` from MMC). Phases 1–4 of that design are built, tested,
-> and **committed locally** (`6511628`, `bd01b22`, `d9a2e1e`, `b3d95a1`, `fe368da` —
-> **not pushed**, per decision 7). See "GBP Posts loop — Phases 1–4 built" below for full
-> detail, what's still needed (Phases 5–7, gated on the operator's Google API access), and a
-> punch list of what to check on return. Issue #1 and the two `run_loop.py` defects from the
-> prior session remain closed and pushed as described further below; nothing about that work
-> changed this session.
+> `kb/handoffs/looping-seo-ranking.md` from MMC). Phases 1–5 of that design are now built,
+> tested, and **committed locally** (`6511628`, `bd01b22`, `d9a2e1e`, `b3d95a1`, `fe368da`,
+> `a5af381` — **not pushed**, per decision 7). See "GBP Posts loop — Phases 1–4 built" and
+> "GBP Posts loop — Phase 5 completed" below for full detail, what's still needed (Phases 6–7,
+> gated on the operator's Google API access), and a punch list of what to check on return.
+> Issue #1 and the two `run_loop.py` defects from the prior session remain closed and pushed as
+> described further below; nothing about that work changed this session.
+
+## GBP Posts loop — Phase 5 completed, 2026-09-01 (autonomous session, continued)
+
+Phase 5 (approval-time target locking) is now fully built, hardened via **seven rounds** of
+adversarial Codex review, and committed (`a5af381`). Everything below was found and fixed
+across those rounds — recorded in full because several are exactly the kind of subtle,
+easy-to-miss bugs this whole review discipline exists to catch, and a future reader should not
+have to re-derive them from a diff.
+
+**What Phase 5 actually does:** `tools/approve_gbp_post.py` resolves and locks the concrete
+publish target (Google `accountId`/`locationId`/`place_id`, from `projects/art/loops/gbp/
+locations.json` — every location in it is still `verified: false` today, since Phase 0 hasn't
+happened) and commits a payload hash tying that lock to the exact drafted content, entirely
+inside **one** lock acquisition. Approval reads a GBP proposal's current status AND its
+implementation from the event-sourced projection (`event_log.sync_proposal_projection`), never
+the cached JSON — the event log is this loop's sole commit point, a stricter model than the
+pre-existing SEO/generic proposal machine (which keeps its own proven, unchanged crash-recovery
+model with events as best-effort observability — see CLAUDE.md's Phase 7 section).
+
+**What the seven review rounds found and fixed, in order:**
+1. **First draft** was structurally wrong: it called `review_pending.decide()` as a black box
+   (its own lock cycle) and only then acquired a *second* lock to append the GBP-specific
+   lock event — a real race window where a concurrent draft/reject could land in the gap, or a
+   crash between the two cycles could leave a proposal "approved" with no lock at all.
+   Rewritten as a single atomic operation under one lock hold.
+2. `place_id` was resolved but never locked onto the event; UNC Campus/Thornton were blocked
+   only "by convention" in one function, not independently at load time too.
+3. `review_pending.py` still let `decide(..., "approve")` **and** `"retry"` succeed for a
+   `gbp-post-draft` proposal directly — a second, completely unlocked approval path that
+   bypassed the whole mechanism. Now refused outright, routed to `approve_gbp_post.py`.
+   Narrowing `approve_gbp_post.py`'s own allowed-from-statuses to exclude the (unused-for-GBP)
+   Codex-review-subsystem states created a *dead end* (unapprovable AND unrescuable) — reverted
+   to the full set once the alternate path was closed.
+4. `_normalize_name()` (shared with `gbp_constraints.py`, reused for the forbidden-location
+   check) didn't touch zero-width/invisible Unicode characters (ZWSP, ZWNJ, ZWJ, LRM, RLM,
+   ARABIC LETTER MARK, WORD JOINER, BOM, soft hyphen) — `"UNC" + U+200B + "Campus"` slipped
+   past untouched. Fixed by mapping them to an ordinary space (not deleting — deleting merged
+   the words into `"unccampus"`, matching neither form) before the existing NFKC+casefold+
+   whitespace-collapse pipeline. General Unicode **confusables** (e.g. Cyrillic "С" standing
+   in for Latin "C") were explicitly *not* attempted — `locations.json` is operator-authored
+   config, never external input, and the realistic failure mode is an accidental copy-paste
+   character, not deliberate obfuscation; anyone able to hand-craft a homoglyph there could
+   edit this Python file's own forbidden-name set just as easily. Documented inline as a
+   deliberate scope boundary, matching this workspace's existing position on the Codex
+   review-verdict mechanism (CLAUDE.md's Phase 7 section: a quality control, not a security
+   boundary).
+5. The two required event appends (`human_decision_recorded`, `gbp_proposal_approved`) weren't
+   atomic as a *pair* — a crash between them could leave the event-sourced projection saying
+   "approved" with no lock event ever existing, permanently. Fixed by making
+   `gbp_proposal_approved` (which alone carries the status transition, hash, and locked IDs)
+   the first and only *required* event; `human_decision_recorded` is now best-effort second,
+   matching the pre-existing `review_pending._emit_human_decision` precedent elsewhere.
+6. Reading status from the event-sourced projection closed one race but exposed a second: since
+   `draft_gbp_post.py`'s revision path appends a `proposal_revised` event and *only then*
+   rewrites the cache, a crash between those two steps could leave `draft_gbp_post.py` reading
+   a stale cached "draft" status and allowing a fresh redraft with no event — silently
+   diverging an already-approved lock's hash from the proposal's actual content once
+   "review-pending" was restored to the approvable-from set (finding 3, above).
+   `draft_gbp_post.py` now reads its own status gate from the same event-sourced projection.
+   `approve_gbp_post.py` itself had the same class of bug in reverse: it correctly *checked*
+   status via the projection but still *hashed* `implementation` from the cache — fixed to
+   prefer the projection's implementation (populated from the latest `proposal_revised` event)
+   over the cache, with an explicit `is not None` check (not a truthy `or`, which would have
+   wrongly preferred a non-empty stale cache over a degenerate-but-valid empty `{}` from the
+   event log) — and to actually write that resolved value back onto the cache, which an
+   earlier round computed correctly for hashing but never assigned back before the final save.
+7. `review_pending.py`'s generic `reject`/`review` transitions still wrote the cache *before*
+   emitting the event, treating the event as best-effort for every action type — including a
+   GBP proposal's reject, the one case where the whole design's safety property (a future
+   publisher must trust the event log, not the cache) actually matters. Now branches: for a
+   `gbp-post-draft` proposal, the event is emitted first and required (a failure aborts the
+   whole decision, cache untouched); every other action type keeps its exact original,
+   unchanged, already-tested behavior. `codex_review_proposal.py` (Phase 7's SEO-only review
+   pipeline) had no action-type check at all and could mutate a GBP proposal's event-sourced
+   status from a stale read if ever invoked on one by hand — now refuses any `gbp-post-draft`
+   proposal outright at its single shared `_load_proposal()` entry point. A `load_location_
+   mapping()` duplicate-name check was also extended to catch normalized (case/whitespace)
+   variants, not just exact-string duplicates.
+
+**Explicitly out of scope, confirmed by Codex as legitimate boundaries, not oversights:**
+Unicode confusables (see point 4 above); `tools/lib/lock.py`'s stale-lock TTL-based forced
+recovery (pre-existing, documented, codebase-wide crash-recovery design shared by every tool
+in this workspace — CLAUDE.md's run-contract step 1 — not GBP-specific); the pre-existing
+SEO/generic proposal machine's own cache-first/event-best-effort model for every action type
+*other than* `gbp-post-draft` (CLAUDE.md explicitly documents it as keeping "its own proven
+crash-recovery model" by design).
+
+**Verification:** all directly-touched self-tests green (`approve_gbp_post.py` 32/32,
+`gbp_publish_state.py` 27/27, `gbp_constraints.py` 43/43, `draft_gbp_post.py` 51/51,
+`event_log.py` 27/27), the full `tools/tests/phase1_exit_criteria.py` regression suite holds at
+225/225, and the real `projects/art/loops/gbp/locations.json` was directly exercised (no live
+API calls, no cost) to confirm Greeley/Denver both still correctly refuse (`verified: false`)
+and UNC Campus/Thornton both still correctly refuse (structurally forbidden) end to end.
+
+**A test-hygiene bug was also found and fixed while verifying this**, unrelated to Phase 5's
+own logic: `tools/tests/gbp_scaffold_smoke.py`'s cleanup used `shutil.rmtree(..., ignore_errors
+=True)`, which silently fails to remove a directory containing `tools/snapshot.py`'s
+deliberately-read-only `snapshot.json` on Windows — leaking one leftover `runs/<run-id>/`
+directory per invocation into the real (gitignored, so `git status` never caught it)
+`projects/art/loops/gbp/runs/`. Eight had accumulated from earlier phases' testing; the most
+recent one's deliberately-poisoned `search_analytics` section (planted by the test itself to
+prove the SEO-selector gate holds) was then getting carried forward into a brand-new
+invocation's very first "ordinary case" check, causing an apparent regression. Fixed by
+chmod'ing every file writable before `rmtree`; the leaked directories were deleted (100%
+synthetic fake-credential test output, safe to remove, no git impact either way).
+
+**Still not attempted, same reasons as before:** Phase 6 (`tools/publish_gbp_post.py` — the
+only thing that would ever call Google's API) and Phase 7 (`measure_gbp_post.py`), both
+blocked on Phase 0 (verified `place_id`/`cid` per location, a Google Cloud project with the
+right APIs enabled, and the one-time human-verified pairing between DataForSEO's and Google's
+identifiers) — none of which can be done without the operator.
 
 ---
 
@@ -57,13 +168,12 @@ production data (`D:\Dev\MMC\registry\clients\art.yaml`, `projects/art/gbp-profi
   from the wrong YAML path and silently returned empty against the real `art.yaml`, disabling
   every trademark/promotability check, undetected by its own self-test because the test
   fixture matched the same wrong schema. Fixed and re-verified against the real file.
-- **Small Phase 5 start** (`fe368da`) — `event_log.py`'s field allowlist extended so a GBP
-  proposal's `{location, topic}` target (and future publish-event fields) don't get silently
-  dropped. The rest of Phase 5 (resolving live Google `accountId`/`locationId` at approval
-  time, new terminal proposal statuses) was deliberately **not** built — it needs either live
-  Google API access or Phase 6's publish machinery to have a real shape.
+- **Phase 5** (`fe368da` start, `a5af381` completion) — approval-time target locking, fully
+  built and hardened via seven further rounds of Codex review. See "GBP Posts loop — Phase 5
+  completed" below for the full defect history; this bullet is kept only for the phase-by-phase
+  narrative continuity of this section.
 
-**Deliberately not attempted this session:** Phase 6 (`tools/publish_gbp_post.py` — the only
+**Still not attempted:** Phase 6 (`tools/publish_gbp_post.py` — the only
 thing that would ever call Google's API to create a Post) and Phase 7 (`measure_gbp_post.py`
 — a capability spike). Both are blocked on Phase 0: a verified `place_id`/`cid` per location,
 a Google Cloud project with posting/measurement APIs enabled (subject to Google's own access
@@ -76,11 +186,11 @@ to attempt blind; it deserves the operator's explicit sign-off on the approach, 
 best-effort implementation checked only by code review.
 
 **Punch list for the operator's return:**
-1. Skim the five commit messages above (`git log --oneline 821d93f..fe368da` or `git log -5`)
+1. Skim the six commit messages above (`git log --oneline 821d93f..a5af381` or `git log -6`)
    for the full detail — this summary is necessarily compressed.
 2. Nothing here changed `art/seo`'s behavior or state — the two are independent sibling loops.
    `art/gbp` is inert (not scheduled, not in `loops_enabled`) until explicitly turned on.
-3. Decide whether to push (`821d93f..fe368da`) — per decision 7, that's the operator's call,
+3. Decide whether to push (`821d93f..a5af381`) — per decision 7, that's the operator's call,
    never automated.
 4. When ready to proceed toward Phase 0: the concrete asks are in
    `projects/art/loops/gbp/spec.md`'s "Phase 0" section.
