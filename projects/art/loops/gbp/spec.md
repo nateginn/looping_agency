@@ -287,6 +287,14 @@ against local-rank/indexation data alone) and, separately, blocks Phase 6/7 enti
    refresh token carrying whatever OAuth scope that API actually requires — verify the exact
    scope at build time, and confirm account/location access for both Greeley and Denver
    before Phase 6 is ever trusted, per the plan's Phase 0 section.
+   **In progress, 2026-09-04** (`RISK-REGISTER.md` R20): a separate, dedicated GCP project,
+   `art-gbp-posts` (project number `332169709506`), was created rather than reusing
+   `loop-agency-502604` (the shared project backing `art/seo`'s GSC connector) — deliberate
+   isolation, since this capability is write/publish for live public content, categorically
+   different from GSC's read-only grant. The "Application for Basic API Access" is submitted
+   (support case `2-8924000040975`, ~7-10 business day review); nothing further possible on
+   this item until Google responds. See `CURRENT-WORK.md`'s GBP Posts section for the next
+   concrete step once approved.
 3. **For measurement (Phase 7):** the Business Profile Performance API enabled separately,
    with its own scope and quota confirmed independently — this is what Phase 7's spike
    actually tests; do not assume it shares Phase 6's grant.

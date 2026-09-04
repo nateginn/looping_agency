@@ -66,11 +66,27 @@ That same run's normal Phase 3 selector fired as designed and drafted one new
 Phase 0 work, and goes no further than `draft` today (Phases 5-6's approval/publish paths
 still refuse a gbp-post-draft with no verified location).
 
-**Items 2-4 (Google Cloud project + Business Profile posting API access, its own Performance
-API for Phase 7, and the final accountId/locationId pairing) are unstarted** - these need the
-operator's own Google Cloud Console actions (project creation, API access requests subject to
-Google's manual review, OAuth consent/credentials). A step-by-step roadmap was given in-chat;
-picking this up is the next session's starting point.
+**Item 2 (Google Cloud project + Business Profile posting API access) is now in progress**,
+continued the same day (2026-09-04) in a second pass through this session. Decision: a
+**separate, dedicated** GCP project, `art-gbp-posts` (project number `332169709506`, no
+organization), rather than reusing `loop-agency-502604` (the existing shared project backing
+`art/seo`'s read-only GSC connector) - full reasoning in `RISK-REGISTER.md` R20. The
+"Application for Basic API Access" request has been submitted against the new project
+(support case `2-8924000040975`, Google's stated review time ~7-10 business days). Corrected
+mid-session: Google's own prerequisites require requesting API access **before** enabling any
+Business Profile APIs, not after (the API Library search for "Google My Business API" on the
+new, unapproved project returned nothing, consistent with the API being hidden pending
+approval) - the in-chat roadmap had this backwards initially.
+
+**Next session's starting point:** check support case `2-8924000040975`'s status. Once
+approved (Business Profile API quota moves from 0 to 300 QPM in Cloud Console), resume with
+enabling the relevant Business Profile APIs, creating an OAuth 2.0 client (scope
+`https://www.googleapis.com/auth/business.manage`), minting a refresh token via a one-time
+script (following `tools/gsc.py`/`tools/gsc_daily.py`'s existing Google-auth pattern), storing
+it via `tools/lib/credentials.py --store`, and calling `accounts.list`/`locations.list` to
+complete Phase 0 item 4 (pairing against the `place_id`s already confirmed and recorded in
+`locations.json` v2). Item 3 (the separate Business Profile Performance API, for Phase 7) is
+still fully unstarted.
 
 **Unrelated, noticed and left untouched this session:** `art/seo`'s scheduled runs continued
 firing normally in the background (08-27, 08-31, 09-03) - routine, not investigated further
