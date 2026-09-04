@@ -38,12 +38,16 @@ failure_threshold:
 inputs:
   - dataforseo-local-rank
   - gsc-indexation
-# Deliberately NOT included yet: dataforseo-maps-rank, dataforseo-local-pack (both shipped in
-# tools/ as of Phase 1 - see connector_registry.py - but require a verified place_id/cid per
-# location in `locations` below, which only a human can supply after confirming DataForSEO's
-# identifier and the Business Profile API's accountId/locationId genuinely refer to the same
-# physical location - see the plan's Phase 1 "one-time, safety-sensitive, human-verified step"
-# and Phase 0 below). Deliberately NOT included: gsc, dataforseo, mock (any connector that
+  - dataforseo-maps-rank
+  - dataforseo-local-pack
+# dataforseo-maps-rank/dataforseo-local-pack enabled 2026-09-03: both locations' place_id/cid
+# were confirmed by the operator against their own Google Business Profile dashboard (both
+# show "Verified" status there, matching name and address exactly - see locations.json v2's
+# _comment) and recorded in `locations` below. This is Phase 0 item 1 only - it unlocks
+# read-only Maps-rank/local-pack observability, NOT publishing (Phase 0 items 2-4, the
+# Business Profile API/OAuth/accountId-locationId pairing, remain undone - see Phase 0 below
+# and locations.json's own separate, stricter mapping for the publish path). Deliberately NOT
+# included: gsc, dataforseo, mock (any connector that
 # would populate `search_analytics`) - this loop's proposal selector (Phase 3, shipped
 # 2026-08-31 as run_loop.py's `_pick_gbp_actions`) is its own code, never run_loop.py's
 # generic _pick_new_actions. As of 2026-08-31 this is a
@@ -113,14 +117,48 @@ locations:
   # Same two real profiles as gbp-profiles.md - Greeley and Denver. UNC Campus is
   # deliberately absent: it is footer-only and must never be modelled as a GBP profile (see
   # gbp-profiles.md and the plan's Phase 6 "structurally absent from this mapping" rule).
-  # place_id/cid are deliberately NOT set yet - see the "Deliberately NOT included" note under
-  # inputs above and Phase 0 below.
+  # place_id/cid confirmed by the operator 2026-09-03 (see the inputs note above) - this
+  # list feeds ONLY the maps-rank/local-pack connectors below, and is entirely separate from
+  # locations.json, which is the sole, stricter source Phase 5/6's publish-target locking may
+  # ever read from (locations.json's own "verified" stays false until Phase 0 items 2-4 are
+  # done - the place_id here does not imply that flag).
   - name: Greeley
     address: "1823 65th Ave Suite 3 Greeley, CO 80634"
     zip: "80634"
+    place_id: "ChIJQ0q9Yd2jbocR8hhUfP80O3I"
+    cid: "8231231015856904434"
   - name: Denver
     address: "2480 W 26th Ave #90B Denver, CO 80211"
     zip: "80211"
+    place_id: "ChIJ696Ay4J5bIcRYWPJnPVcHGc"
+    cid: "7429915695221662561"
+gbp_targets:
+  # Same keyword/location pairs as `targets` above, minus `page` (gbp_targets has no concept
+  # of a website page - Maps/local-pack rank is per keyword+location only).
+  - keyword: physical therapy greeley
+    location: Greeley
+  - keyword: physical therapy denver
+    location: Denver
+  - keyword: chiropractor greeley
+    location: Greeley
+  - keyword: chiropractor denver
+    location: Denver
+  - keyword: auto injury treatment greeley
+    location: Greeley
+  - keyword: auto injury treatment denver
+    location: Denver
+  - keyword: work comp injury care greeley
+    location: Greeley
+  - keyword: work comp injury care denver
+    location: Denver
+  - keyword: massage therapy greeley
+    location: Greeley
+  - keyword: massage therapy denver
+    location: Denver
+  - keyword: acupuncture greeley
+    location: Greeley
+  - keyword: acupuncture denver
+    location: Denver
 language_code: en
 device: desktop
 allowed_actions:

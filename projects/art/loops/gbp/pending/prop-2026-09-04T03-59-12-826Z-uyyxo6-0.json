@@ -1,0 +1,38 @@
+{
+  "id": "prop-2026-09-04T03-59-12-826Z-uyyxo6-0",
+  "loop": "gbp",
+  "action_type": "gbp-post-draft",
+  "tier": 1,
+  "target": {
+    "location": "Greeley",
+    "topic": "greeley-deep-tissue-massage-missing"
+  },
+  "opportunity_type": "content_freshness",
+  "signal_reference": {
+    "known_gaps_entry_id": "greeley-deep-tissue-massage-missing",
+    "source": "projects/art/loops/gbp/known-gaps.yaml"
+  },
+  "intended_user_action": "learn_more",
+  "content_gap_evidence": {
+    "schema_version": 1,
+    "evidence_id": "greeley-deep-tissue-massage-missing",
+    "source": "projects/art/loops/gbp/known-gaps.yaml",
+    "source_entry_hash": "2d54b204f4fc8adf6bba95c2e4d0c771d4990c34e3288eb4bc2503b342c2725f",
+    "observed_at": "2026-09-04T03:59:12.826679Z",
+    "gap_freshness_threshold_days": 60,
+    "gap_confirmed_date": "2026-08-12",
+    "confirmation_max_age_days": 180,
+    "confirmation_age_days": 23.2
+  },
+  "rationale": "Content-freshness opportunity at Greeley, from known-gaps.yaml entry \"greeley-deep-tissue-massage-missing\" (confirmed 2026-08-12). See that entry's own summary field for the human-authored detail - deliberately not repeated here, to keep this field limited to structured data only.",
+  "rollback": "retract via tools/retract_gbp_post.py once published (plan Phase 6, unbuilt) - a draft/approval has nothing live to roll back",
+  "manual_approval_only": true,
+  "observation_window_days": 30,
+  "min_sample_size": 1,
+  "status": "draft",
+  "created_run_id": "2026-09-04T03-59-12-826Z-uyyxo6",
+  "created_at": "2026-09-04T03:59:12.826679Z",
+  "run_cycles_seen": 0,
+  "decision": null,
+  "applied_at": null
+}

@@ -8,11 +8,77 @@ historical design record. Read this first._
 > while the operator was away, per a design handed off in chat (mirroring the pattern of
 > `kb/handoffs/looping-seo-ranking.md` from MMC). Phases 1–5 of that design are now built,
 > tested, and **committed locally** (`6511628`, `bd01b22`, `d9a2e1e`, `b3d95a1`, `fe368da`,
-> `a5af381` — **not pushed**, per decision 7). See "GBP Posts loop — Phases 1–4 built" and
-> "GBP Posts loop — Phase 5 completed" below for full detail, what's still needed (Phases 6–7,
-> gated on the operator's Google API access), and a punch list of what to check on return.
-> Issue #1 and the two `run_loop.py` defects from the prior session remain closed and pushed as
-> described further below; nothing about that work changed this session.
+> `a5af381` — **not pushed**, per decision 7). Phase 6/7 (the only code that would ever call
+> Google's live API) are structurally blocked on Phase 0 — four prerequisites only the
+> operator can complete. Phase 0 item 1 (verified `place_id`/`cid` for both locations) is now
+> done, 2026-09-04; items 2–4 (Google Cloud project + Business Profile API access + the
+> final identifier pairing) are next. See "GBP Posts loop — Phase 0 item 1 completed",
+> "GBP Posts loop — Phases 1–4 built" and "GBP Posts loop — Phase 5 completed" below for full
+> detail. Issue #1 and the two `run_loop.py` defects from the prior session remain closed and
+> pushed as described further below; nothing about that work changed this session.
+
+## GBP Posts loop — Phase 0 item 1 completed, 2026-09-04
+
+Picked back up from the Phase 5 handoff below. The prior session had explicitly declined to
+start Phase 6 (`publish_gbp_post.py`) without the operator's sign-off, since it's the only
+code that would ever call Google's live API to create a Post for a real medical business —
+the operator agreed with holding there. Rereading `spec.md`'s Phase 0 section made clear
+Phase 6/7 aren't just "risky to build speculatively," they're **structurally blocked**: there
+is no live API to build or test against until Phase 0's four prerequisites exist, none of
+which tooling can do alone. So this session worked Phase 0 itself, starting with the one item
+that doesn't require the operator's own Google Cloud account.
+
+**Item 1 (verified place_id/cid) — done.** A live, read-only DataForSEO Maps query (reusing
+`dataforseo.py`'s auth/location-resolution helpers from a throwaway scratch script, never
+committed to `tools/`) searched "Accelerated Rehab Therapy" near both addresses.
+- **Greeley** matched unambiguously at rank 1: exact name, exact address, exact domain.
+- **Denver** did not appear in the first 20 results for the plain business-name query at all
+  - a second query ("Accelerated Rehab Therapy Denver") surfaced it at rank 16, listed as
+  "ART - Denver" (a shorthand, not the full legal name).
+Both were then independently confirmed by the operator directly against their own Google
+Business Profile dashboard (both show `Verified` status, exact name/address match) - not
+inferred from domain or name matching, per the plan's explicit requirement that this pairing
+be human-verified, never tooling-derived.
+
+**locations.json bumped to v2**: `place_id` filled in for both locations. `verified` was
+deliberately left `false` and `account_id`/`location_id` left `null` - that flag requires the
+Business Profile API pairing too (items 2-4, still outstanding), and
+`gbp_publish_state.resolve_locked_target` refuses any entry whose `verified` isn't literally
+`True`, so this change unlocks nothing on the publish path. `gbp_publish_state.py --verify`
+(27/27) and `spec_validate.py --verify` both still pass after the edit.
+
+**Separately, `spec.md` turned on `dataforseo-maps-rank`/`dataforseo-local-pack`** (Phase 1
+connectors, built 2026-08-31, previously not in `inputs` for lack of a verified identifier):
+added `place_id`/`cid` to `spec.md`'s own `locations` list (a different, looser list than
+`locations.json` - feeds these two connectors only, carries no publish authority) and a new
+`gbp_targets` list (the same 12 keyword/location pairs as the existing SEO-mirroring
+`targets`, minus `page`). Validated (`spec_validate.py`) and then run for real
+(`python tools/run_loop.py art gbp`): both connectors returned 12/12 success, 0 errors,
+plausible mixed real data (e.g. Greeley ranks 20th on Maps for "physical therapy greeley" but
+2nd for "auto injury treatment greeley"; Denver's local pack is entirely absent for "work comp
+injury care denver"). This is read-only observability only - it does not change what
+proposals the loop drafts (Phase 3's selector is still gated on `content_gap_evidence` alone,
+untouched) and has no path to publishing anything.
+
+That same run's normal Phase 3 selector fired as designed and drafted one new
+`gbp-post-draft` proposal from `known-gaps.yaml`'s Greeley deep-tissue-massage gap
+(`prop-2026-09-04T03-59-12-826Z-uyyxo6-0`, status `draft`) - expected, unrelated to tonight's
+Phase 0 work, and goes no further than `draft` today (Phases 5-6's approval/publish paths
+still refuse a gbp-post-draft with no verified location).
+
+**Items 2-4 (Google Cloud project + Business Profile posting API access, its own Performance
+API for Phase 7, and the final accountId/locationId pairing) are unstarted** - these need the
+operator's own Google Cloud Console actions (project creation, API access requests subject to
+Google's manual review, OAuth consent/credentials). A step-by-step roadmap was given in-chat;
+picking this up is the next session's starting point.
+
+**Unrelated, noticed and left untouched this session:** `art/seo`'s scheduled runs continued
+firing normally in the background (08-27, 08-31, 09-03) - routine, not investigated further
+beyond confirming they're ordinary scheduled output. An untracked, 910-line `SEO_PROGRAM.md`
+(a synthesized "SEO Program" doc from named video sources) exists at the repo root, origin
+unknown to this session - flagged to the operator, not touched.
+
+---
 
 ## GBP Posts loop — Phase 5 completed, 2026-09-01 (autonomous session, continued)
 
